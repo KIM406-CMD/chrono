@@ -19,7 +19,7 @@
 - 启动模块：Spring Security 配置、Knife4j 接口文档、JWT 拦截器、Web MVC 配置
 - 配置文件：`application.yaml` / `application-dev.yml` / `application-prod.yml`
 - Docker Compose 编排：MySQL 8.0、Redis 7、Elasticsearch 7.17
-- 数据库初始化脚本：`intial/schema.sql`（建表）、`intial/data.sql`（初始数据）
+- 数据库初始化脚本：`initial/schema.sql`（建表）、`initial/data.sql`（初始数据）
 - 文档：PRD、需求分析、可行性分析、服务端/客户端设计、数据库设计、详细设计、测试规范、API 文档
 - UML 图：用例图、组件图、ER 图、时序图、活动图（PlantUML）
 - 单元测试与集成测试：JWT 工具、认证 Service、认证接口 E2E
