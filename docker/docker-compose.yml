@@ -1,0 +1,120 @@
+version: "3.8"
+
+# ============================================================
+# 网上超市系统 — Docker Compose 编排
+# 用于本地开发 & 答辩演示一键启动所有中间件
+#
+# 启动: docker-compose up -d
+# 停止: docker-compose down
+# 查看日志: docker-compose logs -f
+# ============================================================
+
+services:
+
+  # ==================== MySQL 8.0 ====================
+  mysql:
+    image: mysql:8.0.33
+    container_name: chrono-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: chrono_bbs
+      MYSQL_USER: chrono
+      MYSQL_PASSWORD: chrono123
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./module-start/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./module-start/src/main/resources/data.sql:/docker-entrypoint-initdb.d/02-data.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - chrono-net
+
+  # ==================== Redis 7 ====================
+  redis:
+    image: redis:7.0-alpine
+    container_name: chrono-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --requirepass ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - chrono-net
+
+  # ==================== Elasticsearch 8.x ====================
+  elasticsearch:
+    image: elasticsearch:8.10.2
+    container_name: chrono-es
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false          # 开发环境关闭安全认证
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"      # 限制内存（笔记本友好）
+      - TZ=Asia/Shanghai
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\|yellow'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - chrono-net
+
+  # ==================== 可选: Kibana（ES 可视化面板） ====================
+  # 不需要可以注释掉或删除
+  kibana:
+    image: kibana:8.10.2
+    container_name: chrono-kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - TZ=Asia/Shanghai
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - chrono-net
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  es-data:
+    driver: local
+
+networks:
+  chrono-net:
+    driver: bridge

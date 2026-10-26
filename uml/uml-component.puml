@@ -1,0 +1,157 @@
+@startuml 组件图
+
+title 网上超市系统 - 组件图（Maven多模块结构）
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontColor #000000
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+}
+
+skinparam database {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+}
+
+skinparam node {
+    BackgroundColor #FCE4EC
+    BorderColor #C62828
+}
+
+' ===== 外部系统 =====
+node "阿里云 OSS\n(图片存储)" as OSS
+node "Elasticsearch\n(搜索引擎)" as ES
+database "MySQL\n(主数据库)" as MySQL
+database "Redis\n(缓存/锁/会话)" as Redis
+
+' ===== Maven 模块 =====
+package "chrono-bbs-server (父项目)" {
+
+  component "module-start" as Start #LightBlue {
+    [MyApplication.java\n(SpringBoot启动类)] as Boot
+    [application.yml\n(全局配置)] as Config
+    [ScheduleConfig\n(定时任务调度)] as Schedule
+    [GlobalExceptionHandler\n(全局异常拦截)] as ExHandler
+  }
+
+  component "module-api" as API #LightGreen {
+    [AuthController\n(认证)] as Auth
+    [ProductController\n(商品)] as Product
+    [OrderController\n(订单)] as Order
+    [PaymentController\n(支付)] as Pay
+    [CartController\n(购物车)] as Cart
+    [CommentController\n(评论)] as Comment
+    [ChatController\n(即时通讯)] as Chat
+    [AdminController\n(管理员)] as Admin
+    [MerchantController\n(商家)] as Mc
+
+    ' 横切面
+    [JwtInterceptor\n(JWT鉴权拦截器)] as Jwt
+    [RoleAspect\n(RBAC AOP切面)] as Role
+    [OperationLogAspect\n(操作日志AOP)] as OpLog
+
+    ' VO
+    [LoginVO / ProductVO\nOrderVO / PageResult] as VO
+  }
+
+  component "module-service" as Service #LightYellow {
+    interface "UserService\n(用户服务接口)" as USF
+    interface "ProductService\n(商品服务接口)" as PSF
+    interface "OrderService\n(订单服务接口)" as OSF
+    interface "PaymentService\n(支付服务接口)" as PyS
+    interface "CartService\n(购物车服务接口)" as CSF
+    interface "CommentService\n(评论服务接口)" as CmtS
+    interface "RefundService\n(退款服务接口)" as RS
+    interface "ChatService\n(聊天服务接口)" as ChS
+    interface "SearchService\n(搜索服务接口)" as SS
+
+    [UserServiceImpl] as USI
+    [ProductServiceImpl] as PSI
+    [OrderServiceImpl] as OSI
+    [PaymentServiceImpl] as PyI
+    [CartServiceImpl] as CSI
+    [CommentServiceImpl] as CmtI
+    [RefundServiceImpl] as RSI
+    [ChatServiceImpl] as ChI
+    [SearchServiceImpl] as SSI
+
+    ' DTO
+    [LoginDTO / RegisterDTO\nCreateOrderDTO] as DTO
+  }
+
+  component "module-mapper" as Mapper #LightPink {
+    [UserMapper] as UM
+    [ProductMapper] as PM
+    [OrderMapper] as OM
+    [CartMapper] as CM
+    [PaymentMapper] as PyM
+    [CommentMapper] as CmtM
+    [RefundMapper] as RM
+    [ChatMapper] as ChM
+    [OperationLogMapper] as OLM
+
+    ' Entity
+    [user / product / order\n(Entity 实体类)] as Entity
+    ' XML
+    [UserMapper.xml\n(MyBatis XML)] as XML
+  }
+
+  component "common" as Common #EEEEEE {
+    [Result<T> / PageResult<T>\n(统一返回)] as Result
+    [ErrorCode\n(错误码枚举)] as ErrCode
+    [BusinessException\n(业务异常)] as BusEx
+    [JwtUtil / RedisUtil\n(工具类)] as Utils
+    [RequireRole / OperationLog\n(自定义注解)] as Anno
+    [SendMessageDTO / PageDTO\n(通用DTO)] as CommonDTO
+    [UserRoleEnum / OrderStatusEnum\n(枚举定义)] as Enums
+  }
+}
+
+' ===== 模块间依赖 =====
+Start --> API : 依赖
+API --> Service : 依赖
+Service --> Mapper : 依赖
+Mapper --> Common : 依赖
+API --> Common : 依赖(共用DTO/VO/注解)
+Service --> Common : 依赖(共用异常/工具类)
+
+' ===== 接口与实现 =====
+USF <|.. USI
+PSF <|.. PSI
+OSF <|.. OSI
+PyS <|.. PyI
+CSF <|.. CSI
+CmtS <|.. CmtI
+RS <|.. RSI
+ChS <|.. ChI
+SS <|.. SSI
+
+' ===== Controller 依赖 Service =====
+Auth --> USF
+Product --> PSF
+Order --> OSF
+Pay --> PyS
+Cart --> CSF
+Comment --> CmtF
+Chat --> ChS
+Admin --> USF
+
+' ===== 外部依赖 =====
+Mapper --> MySQL : MyBatis JDBC
+Service --> Redis : Jedis/Lettuce
+Service --> ES : RestHighLevelClient
+API --> OSS : 阿里云SDK
+
+' ===== 拦截器和AOP(横切) =====
+Auth --> Jwt : 请求拦截
+Admin --> Role : 权限校验
+Admin --> OpLog : 操作记录
+Mc --> Role : 权限校验
+Mc --> OpLog : 操作记录
+
+@enduml

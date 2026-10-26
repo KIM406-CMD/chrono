@@ -1,0 +1,258 @@
+@startuml ER图
+
+skinparam linetype ortho
+
+entity user {
+  * id : BIGINT <<PK>>
+  --
+  * username : VARCHAR(50) <<UK>>
+  password : VARCHAR(255)
+  phone : VARCHAR(20)
+  avatar : VARCHAR(500)
+  role : TINYINT <<游客/用户/商家/管理员>>
+  status : TINYINT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity merchant {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  shop_name : VARCHAR(100)
+  license : VARCHAR(500)
+  phone : VARCHAR(20)
+  status : TINYINT <<待审核/已通过/已拒绝>>
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity address {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  receiver_name : VARCHAR(50)
+  phone : VARCHAR(20)
+  province : VARCHAR(50)
+  city : VARCHAR(50)
+  district : VARCHAR(50)
+  detail : VARCHAR(200)
+  is_default : TINYINT
+  created_at : DATETIME
+}
+
+entity category <<三级分类>> {
+  * id : BIGINT <<PK>>
+  --
+  parent_id : BIGINT <<FK, 自关联>>
+  name : VARCHAR(50)
+  level : TINYINT <<1/2/3>>
+  sort_order : INT
+  created_at : DATETIME
+}
+
+entity product {
+  * id : BIGINT <<PK>>
+  --
+  * category_id : BIGINT <<FK>>
+  * merchant_id : BIGINT <<FK>>
+  name : VARCHAR(200)
+  description : TEXT
+  images : VARCHAR(2000)
+  brand : VARCHAR(100)
+  sales : INT
+  status : TINYINT <<上架/下架>>
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity product_sku <<SKU>> {
+  * id : BIGINT <<PK>>
+  --
+  * product_id : BIGINT <<FK>>
+  spec_values : VARCHAR(500)
+  price : DECIMAL(10,2)
+  stock : INT
+  created_at : DATETIME
+}
+
+entity spec_template {
+  * id : BIGINT <<PK>>
+  --
+  name : VARCHAR(50)
+  created_at : DATETIME
+}
+
+entity spec_value {
+  * id : BIGINT <<PK>>
+  --
+  * template_id : BIGINT <<FK>>
+  value : VARCHAR(50)
+  created_at : DATETIME
+}
+
+entity cart_item {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  * sku_id : BIGINT <<FK>>
+  quantity : INT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity order <<主订单>> {
+  * id : BIGINT <<PK>>
+  --
+  * order_no : VARCHAR(32) <<UK>>
+  * user_id : BIGINT <<FK>>
+  * address_id : BIGINT <<FK>>
+  total_amount : DECIMAL(10,2)
+  status : TINYINT <<待支付/已取消/已支付/已发货/已收货/已完成>>
+  remark : VARCHAR(500)
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity order_item <<订单明细>> {
+  * id : BIGINT <<PK>>
+  --
+  * order_id : BIGINT <<FK>>
+  product_id : BIGINT <<FK>>
+  sku_id : BIGINT <<FK>>
+  price : DECIMAL(10,2)
+  quantity : INT
+  product_name : VARCHAR(200)
+  product_image : VARCHAR(500)
+  spec_values : VARCHAR(500)
+  created_at : DATETIME
+}
+
+entity payment <<支付记录>> {
+  * id : BIGINT <<PK>>
+  --
+  * order_id : BIGINT <<FK,UK>>
+  pay_type : TINYINT <<卡号/二维码>>
+  card_no : VARCHAR(50)
+  amount : DECIMAL(10,2)
+  status : TINYINT
+  paid_at : DATETIME
+  created_at : DATETIME
+}
+
+entity refund <<退款/退货>> {
+  * id : BIGINT <<PK>>
+  --
+  * order_item_id : BIGINT <<FK>>
+  * user_id : BIGINT <<FK>>
+  reason : VARCHAR(500)
+  amount : DECIMAL(10,2)
+  type : TINYINT <<退款/退货>>
+  status : TINYINT <<申请/审核中/通过/拒绝>>
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity comment <<评论/追评>> {
+  * id : BIGINT <<PK>>
+  --
+  * product_id : BIGINT <<FK>>
+  * user_id : BIGINT <<FK>>
+  parent_id : BIGINT <<FK, 自关联回复/追评>>
+  content : VARCHAR(2000)
+  rating : TINYINT <<1-5星>>
+  images : VARCHAR(2000)
+  type : TINYINT <<首评/追评>>
+  status : TINYINT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity search_history {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  keyword : VARCHAR(100)
+  searched_at : DATETIME
+}
+
+entity conversation <<会话>> {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK>>
+  * merchant_id : BIGINT <<FK>>
+  product_id : BIGINT <<FK>>
+  last_message : VARCHAR(500)
+  last_message_time : DATETIME
+  user_unread : INT
+  merchant_unread : INT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity message <<消息>> {
+  * id : BIGINT <<PK>>
+  --
+  * conversation_id : BIGINT <<FK>>
+  * sender_id : BIGINT <<FK>>
+  sender_role : TINYINT <<用户/商家>>
+  content : VARCHAR(2000)
+  type : TINYINT <<文本/图片>>
+  is_read : TINYINT
+  created_at : DATETIME
+}
+
+entity operation_log <<操作日志>> {
+  * id : BIGINT <<PK>>
+  --
+  user_id : BIGINT
+  username : VARCHAR(50)
+  ip : VARCHAR(50)
+  module : VARCHAR(50)
+  action : VARCHAR(200)
+  params : TEXT
+  result : VARCHAR(50)
+  cost_time : BIGINT
+  created_at : DATETIME
+}
+
+' ===== 关系 =====
+user ||--o| merchant : "拥有商家资料"
+user ||--o{ address : "收货地址"
+user ||--o{ cart_item : "购物车"
+user ||--o{ order : "下单"
+user ||--o{ refund : "发起退款"
+user ||--o{ comment : "评论"
+user ||--o{ search_history : "搜索历史"
+user ||--o{ conversation : "发起会话(买家)"
+user ||--o{ conversation : "接收会话(商家)"
+user ||--o{ message : "发送消息"
+user ||--o{ operation_log : "操作日志"
+
+category ||--o| category : "父分类"
+category ||--o{ product : "分类下的商品"
+
+merchant ||--o{ product : "商家的商品"
+
+product ||--o{ product_sku : "多规格SKU"
+product ||--o{ order_item : "订单中的商品"
+product ||--o{ comment : "被评论"
+product ||--o{ conversation : "商品来源"
+
+spec_template ||--o{ spec_value : "规格值"
+
+product_sku ||--o{ cart_item : "购物车中的SKU"
+product_sku ||--o{ order_item : "订单中的SKU"
+
+address ||--o{ order : "订单收货地址"
+
+order ||--o{ order_item : "订单明细"
+order ||--o| payment : "支付记录"
+
+order_item ||--o{ refund : "部分退款/退货"
+
+comment ||--o{ comment : "回复/追评"
+
+conversation ||--o{ message : "会话消息"
+
+@enduml

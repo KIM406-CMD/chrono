@@ -1,0 +1,296 @@
+@startuml 用户注册登录
+
+title 用户注册登录时序图
+
+actor 用户 as User
+participant "Vue前端" as Vue
+participant "AuthController" as Auth
+participant "UserService" as Svc
+participant "Redis" as Redis
+database "MySQL" as DB
+
+== 注册 ==
+User -> Vue : 填写用户名/密码/手机号
+Vue -> Auth : POST /api/user/register
+Auth -> Auth : @Valid 校验 DTO
+Auth -> Svc : register(dto)
+Svc -> DB : SELECT COUNT(*) FROM user WHERE username=?
+DB --> Svc : 0(不存在)
+Svc -> DB : INSERT INTO user
+DB --> Svc : OK
+Svc -> Svc : 生成 JWT Token
+Svc -> Redis : SET token:{userId} = token
+Svc --> Auth : Result<TokenVO>
+Auth --> Vue : { code:200, data:{token,userInfo} }
+Vue -> Redis : 存储 token 到 localStorage
+
+== 登录 ==
+User -> Vue : 输入用户名/密码/验证码
+Vue -> Auth : POST /api/user/login
+Auth -> Svc : login(dto)
+Svc -> Redis : GET verify:{uuid}
+Redis --> Svc : 验证码
+Svc -> DB : SELECT * FROM user WHERE username=?
+DB --> Svc : user 记录
+Svc -> Svc : BCrypt 校验密码
+Svc -> Svc : 生成 JWT Token + RefreshToken
+Svc -> Redis : SET token:{userId} = token (2h)
+Svc --> Auth : Result<LoginVO>
+Auth --> Vue : { token, refreshToken, userInfo }
+
+== 后续请求 ==
+User -> Vue : 访问任意页面
+Vue -> Vue : 从 localStorage 取 token
+Vue -> Auth : Header: Authorization Bearer xxx
+Auth -> Auth : JWT 拦截器解析 userId
+Auth -> Redis : GET token:{userId}
+Redis --> Auth : 存在且一致 → 放行
+Auth --> Vue : 正常响应
+
+@enduml
+
+
+@startuml 浏览商品加入购物车下单
+
+title 浏览商品 → 加入购物车 → 下单时序图
+
+actor 用户 as User
+participant "Vue前端" as Vue
+participant "ProductController" as PC
+participant "ProductService" as PS
+participant "CartController" as CC
+participant "CartService" as CS
+participant "OrderController" as OC
+participant "OrderService" as OS
+participant "Redis" as Redis
+database "MySQL" as DB
+database "Elasticsearch" as ES
+
+== 浏览/搜索商品 ==
+User -> Vue : 浏览首页/搜索关键词
+Vue -> ES : POST /product_index/_search { keyword, filters, sort }
+ES --> Vue : 商品列表 + 聚合筛选
+Vue -> Vue : 渲染商品卡片
+
+== 商品详情 ==
+User -> Vue : 点击商品
+Vue -> PC : GET /api/product/{id}
+PC -> PS : getById(id)
+PS -> Redis : GET product:{id}
+alt 缓存命中
+  Redis --> PS : 商品 JSON
+else 缓存未命中
+  PS -> DB : SELECT * FROM product WHERE id=?
+  DB --> PS : product + sku 列表
+  PS -> Redis : SET product:{id} (10min)
+end
+PS --> PC : ProductDetailVO
+PC --> Vue : 商品详情(含 SKU 列表/评论)
+
+== 加入购物车 ==
+User -> Vue : 选择规格 → 点击"加入购物车"
+Vue -> CC : POST /api/cart/add { skuId, quantity }
+CC -> CS : addToCart(userId, skuId, quantity)
+CS -> DB : 校验商品状态+库存
+CS -> DB : INSERT INTO cart_item (ON DUPLICATE KEY UPDATE quantity+=?)
+DB --> CS : OK
+CS --> CC : OK
+CC --> Vue : { code:200 }
+
+== 下单 ==
+User -> Vue : 购物车页面 → 选中商品 → 提交订单
+Vue -> OC : GET /api/order/submit-token
+OC -> Redis : SET submit:{userId}:{uuid} (5min)
+OC --> Vue : { token: "uuid-xxx" }
+
+Vue -> OC : POST /api/order/create { token, addressId, cartItemIds }
+OC -> OS : createOrder(userId, dto)
+OS -> Redis : DEL submit:{userId}:{uuid} (防重Token校验)
+OS -> Redis : LOCK lock:order:{userId} (分布式锁)
+OS -> OS : @Transactional
+
+group 事务内操作
+  OS -> DB : SELECT cart_item WHERE user_id=? AND id IN (...)
+  DB --> OS : 购物车选中项
+  OS -> DB : SELECT product_sku WHERE id IN (...) 校验库存
+  OS -> DB : INSERT INTO order (order_no, user_id, total_amount)
+  OS -> DB : INSERT INTO order_item (订单快照)
+  OS -> DB : UPDATE product_sku SET stock=stock-?
+  OS -> DB : DELETE FROM cart_item WHERE id IN (...)
+end
+
+OS -> Redis : UNLOCK lock:order:{userId}
+OS -> Redis : INCRBY product:{id}:sales (异步销量计数)
+OS --> OC : OrderVO
+OC --> Vue : { code:200, data:{ orderId, orderNo } }
+Vue --> User : 跳转支付页面
+
+@enduml
+
+
+@startuml 支付流程
+
+title 支付流程（模拟支付）时序图
+
+actor 用户 as User
+participant "Vue前端" as Vue
+participant "PaymentController" as PC
+participant "PaymentService" as PS
+database "MySQL" as DB
+participant "Redis" as Redis
+
+== 卡号支付 ==
+User -> Vue : 选择"卡号支付"，输入卡号
+Vue -> Vue : 前端初步格式校验(长度/数字)
+Vue -> PC : POST /api/payment/card { orderId, cardNo }
+
+PC -> PS : payByCard(userId, dto)
+PS -> DB : SELECT * FROM payment WHERE order_id=?
+alt 已支付(幂等)
+  DB --> PS : payment 记录
+  PS --> PC : Result.success("已支付")
+else 未支付
+  PS -> PS : Luhn 算法校验卡号
+  alt 卡号不合法
+    PS --> PC : BusinessException(CARD_INVALID)
+  else 卡号合法
+    PS -> DB : INSERT INTO payment (order_id, pay_type=1, status=SUCCESS)
+    PS -> DB : UPDATE order SET status=已支付
+    PS -> Redis : INCRBY product:{id}:sales
+    PS --> PC : Result.success("支付成功")
+  end
+end
+
+PC --> Vue : { code:200, message:"支付成功" }
+Vue --> User : 跳转"支付成功"页面
+
+== 二维码支付 ==
+User -> Vue : 选择"二维码支付"
+Vue -> PC : POST /api/payment/qrcode { orderId }
+PC -> PS : generateQRCode(orderId)
+PS -> DB : SELECT total_amount FROM order
+PS -> PS : 生成二维码(订单号+金额+支付URL)
+PS --> PC : QRCodeVO { qrUrl }
+PC --> Vue : { code:200, data:{qrUrl} }
+
+Vue --> User : 展示支付二维码
+User -> Vue : 点击"确认支付"
+Vue -> PC : POST /api/payment/confirm-qrcode { orderId }
+
+PS -> DB : INSERT INTO payment (pay_type=2, status=SUCCESS)
+PS -> DB : UPDATE order SET status=已支付
+PS --> PC : Result.success
+PC --> Vue : 支付成功
+Vue --> User : 跳转订单详情
+
+@enduml
+
+
+@startuml WebSocket即时通讯
+
+title WebSocket 用户与商家聊天时序图
+
+actor 用户 as User
+actor 商家 as Merchant
+participant "WebSocket\nServer" as WS
+participant "ChatController" as CC
+participant "ChatService" as CS
+database "MySQL" as DB
+participant "Redis" as Redis
+
+== 建立连接 ==
+User -> WS : CONNECT /ws?token=user_jwt
+WS -> WS : 拦截器校验 JWT
+WS -> Redis : SET online:{userId} = 1
+WS --> User : CONNECTED
+
+Merchant -> WS : CONNECT /ws?token=merchant_jwt
+WS -> Redis : SET online:{merchantId} = 1
+WS --> Merchant : CONNECTED
+
+== 用户发起会话 ==
+User -> CC : POST /api/chat/conversation/create { merchantId, productId }
+CS -> DB : SELECT WHERE user_id=? AND merchant_id=?
+alt 会话已存在
+  DB --> CS : 已有会话
+else 会话不存在
+  CS -> DB : INSERT INTO conversation
+end
+CS --> CC : ConversationVO
+CC --> User : { sessionId, lastMessage }
+
+== 发送消息(对方在线) ==
+User -> WS : SEND /app/chat.send { sessionId, content, type=text }
+WS -> CC : @MessageMapping
+CC -> CS : sendMessage(senderId, dto)
+CS -> DB : INSERT INTO message
+CS -> DB : UPDATE conversation SET last_message, merchant_unread++
+CS -> Redis : GET online:{merchantId}
+Redis --> CS : 在线
+
+CS -> WS : SimpMessagingTemplate /queue/chat/{merchantId}
+WS --> Merchant : { sessionId, senderId, content, time }
+WS --> User : ACK(发送成功)
+
+== 标记已读 ==
+Merchant -> CC : PUT /api/chat/read/{conversationId}
+CS -> DB : UPDATE message SET is_read=1 WHERE conversation_id=? AND is_read=0
+CS -> DB : UPDATE conversation SET merchant_unread=0
+
+== 对方离线 → 下次上线推送 ==
+User -> WS : DISCONNECT
+WS -> Redis : DEL online:{userId}
+
+Merchant -> WS : CONNECT /ws?token=merchant_jwt
+WS -> DB : SELECT * FROM message WHERE (sender_role=用户 AND is_read=0)
+              AND conversation_id IN (...)
+DB --> WS : 未读消息列表
+WS --> Merchant : 批量推送未读消息
+WS --> Merchant : CONNECTED + "您有 N 条新消息"
+
+@enduml
+
+
+@startuml 退款退货流程
+
+title 退款/退货申请与审核时序图
+
+actor 用户 as User
+actor 商家 as Merchant
+actor 管理员 as Admin
+participant "OrderController" as OC
+participant "RefundService" as RS
+database "MySQL" as DB
+
+== 发起退款/退货 ==
+User -> OC : POST /api/refund/apply { orderItemId, reason, type=退款/退货 }
+OC -> RS : applyRefund(userId, dto)
+RS -> DB : 校验订单状态(已发货/已收货)
+RS -> DB : 校验该 order_item 是否已有进行中的退款
+RS -> DB : INSERT INTO refund (status=待审核)
+RS --> OC : RefundVO
+OC --> User : "申请已提交"
+
+== 商家/管理员审核 ==
+Merchant -> OC : GET /api/merchant/refunds?status=待审核
+OC --> Merchant : 退款申请列表
+
+alt 商家通过
+  Merchant -> OC : PUT /api/refund/approve/{id}
+  RS -> DB : UPDATE refund SET status=审核中
+  RS -> DB : 发起退款
+  RS -> DB : UPDATE refund SET status=已通过
+  RS -> DB : UPDATE order_item 恢复库存
+  RS --> OC : OK
+  OC --> Merchant : "审核通过"
+
+else 商家拒绝
+  Merchant -> OC : PUT /api/refund/reject/{id} { rejectReason }
+  RS -> DB : UPDATE refund SET status=已拒绝
+  OC --> Merchant : "已拒绝"
+end
+
+User -> OC : GET /api/refund/detail/{id}
+OC --> User : 退款状态 + 进度
+
+@enduml

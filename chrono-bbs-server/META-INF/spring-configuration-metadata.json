@@ -1,0 +1,293 @@
+{
+  "groups": [
+    {
+      "name": "knife4j",
+      "type": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties"
+    },
+    {
+      "name": "knife4j.basic",
+      "type": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jHttpBasic",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jHttpBasic"
+    },
+    {
+      "name": "knife4j.insight",
+      "type": "com.github.xiaoymin.knife4j.spring.configuration.insight.Knife4jInsightProperties",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.insight.Knife4jInsightProperties"
+    },
+    {
+      "name": "knife4j.setting",
+      "type": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting"
+    }
+  ],
+  "properties": [
+    {
+      "name": "knife4j.basic",
+      "type": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jHttpBasic",
+      "description": "是否开启BasicHttp验证",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties"
+    },
+    {
+      "name": "knife4j.basic.enable",
+      "type": "java.lang.Boolean",
+      "description": "basic是否开启,默认为false",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jHttpBasic",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.basic.include",
+      "type": "java.util.List<java.lang.String>",
+      "description": "All configured urls need to be verified by basic，Only support Regex since 4.1.0",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jHttpBasic"
+    },
+    {
+      "name": "knife4j.basic.password",
+      "type": "java.lang.String",
+      "description": "basic 密码",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jHttpBasic"
+    },
+    {
+      "name": "knife4j.basic.username",
+      "type": "java.lang.String",
+      "description": "basic 用户名",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jHttpBasic"
+    },
+    {
+      "name": "knife4j.cors",
+      "type": "java.lang.Boolean",
+      "description": "是否开启默认跨域",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.documents",
+      "type": "java.util.List<com.github.xiaoymin.knife4j.core.model.MarkdownProperty>",
+      "description": "分组文档集合",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties"
+    },
+    {
+      "name": "knife4j.enable",
+      "type": "java.lang.Boolean",
+      "description": "是否开启Knife4j增强模式",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.insight.enable",
+      "type": "java.lang.Boolean",
+      "description": "是否启动Knife4jInsight自动上报功能",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.insight.Knife4jInsightProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.insight.namespace",
+      "type": "java.lang.String",
+      "description": "上传namespace,如果不指定，Knife4jInsight会默认根据当前应用的application-name生成，如果应用名称为空,那么会随机生成一个",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.insight.Knife4jInsightProperties"
+    },
+    {
+      "name": "knife4j.insight.secret",
+      "type": "java.lang.String",
+      "description": "上传用户凭证密钥，在Knife4jInsight用户中心获取",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.insight.Knife4jInsightProperties"
+    },
+    {
+      "name": "knife4j.insight.server",
+      "type": "java.lang.String",
+      "description": "上报Knife4jInsight数据源地址，可以使用在线版本，例如：<a href=\"http:\/\/console.knife4j.net\">http:\/\/console.knife4j.net<\/a>",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.insight.Knife4jInsightProperties"
+    },
+    {
+      "name": "knife4j.insight.service-name",
+      "type": "java.lang.String",
+      "description": "上传服务名称，配置后使用该名称，如果未配置，默认再读取spring.application.name名称，如果都未空，无法上传",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.insight.Knife4jInsightProperties"
+    },
+    {
+      "name": "knife4j.production",
+      "type": "java.lang.Boolean",
+      "description": "是否生产环境",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting",
+      "type": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "description": "个性化配置",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jProperties"
+    },
+    {
+      "name": "knife4j.setting.custom-code",
+      "type": "java.lang.Integer",
+      "description": "Custom response HTTP status code after production environment screening(Knife4j.production=true)",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": 200
+    },
+    {
+      "name": "knife4j.setting.enable-after-script",
+      "type": "java.lang.Boolean",
+      "description": "Whether the debug tab displays the afterScript function is enabled by default",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-debug",
+      "type": "java.lang.Boolean",
+      "description": "Enable debug mode，default is true.",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-document-manage",
+      "type": "java.lang.Boolean",
+      "description": "Whether to display the \"document management\" function in the Ui Part.",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-dynamic-parameter",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable dynamic request parameters",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting.enable-filter-multipart-api-method-type",
+      "type": "java.lang.String",
+      "description": "Filter Method type",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": "POST"
+    },
+    {
+      "name": "knife4j.setting.enable-filter-multipart-apis",
+      "type": "java.lang.Boolean",
+      "description": "For the interface request type of RequestMapping, if the parameter type is not specified, seven types of interface address parameters will be displayed by default if filtering is not performed. If this configuration is enabled, an interface address of post type will be displayed by default",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting.enable-footer",
+      "type": "java.lang.Boolean",
+      "description": "Display bottom footer by default",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-footer-custom",
+      "type": "java.lang.Boolean",
+      "description": "Customize footer",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting.enable-group",
+      "type": "java.lang.Boolean",
+      "description": "Whether to display the group drop-down box, the default is true (that is, display). In general, if it is a single group, you can set this property to false, that is, the group will not be displayed, so you don't need to select it.",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-home-custom",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable home page custom configuration, false by default",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting.enable-host",
+      "type": "java.lang.Boolean",
+      "description": "Enable host",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting.enable-host-text",
+      "type": "java.lang.String",
+      "description": "HostAddress after enabling host",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": ""
+    },
+    {
+      "name": "knife4j.setting.enable-open-api",
+      "type": "java.lang.Boolean",
+      "description": "Whether to display the tab box of the original structure of OpenAPI, which is displayed by default",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-reload-cache-parameter",
+      "type": "java.lang.Boolean",
+      "description": "Whether to display the refresh variable button after each debug debugging bar, which is not displayed by default",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting.enable-request-cache",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable request parameter cache",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-response-code",
+      "type": "java.lang.Boolean",
+      "description": "Whether to display the response status code bar https:\/\/gitee.com\/xiaoym\/knife4j\/issues\/I3TE0V @since v4.0.0",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-search",
+      "type": "java.lang.Boolean",
+      "description": "Show search box",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-swagger-models",
+      "type": "java.lang.Boolean",
+      "description": "Whether to display the Swagger Models function in the Ui Part.",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": true
+    },
+    {
+      "name": "knife4j.setting.enable-version",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable the version control of an interface in the interface. If it is enabled, the UI interface will have small blue dots after the backend changes",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": false
+    },
+    {
+      "name": "knife4j.setting.footer-custom-content",
+      "type": "java.lang.String",
+      "description": "Custom footer content (support Markdown syntax)",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting"
+    },
+    {
+      "name": "knife4j.setting.home-custom-location",
+      "type": "java.lang.String",
+      "description": "Customize Markdown document path of home page",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting"
+    },
+    {
+      "name": "knife4j.setting.home-custom-path",
+      "type": "java.lang.String",
+      "description": "Customize Markdown document path of home page",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting"
+    },
+    {
+      "name": "knife4j.setting.language",
+      "type": "com.github.xiaoymin.knife4j.core.enums.OpenAPILanguageEnums",
+      "description": "i18n",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting"
+    },
+    {
+      "name": "knife4j.setting.swagger-model-name",
+      "type": "java.lang.String",
+      "description": "Rename Swagger model name,default is `Swagger Models`",
+      "sourceType": "com.github.xiaoymin.knife4j.spring.configuration.Knife4jSetting",
+      "defaultValue": "Swagger Models"
+    }
+  ],
+  "hints": []
+}
