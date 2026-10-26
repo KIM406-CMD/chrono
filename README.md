@@ -4,6 +4,23 @@
 
 ---
 
+## 📑 目录
+
+- [项目简介](#-项目简介)
+- [团队信息](#-团队信息)
+- [技术栈](#-技术栈)
+- [项目结构](#-项目结构)
+- [快速启动](#-快速启动)
+- [文档索引](#-文档索引)
+- [UML 图索引](#-uml-图索引)
+- [核心功能模块](#-核心功能模块)
+- [安全设计](#-安全设计)
+- [项目进度](#-项目进度)
+- [贡献指南](#-贡献指南)
+- [许可证](#-许可证)
+
+---
+
 ## 📋 项目简介
 
 网上超市系统是一个 B2B2C 多商家电商平台，支持游客浏览商品、注册用户购物下单、商家管理商品与订单、管理员全局管理及销售报表分析。
@@ -61,7 +78,7 @@ chrono-bbs/
 │   ├── module-start/                 # 启动模块（配置 + 定时任务）
 │   └── pom.xml                       # 父 POM
 │
-├── chrono-bbs-client/                # 前端（Vue 3 + Vite）【待开发】
+├── chrono-bbs-client/                # 前端（Vue 3 + Vite + TS + Element Plus）
 │
 ├── docs/                             # 📄 文档目录
 │   ├── prd.md                        # 产品需求文档
@@ -85,7 +102,7 @@ chrono-bbs/
 ├── docker/                           # 🐳 Docker 编排
 │   └── docker-compose.yml            # MySQL + Redis + ES
 │
-├── intial/                           # 🗄 数据库初始化脚本
+├── initial/                          # 🗄 数据库初始化脚本
 │   ├── schema.sql                    # 建表语句
 │   └── data.sql                      # 初始数据
 │
@@ -120,9 +137,9 @@ docker-compose up -d
 
 ```bash
 # 执行建表语句
-mysql -u root -p < intial/schema.sql
+mysql -u root -p < initial/schema.sql
 # 导入初始数据
-mysql -u root -p < intial/data.sql
+mysql -u root -p < initial/data.sql
 ```
 
 ### 3. 启动后端
@@ -145,6 +162,14 @@ npm run dev
 ```
 
 前端运行在 `http://localhost:5173`。
+
+### 5. 默认测试账号
+
+| 角色 | 用户名 | 密码 |
+|------|--------|------|
+| 管理员 | `admin` | `admin123` |
+
+> 普通用户可通过前端注册功能自行创建。
 
 ---
 
@@ -213,3 +238,20 @@ npm run dev
 | 设计 + 环境搭建 | 第 1-2 周 | 需求确认、DB 设计、接口定义、Docker 环境、ES 调研 |
 | 核心功能开发 | 第 3-5 周 | 用户/商品/购物车/订单/支付 CRUD、商家/管理员后台、ES 搜索 |
 | 收尾 + 答辩 | 第 6 周 | 销售报表、退款/退货、联调测试、Bug 修复、答辩 PPT |
+
+---
+
+## 🤝 贡献指南
+
+本项目为课程设计团队项目，开发前请务必阅读以下规范：
+
+- [Git 提交规范](./docs/git-commit-convention.md) — 提交信息格式与分支模型
+- [AGENTS.md](./AGENTS.md) — AI 助手行为规范（编码风格与提交约束）
+
+开发流程：从 `dev` 分支拉取 → 创建 `feature/*` 分支 → 开发 → PR 合并到 `dev` → 稳定后合并到 `main`。
+
+---
+
+## 📄 许可证
+
+本项目为课程设计作业，**All Rights Reserved**，未经授权不得商用或再分发。
