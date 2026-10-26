@@ -177,8 +177,8 @@ npm run dev
 
 | 文档 | 内容 |
 |------|------|
-| [prd.md](./docs/prd.md) | 产品需求文档 — 功能模块、角色、业务流程 |
-| [requirements-analysis.md](./docs/requirements-analysis.md) | 需求分析 — 47 项功能需求 + 优先级排序 |
+| [prd.md](./docs/prd.md) | 产品需求文档 — 业务背景、角色权限、核心业务规则 |
+| [requirements-analysis.md](./docs/requirements-analysis.md) | 需求分析 — 48 项功能需求（F-01~F-48）+ 优先级 + 业务流程 + 数据需求 |
 | [feasibility-analysis.md](./docs/feasibility-analysis.md) | 可行性分析 — 技术/进度/经济/运行四维度 |
 | [server-design.md](./docs/server-design.md) | 服务端概要设计 — Maven 模块 / 认证 / 异常体系 |
 | [client-design.md](./docs/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
