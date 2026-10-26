@@ -18,9 +18,9 @@
 
 | 角色 | 人数 | 主要职责 |
 |------|------|----------|
-| 后端开发 A | 1 人 | 用户/认证/鉴权、商品/分类/SKU、ES 集成 |
-| 后端开发 B | 1 人 | 购物车/订单/支付/退款、销售报表、WebSocket |
+| 后端开发 | 1 人 | 用户/认证/鉴权、商品/分类/SKU、购物车/订单/支付/退款、销售报表、ES 集成、WebSocket |
 | 前端开发 | 1 人 | Vue 3 前端全部页面、Axios 封装、WebSocket |
+| 测试人员 | 1 人 | 测试用例编写、单元测试、集成测试、E2E 测试、缺陷跟踪 |
 
 - **开发周期**：6 周（约 1.5 个月）
 - **演示方式**：个人笔记本本地运行，Docker 编排中间件
@@ -59,36 +59,39 @@ chrono-bbs/
 │   ├── module-service/               # 业务逻辑（Service 接口 + Impl + DTO）
 │   ├── module-api/                   # API 层（Controller + VO + 拦截器）
 │   ├── module-start/                 # 启动模块（配置 + 定时任务）
-│   ├── docs/                         # 📄 文档目录
-│   │   ├── README.md                 # 本文件
-│   │   ├── prd.md                    # 产品需求文档
-│   │   ├── requirements-analysis.md  # 需求分析
-│   │   ├── feasibility-analysis.md   # 可行性分析
-│   │   ├── server-design.md          # 服务端概要设计
-│   │   ├── client-design.md          # 客户端概要设计
-│   │   ├── db-design.md              # 数据库设计
-│   │   └── detailed-design.md        # 详细设计（含流程图）
-│   ├── uml/                          # 📐 UML 图目录
-│   │   ├── uml-usecase.puml          # 用例图
-│   │   ├── uml-component.puml        # 组件图
-│   │   ├── uml-er.puml               # ER 图
-│   │   ├── uml-sequence.puml         # 时序图
-│   │   └── uml-activity.puml         # 活动图
 │   └── pom.xml                       # 父 POM
 │
-└── chrono-bbs-client/                # 前端（Vue 3 + Vite）
-    ├── src/
-    │   ├── api/                      # Axios 接口封装
-    │   ├── router/                   # 路由 + 守卫
-    │   ├── stores/                   # Pinia 状态管理
-    │   ├── views/                    # 页面视图
-    │   ├── components/               # 通用组件
-    │   ├── composables/              # 组合式函数
-    │   ├── utils/                    # 工具函数
-    │   └── types/                    # TS 类型定义
-    ├── index.html
-    ├── vite.config.ts
-    └── package.json
+├── chrono-bbs-client/                # 前端（Vue 3 + Vite）【待开发】
+│
+├── docs/                             # 📄 文档目录
+│   ├── prd.md                        # 产品需求文档
+│   ├── requirements-analysis.md      # 需求分析
+│   ├── feasibility-analysis.md       # 可行性分析
+│   ├── server-design.md              # 服务端概要设计
+│   ├── client-design.md              # 客户端概要设计
+│   ├── db-design.md                  # 数据库设计
+│   ├── detailed-design.md            # 详细设计（含流程图）
+│   ├── api-doc.md                    # API 接口文档
+│   ├── test-specification.md         # 测试规范
+│   └── git-commit-convention.md      # Git 提交规范
+│
+├── uml/                              # 📐 UML 图目录
+│   ├── uml-usecase.puml              # 用例图
+│   ├── uml-component.puml            # 组件图
+│   ├── uml-er.puml                   # ER 图
+│   ├── uml-sequence.puml             # 时序图
+│   └── uml-activity.puml             # 活动图
+│
+├── docker/                           # 🐳 Docker 编排
+│   └── docker-compose.yml            # MySQL + Redis + ES
+│
+├── intial/                           # 🗄 数据库初始化脚本
+│   ├── schema.sql                    # 建表语句
+│   └── data.sql                      # 初始数据
+│
+├── AGENTS.md                         # 🤖 AI 助手行为规范
+├── CHANGELOG.md                      # 📝 变更日志
+└── README.md                         # 本文件
 ```
 
 ---
@@ -107,7 +110,7 @@ chrono-bbs/
 ### 1. 启动中间件
 
 ```bash
-cd chrono-bbs-server
+cd docker
 docker-compose up -d
 ```
 
@@ -116,8 +119,10 @@ docker-compose up -d
 ### 2. 初始化数据库
 
 ```bash
-# 执行 docs/db-design.md 中的建表 SQL
-mysql -u root -p < docs/init.sql
+# 执行建表语句
+mysql -u root -p < intial/schema.sql
+# 导入初始数据
+mysql -u root -p < intial/data.sql
 ```
 
 ### 3. 启动后端
@@ -154,6 +159,11 @@ npm run dev
 | [client-design.md](./docs/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
 | [db-design.md](./docs/db-design.md) | 数据库设计 — 表结构 / 字段 / 索引 |
 | [detailed-design.md](./docs/detailed-design.md) | 详细设计 — Mermaid 流程图 / 时序图 / 部署架构 |
+| [api-doc.md](./docs/api-doc.md) | API 接口文档 — 接口列表与请求响应示例 |
+| [test-specification.md](./docs/test-specification.md) | 测试规范 — 单元/集成/E2E 测试要求 |
+| [git-commit-convention.md](./docs/git-commit-convention.md) | Git 提交规范 — Conventional Commits + 分支模型 |
+| [CHANGELOG.md](./CHANGELOG.md) | 变更日志 — 版本发布记录 |
+| [AGENTS.md](./AGENTS.md) | AI 助手规范 — 编码与提交行为约束 |
 
 ## 📐 UML 图索引
 
