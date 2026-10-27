@@ -1,27 +1,72 @@
-export type UserRole = 'USER' | 'MERCHANT' | 'ADMIN'
+import { Role } from './common'
 
+// 用户信息
 export interface UserInfo {
   id: number
   username: string
-  role: UserRole
-  avatar?: string
-  phone?: string
-  email?: string
+  nickname: string
+  phone: string
+  email: string
+  avatar: string
+  role: Role
+  status: number
 }
 
-export interface LoginParams {
+// 登录请求
+export interface LoginRequest {
   username: string
   password: string
+  captchaUuid: string
+  captchaCode: string
 }
 
-export interface LoginResult {
+// 登录响应
+export interface LoginResponse {
   token: string
-  userInfo: UserInfo
+  userInfo: {
+    id: number
+    username: string
+    nickname: string
+    phone: string
+    role: Role
+  }
 }
 
-export interface RegisterParams {
+// 注册请求
+export interface RegisterRequest {
   username: string
   password: string
-  phone?: string
+  confirmPassword: string
+  phone: string
+  role: Role
+  captchaUuid: string
+  captchaCode: string
+}
+
+// 验证码响应
+export interface CaptchaResponse {
+  uuid: string
+  image: string
+}
+
+// 忘记密码请求
+export interface ForgotPasswordRequest {
+  phone: string
+  captchaCode: string
+  newPassword: string
+  confirmPassword: string
+}
+
+// 修改个人信息请求
+export interface UpdateProfileRequest {
+  nickname?: string
   email?: string
+  avatar?: string
+}
+
+// 修改密码请求
+export interface UpdatePasswordRequest {
+  oldPassword: string
+  newPassword: string
+  confirmPassword: string
 }

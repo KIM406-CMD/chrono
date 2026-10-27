@@ -10,20 +10,26 @@
 ## [Unreleased]
 
 ### Added
-- 项目初始化：Spring Boot 3.4.5 + Java 21 后端骨架
-- Maven 多模块结构：`common` / `module-mapper` / `module-service` / `module-api` / `module-start`
-- 公共模块：统一返回体 `Result<T>` / `PageResult<T>`、业务异常、错误码枚举、JWT 工具类、用户上下文
-- 数据访问层：19 张表的 Entity、Mapper 接口及 XML 映射文件
-- 业务层：用户认证、商品、分类、购物车、订单、支付、退款、商家、管理员、评论、搜索、聊天等 Service 接口与实现
-- API 层：12 个 Controller + 全局异常处理器
-- 启动模块：Spring Security 配置、Knife4j 接口文档、JWT 拦截器、Web MVC 配置
-- 配置文件：`application.yaml` / `application-dev.yml` / `application-prod.yml`
-- Docker Compose 编排：MySQL 8.0、Redis 7、Elasticsearch 7.17
-- 数据库初始化脚本：`initial/schema.sql`（建表）、`initial/data.sql`（初始数据）
-- 文档：PRD、需求分析、可行性分析、服务端/客户端设计、数据库设计、详细设计、测试规范、API 文档
-- UML 图：用例图、组件图、ER 图、时序图、活动图（PlantUML）
-- 单元测试与集成测试：JWT 工具、认证 Service、认证接口 E2E
-- Git 提交规范文档与 AI 助手规则（AGENTS.md）
+- 前端项目骨架：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router
+- Mock 数据层：基于 vite-plugin-mock，覆盖用户、商品、分类、购物车、订单、支付、地址、商家、管理员、退款、聊天、上传 12 个模块
+- API 封装层：`src/api/` 下 11 个接口模块，统一 Axios 实例（baseURL=/api，超时 15s，Bearer Token 拦截器）
+- 类型定义：`src/types/` 下 user、product、order、cart、address、common 6 个模块
+- 三套独立布局：商城布局（顶部导航+分类栏+内容区+页脚）、商家后台布局、管理员后台布局
+- 用户页面：登录、注册、忘记密码、个人信息、收货地址管理
+- 商品页面：首页商品列表、商品详情、搜索结果
+- 购物车页面：列表展示、数量调整、选中/全选、删除、去结算
+- 订单页面：结算、订单列表、订单详情、支付（卡号/二维码）
+- 商家后台：入驻申请、商品管理、订单管理、退款审核、销售统计
+- 管理员后台：用户管理、商家审核、分类管理、全平台商品/订单管理、销售报表
+- 聊天页面、帮助中心、404 页面
+- 状态管理：`useUserStore`（token + userInfo 持久化到 localStorage，角色枚举 USER=1/MERCHANT=2/ADMIN=3）
+- 样式系统：CSS 变量设计令牌（京东红主色 `#E2231A`、间距、圆角、阴影、过渡）
+- 路由系统：History 模式 + 全局前置守卫（登录校验 + 角色权限控制）
+- 文档：人机界面设计文档（hmi-design.md）
+
+### Changed
+- 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
+- AGENTS.md：新增"提交前必须更新 CHANGELOG.md"规则
 
 ---
 

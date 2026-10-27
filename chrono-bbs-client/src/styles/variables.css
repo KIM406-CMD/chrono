@@ -1,0 +1,82 @@
+/* ========================================
+   全局 CSS 变量 - 电商风格（京东/淘宝参考）
+   ======================================== */
+
+:root {
+  /* ===== 主色调 ===== */
+  --color-primary: #e2231a;           /* 京东红/淘宝红 */
+  --color-primary-light: #ff4d4f;     /* 主色浅色 */
+  --color-primary-dark: #c41d15;      /* 主色深色 */
+  --color-primary-hover: #f53b32;     /* 主色悬停 */
+
+  /* ===== 辅助色 ===== */
+  --color-success: #52c41a;           /* 成功绿 */
+  --color-warning: #faad14;           /* 警告黄 */
+  --color-danger: #ff4d4f;            /* 危险红 */
+  --color-info: #1890ff;              /* 信息蓝 */
+
+  /* ===== 文字颜色 ===== */
+  --text-primary: #333333;            /* 主要文字 */
+  --text-regular: #666666;            /* 常规文字 */
+  --text-secondary: #999999;          /* 辅助文字 */
+  --text-placeholder: #cccccc;        /* 占位文字 */
+  --text-white: #ffffff;              /* 白色文字 */
+
+  /* ===== 背景颜色 ===== */
+  --bg-primary: #ffffff;              /* 主背景 */
+  --bg-secondary: #f5f5f5;            /* 次背景（页面底色） */
+  --bg-tertiary: #fafafa;             /* 第三背景 */
+  --bg-hover: #f0f0f0;                /* 悬停背景 */
+
+  /* ===== 边框颜色 ===== */
+  --border-light: #f0f0f0;            /* 浅边框 */
+  --border-base: #d9d9d9;             /* 默认边框 */
+  --border-dark: #bfbfbf;             /* 深边框 */
+
+  /* ===== 价格颜色 ===== */
+  --price-primary: #e2231a;           /* 价格主色（红） */
+  --price-secondary: #ff6b6b;         /* 价格次色 */
+
+  /* ===== 间距系统（基于 8px） ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-base: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  /* ===== 圆角 ===== */
+  --radius-sm: 4px;
+  --radius-base: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-round: 999px;
+
+  /* ===== 阴影 ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-base: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+  /* ===== 字体 ===== */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-xxl: 24px;
+  --font-size-h1: 32px;
+
+  /* ===== 布局 ===== */
+  --header-height: 60px;
+  --content-width: 1200px;
+  --sidebar-width: 240px;
+
+  /* ===== 过渡 ===== */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.25s ease;
+  --transition-slow: 0.35s ease;
+}

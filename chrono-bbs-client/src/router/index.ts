@@ -31,6 +31,12 @@ const publicRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/user/ForgotPasswordView.vue'),
     meta: { title: '忘记密码' },
   },
+  {
+    path: '/product/:id',
+    name: 'ProductDetail',
+    component: () => import('@/views/product/ProductDetailView.vue'),
+    meta: { title: '商品详情' },
+  },
 ]
 
 // 需登录路由（商城布局）
@@ -49,12 +55,6 @@ const userRoutes: RouteRecordRaw[] = [
         name: 'Home',
         component: () => import('@/views/home/HomeView.vue'),
         meta: { title: '首页' },
-      },
-      {
-        path: 'product/:id',
-        name: 'ProductDetail',
-        component: () => import('@/views/product/ProductDetailView.vue'),
-        meta: { title: '商品详情' },
       },
       {
         path: 'search',
@@ -110,6 +110,12 @@ const userRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/chat/ChatView.vue'),
         meta: { title: '聊天', roles: ['USER', 'MERCHANT', 'ADMIN'] },
       },
+      {
+        path: 'help/:type',
+        name: 'Help',
+        component: () => import('@/views/common/HelpView.vue'),
+        meta: { title: '帮助中心' },
+      },
     ],
   },
 ]
@@ -162,6 +168,14 @@ const adminRoutes: RouteRecordRaw[] = [
     component: () => import('@/components/layout/AdminLayout.vue'),
     meta: { layout: 'admin', roles: ['ADMIN'] },
     children: [
+      {
+        path: '',
+        redirect: '/admin/users',
+      },
+      {
+        path: 'dashboard',
+        redirect: '/admin/users',
+      },
       {
         path: 'users',
         name: 'UserManage',
@@ -237,7 +251,7 @@ router.beforeEach((to, _from, next) => {
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
 
-  if (!roles.includes(userStore.role ?? '')) {
+  if (!roles.includes(userStore.roleName)) {
     ElMessage.warning('无权限访问')
     return next('/home')
   }
