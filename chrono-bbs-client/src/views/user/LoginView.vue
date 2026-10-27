@@ -2,7 +2,7 @@
 </script>
 
 <template>
-  <div class="home">
-    首页
+  <div class="login">
+    登录页
   </div>
 </template>

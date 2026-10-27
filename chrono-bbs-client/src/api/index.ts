@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
-import { useUserStore } from '@/stores/user'
+import { getToken, removeToken } from '@/utils/token'
 import router from '@/router'
 
 const service: AxiosInstance = axios.create({
@@ -10,9 +10,9 @@ const service: AxiosInstance = axios.create({
 
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const userStore = useUserStore()
-    if (userStore.token) {
-      config.headers.Authorization = `Bearer ${userStore.token}`
+    const token = getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
@@ -25,8 +25,7 @@ service.interceptors.response.use(
     if (res.code !== undefined && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
-        const userStore = useUserStore()
-        userStore.logout()
+        removeToken()
         router.push('/login')
       }
       return Promise.reject(new Error(res.message || '请求失败'))
@@ -37,8 +36,7 @@ service.interceptors.response.use(
     const status = error.response?.status
     const message = error.response?.data?.message || error.message || '网络异常'
     if (status === 401) {
-      const userStore = useUserStore()
-      userStore.logout()
+      removeToken()
       router.push('/login')
       ElMessage.error('登录已过期，请重新登录')
     } else {

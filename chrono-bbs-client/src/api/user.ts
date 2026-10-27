@@ -1,5 +1,6 @@
-import request from '@/utils/request'
-import type { LoginParams, LoginResult, RegisterParams, Result, UserInfo } from '@/types/api'
+import request from './index'
+import type { LoginParams, LoginResult, RegisterParams, UserInfo } from '@/types/user'
+import type { Result } from '@/types/common'
 
 export function login(data: LoginParams) {
   return request.post<Result<LoginResult>>('/auth/login', data)

@@ -1,14 +1,18 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { UserInfo } from '@/types/api'
+import { computed, ref } from 'vue'
+import type { UserInfo } from '@/types/user'
+import { getToken, removeToken, setToken as persistToken } from '@/utils/token'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref<string>(localStorage.getItem('token') || '')
+  const token = ref<string>(getToken() || '')
   const userInfo = ref<UserInfo | null>(null)
+
+  const isLoggedIn = computed(() => !!token.value)
+  const role = computed(() => userInfo.value?.role)
 
   function setToken(t: string) {
     token.value = t
-    localStorage.setItem('token', t)
+    persistToken(t)
   }
 
   function setUserInfo(info: UserInfo) {
@@ -18,8 +22,8 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     token.value = ''
     userInfo.value = null
-    localStorage.removeItem('token')
+    removeToken()
   }
 
-  return { token, userInfo, setToken, setUserInfo, logout }
+  return { token, userInfo, isLoggedIn, role, setToken, setUserInfo, logout }
 })
