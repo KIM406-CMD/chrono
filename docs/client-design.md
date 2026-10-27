@@ -6,16 +6,16 @@
 
 | 类别 | 技术 | 版本/说明 |
 |------|------|-----------|
-| 核心框架 | Vue 3 | Composition API |
+| 核心框架 | Vue 3 | Composition API + `<script setup>` |
 | 开发语言 | TypeScript | 强类型约束 |
 | 构建工具 | Vite | 开发热更新 + 生产 Rollup 打包 |
 | UI 组件库 | Element Plus | Vue 3 官方推荐 |
 | 状态管理 | Pinia | Vue 3 官方推荐，TS 友好 |
 | HTTP 客户端 | Axios | 拦截器统一处理 Token / 错误 |
-| CSS 方案 | Scoped CSS | Vue SFC 原生样式隔离 |
+| CSS 方案 | Scoped CSS + CSS 变量 | Vue SFC 样式隔离 + 全局设计 Token |
 | 路由 | Vue Router 4 | History 模式 |
-| WebSocket | 原生 WebSocket API | 对接后端 JSR 356 `@OnOpen` |
-| 搜索 | 前端直连 Elasticsearch REST API | 减轻后端压力 |
+| Mock 数据 | vite-plugin-mock | 后端未完成时使用 Mock 接口联调 |
+| 图标 | @element-plus/icons-vue | Element Plus 图标库 |
 
 ---
 
@@ -27,6 +27,20 @@ chrono-bbs-client/
 ├── vite.config.ts
 ├── tsconfig.json
 ├── package.json
+├── mock/                             # ===== Mock 数据层（vite-plugin-mock）=====
+│   ├── index.ts                     # Mock 入口
+│   ├── user.ts                      # 用户认证 Mock
+│   ├── product.ts                   # 商品 Mock（含分类树）
+│   ├── category.ts                  # 分类 Mock
+│   ├── cart.ts                      # 购物车 Mock
+│   ├── order.ts                     # 订单 Mock
+│   ├── payment.ts                   # 支付 Mock
+│   ├── address.ts                   # 地址 Mock
+│   ├── merchant.ts                  # 商家 Mock
+│   ├── admin.ts                     # 管理员 Mock
+│   ├── refund.ts                    # 退款 Mock
+│   ├── chat.ts                      # 聊天 Mock
+│   └── upload.ts                    # 上传 Mock
 ├── public/
 │   └── favicon.ico
 └── src/
@@ -36,22 +50,18 @@ chrono-bbs-client/
     │   ├── index.ts                     # Axios 实例 + 拦截器封装
     │   ├── user.ts                      # 用户相关接口
     │   ├── product.ts                   # 商品相关接口
-    │   ├── category.ts                  # 分类相关接口
     │   ├── cart.ts                      # 购物车接口
     │   ├── order.ts                     # 订单接口
     │   ├── payment.ts                   # 支付接口
     │   ├── address.ts                   # 地址接口
-    │   ├── comment.ts                   # 评论接口
     │   ├── merchant.ts                  # 商家接口
     │   ├── admin.ts                     # 管理员接口
-    │   ├── chat.ts                      # 聊天接口
-    │   └── search.ts                    # ES 搜索接口（直连）
+    │   ├── refund.ts                    # 退款接口
+    │   └── chat.ts                      # 聊天接口
     ├── router/                          # ===== 路由层 =====
     │   └── index.ts                     # 路由配置 + 守卫 + 角色元信息
     ├── stores/                          # ===== 状态管理层 =====
-    │   ├── user.ts                      # 用户登录态
-    │   ├── cart.ts                      # 购物车状态
-    │   └── chat.ts                      # 未读消息
+    │   └── user.ts                      # 用户登录态（token + userInfo）
     ├── views/                           # ===== 页面视图层 =====
     │   ├── home/                        # 首页（商品列表）
     │   │   └── HomeView.vue
@@ -84,35 +94,28 @@ chrono-bbs-client/
     │   │   ├── ProductAllView.vue       # 全平台商品管理
     │   │   ├── OrderAllView.vue         # 全平台订单管理
     │   │   └── SalesReportView.vue      # 全局销售报表
-    │   └── chat/                        # 即时通讯
-    │       └── ChatView.vue
+    │   ├── chat/                        # 即时通讯
+    │   │   └── ChatView.vue
+    │   ├── common/                      # 通用页面
+    │   │   └── HelpView.vue             # 帮助中心
+    │   └── NotFound.vue                 # 404 页面
     ├── components/                      # ===== 通用组件层 =====
-    │   ├── layout/                      # 布局组件
-    │   │   ├── MallLayout.vue           # 商城布局（顶部搜索栏 + 内容区）
-    │   │   ├── MerchantLayout.vue       # 商家后台布局（侧边栏 + 内容区）
-    │   │   └── AdminLayout.vue          # 管理员后台布局（侧边栏 + 内容区）
-    │   ├── ProductCard.vue              # 商品卡片
-    │   ├── PaymentCard.vue              # 卡号支付表单
-    │   ├── PaymentQRCode.vue            # 二维码支付
-    │   ├── SearchBar.vue                # 搜索栏（含自动补全）
-    │   └── ImageUpload.vue              # 图片上传组件
-    ├── composables/                     # ===== 组合式函数 =====
-    │   ├── useWebSocket.ts              # WebSocket 封装
-    │   ├── usePagination.ts             # 分页逻辑
-    │   └── useDebounce.ts               # 防抖
+    │   └── layout/                      # 布局组件
+    │       ├── MallLayout.vue           # 商城布局（顶部导航 + 分类栏 + 内容区 + 页脚）
+    │       ├── MerchantLayout.vue       # 商家后台布局（侧边栏 + 内容区）
+    │       └── AdminLayout.vue          # 管理员后台布局（侧边栏 + 内容区）
     ├── utils/                           # ===== 工具函数 =====
-    │   ├── token.ts                     # Token 存取（localStorage）
-    │   ├── luhn.ts                      # Luhn 算法（前端卡号预校验）
-    │   └── validators.ts               # 自定义校验规则
+    │   └── token.ts                     # Token 存取（localStorage）
+    ├── styles/                          # ===== 全局样式 =====
+    │   ├── variables.css                # CSS 变量系统（设计 Token）
+    │   └── global.css                   # 全局基础样式
     └── types/                           # ===== TypeScript 类型定义 =====
-        ├── user.ts                      # User、LoginDTO、RegisterDTO
+        ├── user.ts                      # UserInfo、LoginRequest、RegisterRequest
         ├── product.ts                   # Product、ProductSKU、Category
-        ├── order.ts                     # Order、OrderItem、OrderStatusEnum
-        ├── cart.ts                      # CartItem
-        ├── payment.ts                   # Payment、PayMethodEnum
-        ├── comment.ts                   # Comment
-        ├── chat.ts                      # Conversation、Message
-        └── common.ts                    # Result<T>、PageResult<T>、ErrorCode
+        ├── order.ts                     # Order、OrderItem、OrderStatus
+        ├── cart.ts                      # CartItem、AddCartRequest
+        ├── address.ts                   # Address
+        └── common.ts                    # Result<T>、PageResult<T>、Role、ErrorCode
 ```
 
 ---
@@ -312,8 +315,9 @@ import { useUserStore } from '@/stores/user'
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
-    roles?: string[]        // 允许访问的角色列表
+    roles?: string[]        // 允许访问的角色列表：'USER' | 'MERCHANT' | 'ADMIN'
     layout?: 'mall' | 'merchant' | 'admin'
+    public?: boolean
   }
 }
 
@@ -338,7 +342,7 @@ const userRoutes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/components/layout/MallLayout.vue'),
-    meta: { roles: ['user', 'merchant', 'admin'] },
+    meta: { roles: ['USER', 'MERCHANT', 'ADMIN'] },
     children: [
       { path: 'cart', name: 'Cart', meta: { title: '购物车' }, component: () => import('@/views/cart/CartView.vue') },
       { path: 'checkout', name: 'Checkout', meta: { title: '结算' }, component: () => import('@/views/order/CheckoutView.vue') },
@@ -357,9 +361,9 @@ const merchantRoutes: RouteRecordRaw[] = [
   {
     path: '/merchant',
     component: () => import('@/components/layout/MerchantLayout.vue'),
-    meta: { roles: ['merchant'] },
+    meta: { roles: ['MERCHANT'] },
     children: [
-      { path: 'apply', name: 'MerchantApply', meta: { title: '商家入驻' }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
+      { path: 'apply', name: 'MerchantApply', meta: { title: '商家入驻', roles: ['USER', 'MERCHANT'] }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
       { path: 'products', name: 'ProductManage', meta: { title: '商品管理' }, component: () => import('@/views/merchant/ProductManageView.vue') },
       { path: 'orders', name: 'MerchantOrders', meta: { title: '订单管理' }, component: () => import('@/views/merchant/OrderManageView.vue') },
       { path: 'refunds', name: 'RefundManage', meta: { title: '退款审核' }, component: () => import('@/views/merchant/RefundManageView.vue') },
@@ -373,7 +377,7 @@ const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/admin',
     component: () => import('@/components/layout/AdminLayout.vue'),
-    meta: { roles: ['admin'] },
+    meta: { roles: ['ADMIN'] },
     children: [
       { path: 'users', name: 'UserManage', meta: { title: '用户管理' }, component: () => import('@/views/admin/UserManageView.vue') },
       { path: 'merchants', name: 'MerchantAudit', meta: { title: '商家审核' }, component: () => import('@/views/admin/MerchantAuditView.vue') },
@@ -432,95 +436,75 @@ router.beforeEach((to, _from, next) => {
 
 ### 6.1 用户状态 `stores/user.ts`
 
+当前仅实现了用户状态 store，管理 token 和用户信息的持久化：
+
 ```typescript
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { login, register, getUserInfo } from '@/api/user'
-import { setToken, removeToken, getToken } from '@/utils/token'
-import type { UserInfo, LoginDTO, RegisterDTO } from '@/types/user'
+import { computed, ref } from 'vue'
+import type { UserInfo } from '@/types/user'
+import { Role } from '@/types/common'
+import { getToken, removeToken, setToken as persistToken } from '@/utils/token'
+
+const USER_INFO_KEY = 'user_info'
+
+const loadUserInfo = (): UserInfo | null => {
+  try {
+    const raw = localStorage.getItem(USER_INFO_KEY)
+    return raw ? (JSON.parse(raw) as UserInfo) : null
+  } catch {
+    return null
+  }
+}
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(getToken() || '')
-  const userInfo = ref<UserInfo | null>(null)
+  const userInfo = ref<UserInfo | null>(loadUserInfo())
 
   const isLoggedIn = computed(() => !!token.value)
   const role = computed(() => userInfo.value?.role)
+  const roleName = computed(() => {
+    switch (role.value) {
+      case Role.USER:
+        return 'USER'
+      case Role.MERCHANT:
+        return 'MERCHANT'
+      case Role.ADMIN:
+        return 'ADMIN'
+      default:
+        return ''
+    }
+  })
 
-  async function loginAction(dto: LoginDTO) {
-    const res = await login(dto)
-    token.value = res.token
-    userInfo.value = res.userInfo
-    setToken(res.token)
+  function setToken(t: string) {
+    token.value = t
+    persistToken(t)
   }
 
-  async function registerAction(dto: RegisterDTO) {
-    const res = await register(dto)
-    token.value = res.token
-    userInfo.value = res.userInfo
-    setToken(res.token)
+  function setUserInfo(info: UserInfo) {
+    userInfo.value = info
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(info))
   }
 
-  function logoutAction() {
+  function logout() {
     token.value = ''
     userInfo.value = null
     removeToken()
+    localStorage.removeItem(USER_INFO_KEY)
   }
 
-  async function fetchUserInfo() {
-    userInfo.value = await getUserInfo()
-  }
-
-  return { token, userInfo, isLoggedIn, role, loginAction, registerAction, logoutAction, fetchUserInfo }
+  return { token, userInfo, isLoggedIn, role, roleName, setToken, setUserInfo, logout }
 })
 ```
 
-### 6.2 购物车状态 `stores/cart.ts`
-
-```typescript
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { getCartList, addToCart, updateQuantity, removeFromCart, selectCartItems } from '@/api/cart'
-import type { CartItem } from '@/types/cart'
-
-export const useCartStore = defineStore('cart', () => {
-  const items = ref<CartItem[]>([])
-
-  const totalCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
-  const selectedItems = computed(() => items.value.filter(item => item.selected))
-  const totalAmount = computed(() => selectedItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
-
-  async function fetchCart() {
-    items.value = await getCartList()
-  }
-
-  async function add(skuId: number, quantity: number) {
-    await addToCart(skuId, quantity)
-    await fetchCart()
-  }
-
-  async function update(id: number, quantity: number) {
-    await updateQuantity(id, quantity)
-    await fetchCart()
-  }
-
-  async function remove(id: number) {
-    await removeFromCart(id)
-    await fetchCart()
-  }
-
-  function clear() {
-    items.value = []
-  }
-
-  return { items, totalCount, selectedItems, totalAmount, fetchCart, add, update, remove, clear }
-})
-```
+> **说明**：购物车、聊天等状态目前直接在各页面组件中通过调用 API 获取和管理，未单独抽离为 Pinia store。角色判断统一使用 `Role` 枚举（USER=1, MERCHANT=2, ADMIN=3），角色名字符串为大写 `'USER'` / `'MERCHANT'` / `'ADMIN'`。
 
 ---
 
-## 七、WebSocket 即时通讯
+## 七、即时通讯
 
-### 7.1 后端约定
+> **实现状态**：当前聊天功能通过 Mock 接口模拟（`mock/chat.ts`），用于前端联调。后端 WebSocket 接口完成后，切换至下方 WebSocket 方案。
+
+### 7.1 后端 WebSocket 约定
 
 后端使用 JSR 356 注解（`@OnOpen` / `@OnClose` / `@OnMessage`），连接地址格式：
 
@@ -606,6 +590,8 @@ export function useWebSocket(userId: number) {
 
 ## 八、Elasticsearch 直连搜索
 
+> **实现状态**：当前搜索功能通过 Mock 接口模拟（`mock/product.ts` 中的 `/product/search`）。后端 ES 服务就绪后，切换至下方直连 ES 方案。
+
 ### 8.1 搜索流程
 
 前端直接调用 ES REST API，需要在 Vite 开发环境配置代理，生产环境由 Nginx 转发。
@@ -615,9 +601,13 @@ export function useWebSocket(userId: number) {
 ```typescript
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { viteMockServe } from 'vite-plugin-mock'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    viteMockServe({ mockPath: 'mock', enable: true }),
+  ],
   server: {
     port: 5173,
     proxy: {

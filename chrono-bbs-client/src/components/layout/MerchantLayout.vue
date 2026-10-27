@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 </script>
 
 <template>
@@ -14,6 +15,9 @@ const route = useRoute()
         <el-menu-item index="/merchant/refunds">退款审核</el-menu-item>
         <el-menu-item index="/merchant/stats">销售统计</el-menu-item>
       </el-menu>
+      <div class="back-home">
+        <el-button text @click="router.push('/home')">&larr; 返回首页</el-button>
+      </div>
     </aside>
     <main class="merchant-main">
       <router-view />
@@ -31,6 +35,8 @@ const route = useRoute()
   width: 220px;
   border-right: 1px solid var(--el-border-color-light);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-title {
@@ -41,6 +47,12 @@ const route = useRoute()
 
 .merchant-menu {
   border-right: none;
+  flex: 1;
+}
+
+.back-home {
+  padding: 12px 16px;
+  border-top: 1px solid var(--el-border-color-light);
 }
 
 .merchant-main {

@@ -1,19 +1,56 @@
-import request from './index'
-import type { LoginParams, LoginResult, RegisterParams, UserInfo } from '@/types/user'
-import type { Result } from '@/types/common'
+import service from '@/api'
+import type {
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  CaptchaResponse,
+  ForgotPasswordRequest,
+  UpdateProfileRequest,
+  UpdatePasswordRequest,
+  UserInfo,
+} from '@/types/user'
 
-export function login(data: LoginParams) {
-  return request.post<Result<LoginResult>>('/auth/login', data)
+// 获取图形验证码
+export const getCaptcha = () => {
+  return service.get<any, { code: number; message: string; data: CaptchaResponse; timestamp: number }>('/user/captcha')
 }
 
-export function register(data: RegisterParams) {
-  return request.post<Result<void>>('/auth/register', data)
+// 用户注册
+export const register = (data: RegisterRequest) => {
+  return service.post<any, { code: number; message: string; data: LoginResponse; timestamp: number }>('/user/register', data)
 }
 
-export function getUserInfo() {
-  return request.get<Result<UserInfo>>('/auth/info')
+// 用户登录
+export const login = (data: LoginRequest) => {
+  return service.post<any, { code: number; message: string; data: LoginResponse; timestamp: number }>('/user/login', data)
 }
 
-export function logout() {
-  return request.post<Result<void>>('/auth/logout')
+// 获取当前用户信息
+export const getUserInfo = () => {
+  return service.get<any, { code: number; message: string; data: UserInfo; timestamp: number }>('/user/info')
+}
+
+// 修改个人信息
+export const updateProfile = (data: UpdateProfileRequest) => {
+  return service.put('/user/profile', data)
+}
+
+// 修改密码
+export const updatePassword = (data: UpdatePasswordRequest) => {
+  return service.put('/user/password', data)
+}
+
+// 退出登录
+export const logout = () => {
+  return service.post('/user/logout')
+}
+
+// 发送重置密码验证码
+export const sendForgotCode = (phone: string) => {
+  return service.post('/user/forgot-code', { phone })
+}
+
+// 忘记密码 - 重置密码
+export const resetPassword = (data: ForgotPasswordRequest) => {
+  return service.post('/user/reset-password', data)
 }
