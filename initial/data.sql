@@ -8,7 +8,7 @@ USE chrono_bbs;
 -- 1. 管理员账号（密码：admin123，BCrypt加密）
 -- =====================================================
 INSERT INTO `user` (`username`, `password`, `nickname`, `role`, `status`)
-VALUES ('admin', '$2a$10$EixZaYVK1fsbw1ZfbX3OXe.P0DOqj2A6KB5YbvJQjKNN7FB1CvU2O', '系统管理员', 1, 0);
+VALUES ('admin', '$2a$10$EixZaYVK1fsbw1ZfbX3OXe.P0DOqj2A6KB5YbvJQjKNN7FB1CvU2O', '系统管理员', 1, 1);
 
 -- =====================================================
 -- 2. 三级分类数据

@@ -74,7 +74,7 @@ class AuthServiceImplTest {
     private void setupLoginHappyPath() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
-        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 0));
+        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 1));
         when(passwordEncoder.matches("123456", TEST_ENCODED_PASSWORD)).thenReturn(true);
     }
 
@@ -404,7 +404,7 @@ class AuthServiceImplTest {
     void shouldThrowWhenAccountDisabled() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
-        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 1));
+        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 0));
 
         LoginDTO dto = buildLoginDTO("testuser", "123456", TEST_UUID, TEST_CODE);
 
@@ -418,7 +418,7 @@ class AuthServiceImplTest {
     void shouldThrowWhenPasswordWrong() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
-        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 0));
+        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 1));
         when(passwordEncoder.matches("wrongpass", TEST_ENCODED_PASSWORD)).thenReturn(false);
 
         LoginDTO dto = buildLoginDTO("testuser", "wrongpass", TEST_UUID, TEST_CODE);

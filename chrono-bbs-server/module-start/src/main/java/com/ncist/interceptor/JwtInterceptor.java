@@ -7,13 +7,20 @@ import com.ncist.common.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
+@RequiredArgsConstructor
 // JWT 拦截器
 public class JwtInterceptor implements HandlerInterceptor {
+
+    private final StringRedisTemplate stringRedisTemplate;
+    private static final String TOKEN_PREFIX = "token:";
+
     // 拦截器在请求处理前执行
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -25,9 +32,18 @@ public class JwtInterceptor implements HandlerInterceptor {
         String token = extractToken(request);
         // 解析 JWT 并获取用户信息
         Claims claims = JwtUtil.parseToken(token);
+        Long userId = Long.valueOf(String.valueOf(claims.get("userId")));
+        // JWT + Redis 双校验：token 必须与服务端记录一致（登出/改密/重置密码/禁用后立即失效）
+        String serverToken = stringRedisTemplate.opsForValue().get(TOKEN_PREFIX + userId);
+        if (serverToken == null) {
+            throw new BusinessException(AuthErrorCode.TOKEN_EXPIRED);
+        }
+        if (!serverToken.equals(token)) {
+            throw new BusinessException(AuthErrorCode.TOKEN_INVALID);
+        }
         // 从 JWT 中提取用户信息
         UserContext.UserInfo userInfo = new UserContext.UserInfo(
-                Long.valueOf(String.valueOf(claims.get("userId"))),
+                userId,
                 String.valueOf(claims.get("username")),
                 Integer.valueOf(String.valueOf(claims.get("role")))
         );
@@ -35,11 +51,13 @@ public class JwtInterceptor implements HandlerInterceptor {
         UserContext.set(userInfo);
         return true;
     }
+
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         UserContext.clear();
     }
+
     // 从请求头中提取 JWT
     private String extractToken(HttpServletRequest request) {
         // 从请求头中提取 JWT

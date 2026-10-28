@@ -14,7 +14,9 @@ public enum AuthErrorCode implements ErrorCode {
     USERNAME_NOT_FOUND(409, "用户名不存在"),
     PASSWORD_ERROR(409, "密码错误"),
     FORBIDDEN(403, "没有权限"),
-    ACCOUNT_DISABLED(403, "账号已被禁用");
+    ACCOUNT_DISABLED(403, "账号已被禁用"),
+
+    ACCOUNT_NOT_FOUND(404, "账号不存在");
     private final Integer code;
     private final String message;
 

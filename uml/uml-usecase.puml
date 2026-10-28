@@ -16,7 +16,7 @@ rectangle "网上超市系统" {
     usecase "浏览商品列表" as UC01
     usecase "查看商品详情" as UC02
     usecase "按分类筛选商品" as UC03
-    usecase "关键词搜索商品" as UC04
+    usecase "关键词搜索商品" as u
     usecase "注册账号" as UC05
     usecase "登录" as UC06
   }

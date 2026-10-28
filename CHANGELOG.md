@@ -26,10 +26,20 @@
 - 样式系统：CSS 变量设计令牌（京东红主色 `#E2231A`、间距、圆角、阴影、过渡）
 - 路由系统：History 模式 + 全局前置守卫（登录校验 + 角色权限控制）
 - 文档：人机界面设计文档（hmi-design.md）
+- 后端认证模块补全 6 个接口：获取用户信息、修改个人信息、修改密码、退出登录、发送重置密码验证码、重置密码（`/api/user` 组 9 接口齐备）
+- JWT+Redis 双校验：登录/注册后 token 存入 Redis（2h），拦截器校验服务端 token 一致性，支持登出/改密/重置密码后强制下线及单设备登录
+- UserMapper 新增 selectById、selectByAccount、updatePassword、updateProfile 四个数据访问方法
+- AuthErrorCode 新增 ACCOUNT_NOT_FOUND（404）
+- ForgotCodeVO 新增 code 字段（开发阶段模拟短信/邮件返回验证码）
 
 ### Changed
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
 - AGENTS.md：新增"提交前必须更新 CHANGELOG.md"规则
+
+### Fixed
+- 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
+- 修复忘记密码接口被 JWT 拦截器误拦的问题：WebMvcConfig 白名单补充 forgot-code、reset-password
+- 修正 AuthServiceImplTest 中 5 个用例的 status mock 值语义混写，单元测试 25/25 通过
 
 ---
 

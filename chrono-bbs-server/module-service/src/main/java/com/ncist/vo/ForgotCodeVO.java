@@ -18,4 +18,7 @@ public class ForgotCodeVO {
 
     @Schema(description = "脱敏后的账号（手机号中间四位隐藏）", example = "138****8000")
     private String maskAccount;
+
+    @Schema(description = "验证码（模拟短信/邮件发送，仅开发阶段返回）", example = "123456")
+    private String code;
 }
