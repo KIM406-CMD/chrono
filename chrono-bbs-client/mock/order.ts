@@ -222,7 +222,7 @@ let orders = [
   },
 ]
 
-export default [
+const mockMethods: MockMethod[] = [
   // 6.1 获取防重复提交 Token
   {
     url: '/api/order/submit-token',
@@ -414,4 +414,5 @@ export default [
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods

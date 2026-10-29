@@ -99,6 +99,12 @@ const userRoutes: RouteRecordRaw[] = [
         meta: { title: '个人信息', roles: ['USER', 'MERCHANT', 'ADMIN'] },
       },
       {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/views/user/SettingsView.vue'),
+        meta: { title: '账户设置', roles: ['USER', 'MERCHANT', 'ADMIN'] },
+      },
+      {
         path: 'address',
         name: 'Address',
         component: () => import('@/views/user/AddressView.vue'),

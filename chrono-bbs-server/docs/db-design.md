@@ -294,7 +294,47 @@
 
 ---
 
-## 十、操作日志
+## 十、秒杀券
+
+### `seckill_coupon` 秒杀券表
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT PK | 主键 |
+| name | VARCHAR(100) | 券名称 |
+| description | VARCHAR(500) | 券描述 |
+| discount_type | TINYINT | 优惠类型：1-满减券，2-折扣券 |
+| discount_value | INT | 优惠值：满减券为减多少分，折扣券为打几折（如85表示8.5折） |
+| min_amount | INT | 最低消费金额（分），0表示无门槛 |
+| total_count | INT | 发放总量 |
+| remain_count | INT | 剩余数量 |
+| start_time | DATETIME | 开始时间 |
+| end_time | DATETIME | 结束时间 |
+| per_user_limit | INT | 每人限领数量，默认1 |
+| status | TINYINT | 0-未开始，1-进行中，2-已结束 |
+| created_at | DATETIME | 创建时间 |
+| updated_at | DATETIME | 更新时间 |
+
+> **说明**：管理员/商家创建秒杀券，设定总量和每人限领数量。`remain_count` 通过 Redis 扣减保证高并发下的一致性，定时同步回 MySQL。`status` 由定时任务根据 `start_time` / `end_time` 自动切换。
+
+### `user_coupon` 用户领券表
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT PK | 主键 |
+| user_id | BIGINT FK | 关联 user 表 |
+| coupon_id | BIGINT FK | 关联 seckill_coupon 表 |
+| status | TINYINT | 0-未使用，1-已使用，2-已过期 |
+| used_order_id | BIGINT | 使用的订单 ID（使用时关联） |
+| claim_time | DATETIME | 领取时间 |
+| used_time | DATETIME | 使用时间 |
+| created_at | DATETIME | 创建时间 |
+
+> **说明**：用户抢券后写入此表。下单时可选择一张未使用的券抵扣金额。`used_order_id` 记录用在哪笔订单上。定时任务每天检查过期券，将 `end_time < now()` 的券标记为已过期。
+
+---
+
+## 十一、操作日志
 
 ### `operation_log` 操作日志表
 
@@ -323,7 +363,7 @@
 
 ---
 
-## 十一、MySQL 索引设计
+## 十二、MySQL 索引设计
 
 > 目的：加速高频查询、避免全表扫描，提升 SQL 执行效率。
 
@@ -456,21 +496,40 @@
 | `idx_conversation_read` | **COMPOSITE** | (conversation_id, is_read) | 查某会话的未读消息 |
 | `idx_created_at` | INDEX | created_at | 按时间排序 + 定时清理 30 天前消息 |
 
-### 9.17 索引设计总结
+### 9.17 seckill_coupon 秒杀券表
+
+| 索引名 | 类型 | 字段 | 用途 |
+|------|------|------|------|
+| `idx_status` | INDEX | status | 按状态筛选（进行中/未开始/已结束） |
+| `idx_start_time` | INDEX | start_time | 按开始时间排序 |
+| `idx_end_time` | INDEX | end_time | 按结束时间筛选 |
+| `idx_status_time` | **COMPOSITE** | (status, start_time, end_time) | **高频**：查当前可抢的秒杀券 |
+
+### 9.18 user_coupon 用户领券表
+
+| 索引名 | 类型 | 字段 | 用途 |
+|------|------|------|------|
+| `idx_user_id` | INDEX | user_id | 查某用户的所有券 |
+| `idx_coupon_id` | INDEX | coupon_id | 查某券的领取记录 |
+| `idx_user_coupon` | **COMPOSITE** | (user_id, coupon_id) | 判断用户是否已领过某券 |
+| `idx_user_status` | **COMPOSITE** | (user_id, status) | **高频**：查用户未使用的券 |
+| `idx_status` | INDEX | status | 按状态筛选 |
+
+### 9.19 索引设计总结
 
 | 类型 | 数量 | 说明 |
 |------|------|------|
 | UNIQUE 索引 | 4 | username、user+sku、order_no、user+merchant |
-| 普通 INDEX | 26 | 高频查询字段 |
-| COMPOSITE 索引 | 5 | 多条件组合高频查询，利用覆盖索引减少回表 |
+| 普通 INDEX | 31 | 高频查询字段 |
+| COMPOSITE 索引 | 7 | 多条件组合高频查询，利用覆盖索引减少回表 |
 | FULLTEXT 索引 | 1 | MySQL 全文检索兜底 |
-| **合计** | **36** | |
+| **合计** | **43** | |
 
 > **注意**：复合索引遵循**最左前缀原则**，`WHERE` 条件中必须包含复合索引的第一列才能命中。例如 `idx_category_status(category_id, status)` 支持「只查 category_id」和「同时查 category_id + status」，但不支持「只查 status」。
 
 ---
 
-## 十二、Redis 缓存设计
+## 十三、Redis 缓存设计
 
 | 缓存 Key 示例 | 内容 | 数据结构 | 过期策略 |
 |------|------|------|------|
@@ -483,10 +542,14 @@
 | `product:{id}:sales` | 商品累计销量 | Hash | 下单时自增，定时同步 MySQL |
 | `product:{id}:comments` | 评论统计（总数 + 平均星级） | Hash | 评论变更时更新 |
 | `sku:{id}` | 热门 SKU 缓存 | String（JSON） | 设置过期时间，变更时失效 |
+| `seckill:coupon:{id}` | 秒杀券信息 | String（JSON） | 定时同步，活动结束后删除 |
+| `seckill:remain:{id}` | 秒杀券剩余数量 | String（整数） | 抢券时 DECR，与 MySQL 定时同步 |
+| `seckill:claimed:{couponId}:{userId}` | 用户是否已抢过 | String | 过期时间 = 活动结束时间，防止重复抢券 |
+| `user:coupons:{userId}` | 用户未使用券列表 | String（JSON） | 券状态变更时更新 |
 
 ---
 
-## 十三、搜索引擎（Elasticsearch）
+## 十四、搜索引擎（Elasticsearch）
 
 | 索引 | 同步字段 | 说明 |
 |------|------|------|

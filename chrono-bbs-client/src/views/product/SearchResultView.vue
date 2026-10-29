@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Search } from '@element-plus/icons-vue'
 import { getProductList, getCategoryTree } from '@/api/product'
+import { formatPriceByPreference, generalSettings, reloadGeneralSettings } from '@/utils/settings'
 import type { Product, Category } from '@/types/product'
 
 const router = useRouter()
@@ -19,7 +20,7 @@ const page = ref(1)
 const pageSize = 20
 const sortBy = ref<'default' | 'price_asc' | 'price_desc' | 'sales'>('default')
 
-const priceYuan = (fen: number) => (fen / 100).toFixed(2)
+const priceYuan = (fen: number) => formatPriceByPreference(fen)
 
 const currentCategoryName = ref('')
 
@@ -116,6 +117,7 @@ const loadCategories = async () => {
 }
 
 onMounted(() => {
+  reloadGeneralSettings()
   loadCategories()
   if (hasQuery()) {
     loadProducts()
@@ -190,7 +192,7 @@ watch(() => route.query.categoryId, (newCat) => {
         </div>
       </div>
 
-      <div v-loading="loading" class="product-grid">
+      <div v-loading="loading" class="product-grid" :class="{ compact: generalSettings.compactList }">
         <div v-if="products.length === 0 && !loading" class="empty-result">
           <p class="empty-icon">🔍</p>
           <p>没有找到相关商品</p>
@@ -313,6 +315,24 @@ watch(() => route.query.categoryId, (newCat) => {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 12px;
+}
+
+.product-grid.compact {
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.product-grid.compact .card-info {
+  padding: 8px 10px 10px;
+}
+
+.product-grid.compact .card-name {
+  font-size: 12px;
+  -webkit-line-clamp: 1;
+}
+
+.product-grid.compact .card-price {
+  font-size: 15px;
 }
 
 .product-card {

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { Role } from '@/types/common'
 import { getCategoryTree } from '@/api/product'
+import { getConversations } from '@/api/chat'
 import type { Category } from '@/types/product'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const keyword = ref('')
 const categories = ref<Category[]>([])
@@ -33,24 +35,50 @@ const loadCategories = async () => {
   }
 }
 
+const activeCategoryId = computed(() => {
+  if (route.path !== '/search') return 0
+  const id = Number(route.query.categoryId)
+  return Number.isFinite(id) && id > 0 ? id : 0
+})
+
 const onCategoryClick = (cat: Category) => {
   router.push({ path: '/search', query: { categoryId: String(cat.id) } })
 }
 
+// 未读消息数
+const unreadMsgCount = ref(0)
+
+const loadUnreadCount = () => {
+  getConversations()
+    .then((res) => {
+      unreadMsgCount.value = (res.data || []).reduce((sum: number, c: { unreadCount: number }) => sum + c.unreadCount, 0)
+    })
+    .catch(() => {
+      unreadMsgCount.value = 0
+    })
+}
+
 onMounted(() => {
   loadCategories()
+  if (userStore.isLoggedIn) loadUnreadCount()
 })
 
 const handleUserCommand = (command: string) => {
   switch (command) {
     case 'orders':
-      router.push('/orders')
-      break
-    case 'address':
+        router.push('/orders')
+        break
+      case 'chat':
+        router.push('/chat')
+        break
+      case 'address':
       router.push('/address')
       break
     case 'profile':
       router.push('/profile')
+      break
+    case 'settings':
+      router.push('/settings')
       break
     case 'merchant':
       router.push('/merchant/products')
@@ -97,6 +125,13 @@ const handleUserCommand = (command: string) => {
 
           <!-- 已登录 -->
           <template v-if="userStore.isLoggedIn">
+            <!-- 消息 -->
+            <el-badge :value="unreadMsgCount" :hidden="unreadMsgCount === 0" class="cart-badge">
+              <el-button text class="nav-btn" @click="router.push('/chat')">
+                💬 消息
+              </el-button>
+            </el-badge>
+
             <!-- 商家入口 -->
             <el-button
               v-if="isMerchant"
@@ -132,8 +167,10 @@ const handleUserCommand = (command: string) => {
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="orders">📋 我的订单</el-dropdown-item>
-                  <el-dropdown-item command="address">📍 收货地址</el-dropdown-item>
+                    <el-dropdown-item command="chat">💬 我的消息</el-dropdown-item>
+                    <el-dropdown-item command="address">📍 收货地址</el-dropdown-item>
                   <el-dropdown-item command="profile">👤 个人信息</el-dropdown-item>
+                  <el-dropdown-item command="settings">⚙ 账户设置</el-dropdown-item>
                   <el-dropdown-item
                     v-if="isMerchant"
                     command="merchant"
@@ -168,11 +205,16 @@ const handleUserCommand = (command: string) => {
     <!-- 分类导航栏 -->
     <nav class="category-bar">
       <div class="category-inner">
-        <span class="category-item active" @click="router.push('/home')">全部商品</span>
+        <span
+          class="category-item"
+          :class="{ active: activeCategoryId === 0 }"
+          @click="router.push('/home')"
+        >全部商品</span>
         <span
           v-for="cat in categories"
           :key="cat.id"
           class="category-item"
+          :class="{ active: activeCategoryId === cat.id }"
           @click="onCategoryClick(cat)"
         >
           {{ cat.name }}

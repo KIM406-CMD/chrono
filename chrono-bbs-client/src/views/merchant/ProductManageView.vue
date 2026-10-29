@@ -2,7 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
-import { getProductList } from '@/api/product'
+import { getMerchantProducts } from '@/api/merchant'
+import { updateProductStatus } from '@/api/product'
 import type { Product } from '@/types/product'
 
 const loading = ref(false)
@@ -17,7 +18,7 @@ const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 const loadProducts = async () => {
   loading.value = true
   try {
-    const res = await getProductList({ page: page.value, size, keyword: keyword.value || undefined })
+    const res = await getMerchantProducts({ page: page.value, size })
     products.value = res.data.list || []
     total.value = res.data.total
   } catch {
@@ -41,7 +42,13 @@ const handleDelete = async (product: Product) => {
   } catch {
     return
   }
-  ElMessage.success(`商品「${product.name}」已下架`)
+  try {
+    await updateProductStatus(product.id, 0)
+    ElMessage.success(`商品「${product.name}」已下架`)
+    loadProducts()
+  } catch {
+    ElMessage.error('下架失败')
+  }
 }
 
 const handleAdd = () => {

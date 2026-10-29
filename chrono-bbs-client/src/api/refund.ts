@@ -30,14 +30,19 @@ export interface RefundDetail extends RefundItem {
   }
 }
 
+export const applyRefund = (data: { orderItemId: number; type: number; reason: string; amount: number }) => {
+  return service.post<any, { code: number; message: string; data: RefundItem; timestamp: number }>('/refund', data)
+}
+
+// 退款列表（我的）
 export const getRefundList = (params: { page?: number; size?: number; status?: number }) => {
-  return service.get<any, { code: number; message: string; data: PageResult<RefundItem>; timestamp: number }>('/refund/list', { params })
+  return service.get<any, { code: number; message: string; data: PageResult<RefundItem>; timestamp: number }>('/refund/my', { params })
 }
 
 export const getRefundDetail = (id: number) => {
   return service.get<any, { code: number; message: string; data: RefundDetail; timestamp: number }>(`/refund/${id}`)
 }
 
-export const reviewRefund = (id: number, data: { approved: boolean; reason?: string }) => {
+export const reviewRefund = (id: number, data: { approved: number; reviewReason?: string }) => {
   return service.put(`/refund/${id}/review`, data)
 }

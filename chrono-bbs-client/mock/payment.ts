@@ -1,6 +1,6 @@
 import { MockMethod } from 'vite-plugin-mock'
 
-export default [
+const mockMethods: MockMethod[] = [
   // 7.1 卡号支付
   {
     url: '/api/payment/card',
@@ -60,4 +60,5 @@ export default [
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods

@@ -65,3 +65,21 @@ export interface ProductQueryParams {
   maxPrice?: number
   sort?: string
 }
+
+// 创建/修改商品 SKU 项
+export interface ProductSkuItem {
+  specIds: string
+  specText: string
+  price: number
+  stock: number
+}
+
+// 创建/修改商品请求
+export interface ProductFormData {
+  name: string
+  description?: string
+  images?: string
+  brand?: string
+  categoryId: number
+  skuList: ProductSkuItem[]
+}

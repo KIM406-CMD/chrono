@@ -16,6 +16,15 @@ const rememberMe = ref(false)
 const captchaUrl = ref('')
 const captchaUuid = ref('')
 
+const phoneDialogVisible = ref(false)
+const phoneLoading = ref(false)
+const phoneForm = reactive({
+  phone: '',
+  smsCode: '',
+})
+const smsCountdown = ref(0)
+let smsTimer: ReturnType<typeof setInterval> | null = null
+
 const loginForm = reactive<LoginRequest>({
   username: '',
   password: '',
@@ -83,6 +92,69 @@ const handleLogin = async () => {
   }
 }
 
+// 手机号快捷登录
+const openPhoneLogin = () => {
+  phoneForm.phone = ''
+  phoneForm.smsCode = ''
+  phoneDialogVisible.value = true
+}
+
+const sendSmsCode = () => {
+  if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) {
+    ElMessage.warning('请输入正确的手机号')
+    return
+  }
+  smsCountdown.value = 60
+  smsTimer = setInterval(() => {
+    smsCountdown.value -= 1
+    if (smsCountdown.value <= 0 && smsTimer) {
+      clearInterval(smsTimer)
+      smsTimer = null
+    }
+  }, 1000)
+  ElMessage.success('验证码已发送（开发环境任意 6 位数字均可）')
+}
+
+const handlePhoneLogin = async () => {
+  if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) {
+    ElMessage.warning('请输入正确的手机号')
+    return
+  }
+  if (!/^\d{6}$/.test(phoneForm.smsCode)) {
+    ElMessage.warning('请输入 6 位短信验证码')
+    return
+  }
+
+  phoneLoading.value = true
+  try {
+    const res = await login({
+      username: phoneForm.phone,
+      password: phoneForm.smsCode,
+      captchaUuid: '',
+      captchaCode: '',
+    })
+    userStore.setToken(res.data.token)
+    userStore.setUserInfo({
+      id: res.data.userInfo.id,
+      username: res.data.userInfo.username,
+      nickname: res.data.userInfo.nickname,
+      phone: res.data.userInfo.phone,
+      email: '',
+      avatar: '',
+      role: res.data.userInfo.role,
+      status: 1,
+    })
+    ElMessage.success('登录成功')
+    phoneDialogVisible.value = false
+    const redirect = (route.query.redirect as string) || '/'
+    router.push(redirect)
+  } catch (error: any) {
+    ElMessage.error(error.message || '登录失败')
+  } finally {
+    phoneLoading.value = false
+  }
+}
+
 // 回车登录
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
@@ -97,6 +169,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  if (smsTimer) {
+    clearInterval(smsTimer)
+    smsTimer = null
+  }
 })
 </script>
 
@@ -231,7 +307,7 @@ onUnmounted(() => {
           </div>
 
           <div class="other-methods">
-            <el-button text class="method-btn">
+            <el-button text class="method-btn" @click="openPhoneLogin">
               <span class="method-icon">📱</span>
               <span>手机号登录</span>
             </el-button>
@@ -243,6 +319,31 @@ onUnmounted(() => {
         </div>
       </main>
     </div>
+
+    <el-dialog v-model="phoneDialogVisible" title="手机号快捷登录" width="420px">
+      <el-form label-position="top" class="phone-form">
+        <el-form-item label="手机号">
+          <el-input v-model="phoneForm.phone" placeholder="请输入手机号" maxlength="11" size="large" />
+        </el-form-item>
+        <el-form-item label="短信验证码">
+          <div class="sms-row">
+            <el-input v-model="phoneForm.smsCode" placeholder="请输入 6 位验证码" maxlength="6" size="large" />
+            <el-button
+              type="primary"
+              plain
+              :disabled="smsCountdown > 0"
+              @click="sendSmsCode"
+            >
+              {{ smsCountdown > 0 ? `${smsCountdown}s 后重发` : '获取验证码' }}
+            </el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="phoneDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="phoneLoading" @click="handlePhoneLogin">登录</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -598,6 +699,20 @@ onUnmounted(() => {
 
 .method-icon {
   font-size: 18px;
+}
+
+.sms-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.sms-row .el-input {
+  flex: 1;
+}
+
+.sms-row .el-button {
+  white-space: nowrap;
 }
 
 /* 页脚 */

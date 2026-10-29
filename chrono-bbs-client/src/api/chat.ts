@@ -33,7 +33,7 @@ export const getConversations = () => {
 
 export const getMessages = (conversationId: number, params?: { page?: number; size?: number }) => {
   return service.get<any, { code: number; message: string; data: PageResult<ChatMessage>; timestamp: number }>(
-    `/chat/${conversationId}/messages`,
+    `/chat/history/${conversationId}`,
     { params }
   )
 }
@@ -42,6 +42,14 @@ export const sendMessage = (data: SendMessageRequest) => {
   return service.post<any, { code: number; message: string; data: ChatMessage; timestamp: number }>('/chat/message', data)
 }
 
-export const createConversation = (targetId: number) => {
-  return service.post<any, { code: number; message: string; data: Conversation; timestamp: number }>('/chat/conversation', { targetId })
+export const createConversation = (data: { merchantId: number; productId?: number }) => {
+  return service.post<any, { code: number; message: string; data: Conversation; timestamp: number }>('/chat/conversation', data)
+}
+
+export const markConversationRead = (conversationId: number) => {
+  return service.put(`/chat/read/${conversationId}`)
+}
+
+export const getUnreadCount = () => {
+  return service.get<any, { code: number; message: string; data: { count: number }; timestamp: number }>('/chat/unread-count')
 }

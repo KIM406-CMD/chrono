@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getAdminSalesReport } from '@/api/admin'
+import { getMerchantStats } from '@/api/merchant'
 
 const loading = ref(false)
 const report = ref<any>(null)
@@ -10,7 +10,7 @@ const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await getAdminSalesReport()
+    const res = await getMerchantStats()
     report.value = res.data
   } catch {
     report.value = null

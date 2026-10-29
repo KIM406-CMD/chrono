@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getOrderList } from '@/api/order'
+import { getMerchantOrders, shipOrder } from '@/api/merchant'
 import type { OrderListItem } from '@/types/order'
 import { OrderStatus } from '@/types/common'
 import { Search } from '@element-plus/icons-vue'
@@ -33,7 +33,7 @@ const loadOrders = async () => {
     if (statusFilter.value !== '') {
       params.status = statusFilter.value
     }
-    const res = await getOrderList(params)
+    const res = await getMerchantOrders(params)
     orders.value = res.data.list || []
     total.value = res.data.total
   } catch {
@@ -43,8 +43,14 @@ const loadOrders = async () => {
   }
 }
 
-const handleShip = (order: OrderListItem) => {
-  ElMessage.success(`订单 ${order.orderNo} 已发货`)
+const handleShip = async (order: OrderListItem) => {
+  try {
+    await shipOrder(order.id)
+    ElMessage.success(`订单 ${order.orderNo} 已发货`)
+    loadOrders()
+  } catch {
+    ElMessage.error('发货失败')
+  }
 }
 
 const handleFilterChange = () => {

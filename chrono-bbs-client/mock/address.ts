@@ -30,7 +30,7 @@ let addresses = [
   },
 ]
 
-export default [
+const mockMethods: MockMethod[] = [
   // 8.1 地址列表
   {
     url: '/api/address/list',
@@ -182,4 +182,5 @@ export default [
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods

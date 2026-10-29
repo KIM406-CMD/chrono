@@ -1,7 +1,7 @@
 import { MockMethod } from 'vite-plugin-mock'
 import Mock from 'mockjs'
 
-export default [
+const mockMethods: MockMethod[] = [
   // 2.1 获取图形验证码
   {
     url: '/api/user/captcha',
@@ -171,4 +171,5 @@ export default [
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods
