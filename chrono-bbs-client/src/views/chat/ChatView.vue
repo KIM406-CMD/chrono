@@ -4,9 +4,11 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UserFilled } from '@element-plus/icons-vue'
 import { getConversations, getMessages, sendMessage } from '@/api/chat'
+import { useUserStore } from '@/stores/user'
 import type { Conversation, ChatMessage } from '@/api/chat'
 
 const route = useRoute()
+const userStore = useUserStore()
 const conversations = ref<Conversation[]>([])
 const messages = ref<ChatMessage[]>([])
 const activeConv = ref<number>(0)
@@ -56,9 +58,11 @@ const selectConv = (conv: Conversation) => {
 const handleSend = async () => {
   const text = inputText.value.trim()
   if (!text || !activeConv.value) return
+  const conv = conversations.value.find((c) => c.id === activeConv.value)
+  if (!conv) return
   inputText.value = ''
   try {
-    const res = await sendMessage({ targetId: 101, content: text, type: 'text' })
+    const res = await sendMessage({ targetId: conv.targetId, content: text, type: 'text' })
     messages.value.push(res.data)
     scrollToBottom()
   } catch {
@@ -113,7 +117,7 @@ onMounted(() => {
             v-for="msg in messages"
             :key="msg.id"
             class="msg-row"
-            :class="{ mine: msg.senderId === 100 }"
+            :class="{ mine: msg.senderId === userStore.userInfo?.id }"
           >
             <div class="msg-bubble">{{ msg.content }}</div>
           </div>

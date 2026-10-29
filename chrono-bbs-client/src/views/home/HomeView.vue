@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Search, ArrowRight } from '@element-plus/icons-vue'
 import { getProductList, getCategoryTree } from '@/api/product'
 import { useUserStore } from '@/stores/user'
+import { formatPriceByPreference, generalSettings, reloadGeneralSettings } from '@/utils/settings'
 import type { Product, Category } from '@/types/product'
 import type { PageResult } from '@/types/common'
 
@@ -51,12 +52,13 @@ const goToProduct = (id: number) => {
   router.push(`/product/${id}`)
 }
 
-// 价格格式化（分转元）
+// 价格格式化（分转元，遵循通用设置）
 const formatPrice = (price: number) => {
-  return (price / 100).toFixed(2)
+  return formatPriceByPreference(price)
 }
 
 onMounted(() => {
+  reloadGeneralSettings()
   fetchCategories()
   fetchProducts()
 })
@@ -139,7 +141,7 @@ onMounted(() => {
             </router-link>
           </div>
           
-          <div v-loading="loading" class="product-grid">
+          <div v-loading="loading" class="product-grid" :class="{ compact: generalSettings.compactList }">
             <div
               v-for="product in products.slice(0, 10)"
               :key="product.id"
@@ -179,7 +181,7 @@ onMounted(() => {
             </h3>
           </div>
           
-          <div v-loading="loading" class="product-grid">
+          <div v-loading="loading" class="product-grid" :class="{ compact: generalSettings.compactList }">
             <div
               v-for="product in products.slice(10, 20)"
               :key="product.id"
@@ -593,6 +595,25 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 16px;
+}
+
+.product-grid.compact {
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.product-grid.compact .product-info {
+  padding: 8px 10px 10px;
+}
+
+.product-grid.compact .product-name {
+  font-size: 12px;
+  -webkit-line-clamp: 1;
+  height: 20px;
+}
+
+.product-grid.compact .price-current {
+  font-size: 15px;
 }
 
 .product-card {

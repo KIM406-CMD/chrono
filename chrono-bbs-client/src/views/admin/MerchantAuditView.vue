@@ -10,7 +10,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const res = await getPendingMerchants()
-    merchants.value = res.data || []
+    merchants.value = res.data.list || []
   } catch {
     merchants.value = []
   } finally {
@@ -29,7 +29,7 @@ const handleApprove = async (item: any) => {
     return
   }
   try {
-    await reviewMerchant(item.id, { approved: true })
+    await reviewMerchant(item.id, { approved: 1 })
     ElMessage.success(`商家「${item.shopName}」审核通过`)
     loadData()
   } catch {

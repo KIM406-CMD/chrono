@@ -5,6 +5,8 @@ import type {
   RegisterRequest,
   CaptchaResponse,
   ForgotPasswordRequest,
+  ForgotCodeRequest,
+  ForgotCodeResponse,
   UpdateProfileRequest,
   UpdatePasswordRequest,
   UserInfo,
@@ -46,8 +48,8 @@ export const logout = () => {
 }
 
 // 发送重置密码验证码
-export const sendForgotCode = (phone: string) => {
-  return service.post('/user/forgot-code', { phone })
+export const sendForgotCode = (data: ForgotCodeRequest) => {
+  return service.post<any, { code: number; message: string; data: ForgotCodeResponse; timestamp: number }>('/user/forgot-code', data)
 }
 
 // 忘记密码 - 重置密码

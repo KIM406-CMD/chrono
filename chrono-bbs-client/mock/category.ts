@@ -1,6 +1,6 @@
 import { MockMethod } from 'vite-plugin-mock'
 
-export default [
+const mockMethods: MockMethod[] = [
   // 3.1 获取分类树（三级）
   {
     url: '/api/category/tree',
@@ -115,4 +115,5 @@ export default [
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods

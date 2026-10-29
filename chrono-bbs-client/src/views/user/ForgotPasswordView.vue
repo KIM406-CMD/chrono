@@ -1,49 +1,84 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getCaptcha, sendForgotCode, resetPassword } from '@/api/user'
 
 const router = useRouter()
-const step = ref(1) // 1=enter phone, 2=verify code, 3=set password
+const step = ref(1)
 const loading = ref(false)
 const countdown = ref(0)
 
+const captchaImage = ref('')
+const captchaUuid = ref('')
+const verifyUuid = ref('')
+const maskAccount = ref('')
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
 const form = reactive({
-  phone: '',
+  account: '',
+  captchaCode: '',
   code: '',
   newPassword: '',
   confirmPassword: '',
 })
 
-const sendCode = () => {
-  if (!form.phone || form.phone.length < 11) {
-    ElMessage.warning('请输入正确的手机号')
+const loadCaptcha = async () => {
+  try {
+    const res = await getCaptcha()
+    captchaUuid.value = res.data.uuid
+    captchaImage.value = res.data.image
+  } catch {
+    ElMessage.error('获取验证码失败')
+  }
+}
+
+const startCountdown = () => {
+  countdown.value = 60
+  if (countdownTimer) clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      if (countdownTimer) clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
+}
+
+const handleSendCode = async () => {
+  if (!form.account || form.account.length < 5) {
+    ElMessage.warning('请输入正确的手机号或邮箱')
+    return
+  }
+  if (!form.captchaCode) {
+    ElMessage.warning('请输入图形验证码')
     return
   }
   loading.value = true
-  // Mock send code
-  setTimeout(() => {
-    loading.value = false
-    countdown.value = 60
+  try {
+    const res = await sendForgotCode({
+      account: form.account,
+      captchaUuid: captchaUuid.value,
+      captchaCode: form.captchaCode,
+    })
+    verifyUuid.value = res.data.uuid
+    maskAccount.value = res.data.maskAccount
+    startCountdown()
     step.value = 2
     ElMessage.success('验证码已发送')
-    const timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) clearInterval(timer)
-    }, 1000)
-  }, 500)
+  } catch {
+    loadCaptcha()
+    form.captchaCode = ''
+  } finally {
+    loading.value = false
+  }
 }
 
-const verifyCode = () => {
+const handleReset = async () => {
   if (!form.code) {
     ElMessage.warning('请输入验证码')
     return
   }
-  step.value = 3
-  ElMessage.success('验证成功')
-}
-
-const resetPassword = () => {
   if (!form.newPassword || form.newPassword.length < 6) {
     ElMessage.warning('密码至少6位')
     return
@@ -53,12 +88,25 @@ const resetPassword = () => {
     return
   }
   loading.value = true
-  setTimeout(() => {
-    loading.value = false
-    ElMessage.success('密码重置成功，请登录')
+  try {
+    await resetPassword({
+      uuid: verifyUuid.value,
+      code: form.code,
+      newPassword: form.newPassword,
+      confirmPassword: form.confirmPassword,
+    })
+    ElMessage.success('密码重置成功，请重新登录')
     router.push('/login')
-  }, 800)
+  } catch {
+    // error handled by interceptor
+  } finally {
+    loading.value = false
+  }
 }
+
+onMounted(() => {
+  loadCaptcha()
+})
 </script>
 
 <template>
@@ -70,42 +118,57 @@ const resetPassword = () => {
       </div>
 
       <el-steps :active="step - 1" align-center class="fp-steps">
-        <el-step title="验证手机号" />
-        <el-step title="输入验证码" />
+        <el-step title="验证账号" />
+        <el-step title="短信验证" />
         <el-step title="设置新密码" />
       </el-steps>
 
-      <!-- Step 1: Phone -->
+      <!-- Step 1: Account + Captcha -->
       <el-form v-if="step === 1" :model="form" label-width="0" class="fp-form">
         <el-form-item>
           <el-input
-            v-model="form.phone"
-            placeholder="请输入注册时使用的手机号"
-            maxlength="11"
+            v-model="form.account"
+            placeholder="请输入注册时使用的手机号或邮箱"
             size="large"
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large" class="full-btn" :loading="loading" @click="sendCode">
-            获取验证码
+          <div class="captcha-row">
+            <el-input
+              v-model="form.captchaCode"
+              placeholder="图形验证码"
+              size="large"
+            />
+            <img
+              :src="captchaImage"
+              alt="验证码"
+              class="captcha-img"
+              title="点击刷新"
+              @click="loadCaptcha"
+            />
+          </div>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" size="large" class="full-btn" :loading="loading" @click="handleSendCode">
+            获取短信验证码
           </el-button>
         </el-form-item>
       </el-form>
 
       <!-- Step 2: Verify Code -->
       <el-form v-if="step === 2" :model="form" label-width="0" class="fp-form">
-        <p class="step-hint">验证码已发送至 {{ form.phone }}</p>
+        <p class="step-hint">验证码已发送至 {{ maskAccount }}</p>
         <el-form-item>
           <el-input v-model="form.code" placeholder="请输入6位验证码" maxlength="6" size="large">
             <template #append>
-              <el-button :disabled="countdown > 0" @click="sendCode">
+              <el-button :disabled="countdown > 0" @click="handleSendCode">
                 {{ countdown > 0 ? `${countdown}s后重试` : '重新发送' }}
               </el-button>
             </template>
           </el-input>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large" class="full-btn" @click="verifyCode">
+          <el-button type="primary" size="large" class="full-btn" @click="handleReset">
             下一步
           </el-button>
         </el-form-item>
@@ -132,7 +195,7 @@ const resetPassword = () => {
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="large" class="full-btn" :loading="loading" @click="resetPassword">
+          <el-button type="primary" size="large" class="full-btn" :loading="loading" @click="handleReset">
             重置密码
           </el-button>
         </el-form-item>
@@ -204,5 +267,20 @@ const resetPassword = () => {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #f0f0f0;
+}
+
+.captcha-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.captcha-img {
+  height: 40px;
+  width: 120px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #dcdfe6;
+  flex-shrink: 0;
 }
 </style>

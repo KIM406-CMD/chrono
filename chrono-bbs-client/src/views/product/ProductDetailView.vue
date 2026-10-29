@@ -5,7 +5,9 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus, Minus, Shop, Share, Star, ShoppingCart } from '@element-plus/icons-vue'
 import { getProductDetail } from '@/api/product'
 import { addToCart } from '@/api/cart'
+import { getComments, addComment } from '@/api/comment'
 import type { Product, Sku } from '@/types/product'
+import type { CommentItem } from '@/types/comment'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,6 +105,83 @@ const handleBuyNow = async () => {
 // 价格格式化（分转元）
 const formatPrice = (price: number) => {
   return (price / 100).toFixed(2)
+}
+
+// 评论相关
+const activeTab = ref<'detail' | 'specs' | 'comments'>('detail')
+const comments = ref<CommentItem[]>([])
+const commentTotal = ref(0)
+const commentPage = ref(1)
+const commentSize = 10
+const commentStar = ref<number | ''>('')
+const commentLoading = ref(false)
+
+const commentForm = reactive({
+  content: '',
+  star: 5,
+})
+const commentSubmitting = ref(false)
+
+const starLabels = ['非常差', '差', '一般', '好', '非常好']
+
+const loadComments = async () => {
+  commentLoading.value = true
+  try {
+    const params: any = { page: commentPage.value, size: commentSize }
+    if (commentStar.value !== '') {
+      params.star = commentStar.value
+    }
+    const res = await getComments(productId.value, params)
+    comments.value = res.data.list || []
+    commentTotal.value = res.data.total
+  } catch {
+    comments.value = []
+  } finally {
+    commentLoading.value = false
+  }
+}
+
+const handleCommentPageChange = (page: number) => {
+  commentPage.value = page
+  loadComments()
+}
+
+const handleStarFilter = (star: number | '') => {
+  commentStar.value = star
+  commentPage.value = 1
+  loadComments()
+}
+
+const handleAddComment = async () => {
+  if (!commentForm.content.trim()) {
+    ElMessage.warning('请输入评论内容')
+    return
+  }
+  commentSubmitting.value = true
+  try {
+    await addComment({
+      productId: productId.value,
+      orderItemId: 0,
+      content: commentForm.content,
+      star: commentForm.star,
+    })
+    ElMessage.success('评论发表成功')
+    commentForm.content = ''
+    commentForm.star = 5
+    commentPage.value = 1
+    loadComments()
+  } catch {
+    // error handled by interceptor
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
+const switchTab = (tab: 'detail' | 'specs' | 'comments') => {
+  activeTab.value = tab
+  if (tab === 'comments' && comments.value.length === 0) {
+    loadComments()
+  }
 }
 
 onMounted(() => {
@@ -265,16 +344,101 @@ onMounted(() => {
       <!-- 商品详情描述区 -->
       <div class="product-desc-section">
         <div class="desc-tabs">
-          <div class="desc-tab active">商品详情</div>
-          <div class="desc-tab">规格参数</div>
-          <div class="desc-tab">用户评价</div>
+          <div :class="['desc-tab', { active: activeTab === 'detail' }]" @click="switchTab('detail')">商品详情</div>
+          <div :class="['desc-tab', { active: activeTab === 'specs' }]" @click="switchTab('specs')">规格参数</div>
+          <div :class="['desc-tab', { active: activeTab === 'comments' }]" @click="switchTab('comments')">用户评价 ({{ commentTotal }})</div>
         </div>
         
         <div class="desc-content">
-          <div class="desc-placeholder">
-            <p>商品详情内容</p>
-            <p class="desc-hint">此处将展示商品的详细描述、规格参数、用户评价等信息</p>
-          </div>
+          <template v-if="activeTab === 'detail'">
+            <div class="desc-placeholder">
+              <p>商品详情内容</p>
+              <p class="desc-hint">此处将展示商品的详细图文描述信息</p>
+            </div>
+          </template>
+
+          <template v-else-if="activeTab === 'specs'">
+            <div class="desc-placeholder">
+              <p>规格参数</p>
+              <p class="desc-hint">此处将展示商品的详细规格参数信息</p>
+            </div>
+          </template>
+
+          <template v-else-if="activeTab === 'comments'">
+            <div class="comment-section" v-loading="commentLoading">
+              <!-- 评论表单 -->
+              <div class="comment-form">
+                <h4>发表评论</h4>
+                <div class="comment-star-row">
+                  <span class="comment-form-label">评分：</span>
+                  <el-rate v-model="commentForm.star" :texts="starLabels" show-text />
+                </div>
+                <el-input
+                  v-model="commentForm.content"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="请输入您的评价..."
+                  maxlength="500"
+                  show-word-limit
+                />
+                <el-button type="primary" :loading="commentSubmitting" @click="handleAddComment" class="comment-submit-btn">
+                  发表评论
+                </el-button>
+              </div>
+
+              <!-- 星级筛选 -->
+              <div class="comment-filter">
+                <span
+                  :class="['star-filter-item', { active: commentStar === '' }]"
+                  @click="handleStarFilter('')"
+                >全部</span>
+                <span
+                  v-for="s in 5"
+                  :key="s"
+                  :class="['star-filter-item', { active: commentStar === s }]"
+                  @click="handleStarFilter(s)"
+                >{{ s }}星</span>
+              </div>
+
+              <!-- 评论列表 -->
+              <div v-if="comments.length === 0" class="comment-empty">
+                <p>暂无评论，快来发表第一条评论吧</p>
+              </div>
+
+              <div v-for="item in comments" :key="item.id" class="comment-item">
+                <div class="comment-avatar">
+                  <el-avatar :size="40" :src="item.userAvatar">{{ item.username?.charAt(0) }}</el-avatar>
+                </div>
+                <div class="comment-body">
+                  <div class="comment-header">
+                    <span class="comment-user">{{ item.username }}</span>
+                    <el-rate :model-value="item.star" disabled show-score size="small" />
+                    <span class="comment-time">{{ item.createdAt }}</span>
+                  </div>
+                  <p class="comment-text">{{ item.content }}</p>
+                  <div v-if="item.appendContent" class="comment-append">
+                    <span class="append-label">追评：</span>{{ item.appendContent }}
+                    <span class="append-time">（{{ item.appendAt }}）</span>
+                  </div>
+                  <div v-if="item.replyContent" class="comment-reply">
+                    <span class="reply-label">商家回复：</span>{{ item.replyContent }}
+                    <span class="reply-time">（{{ item.replyAt }}）</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 分页 -->
+              <div class="comment-pagination" v-if="commentTotal > commentSize">
+                <el-pagination
+                  v-model:current-page="commentPage"
+                  :page-size="commentSize"
+                  :total="commentTotal"
+                  layout="prev, pager, next"
+                  @current-change="handleCommentPageChange"
+                />
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -802,6 +966,161 @@ onMounted(() => {
 .desc-hint {
   font-size: 14px;
   color: #bbb;
+}
+
+/* 评论区域 */
+.comment-section {
+  padding: 24px 0;
+}
+
+.comment-form {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.comment-form h4 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: #333;
+}
+
+.comment-star-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.comment-form-label {
+  font-size: 14px;
+  color: #666;
+  margin-right: 8px;
+}
+
+.comment-submit-btn {
+  margin-top: 12px;
+}
+
+.comment-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.star-filter-item {
+  padding: 4px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  color: #666;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.star-filter-item:hover {
+  color: #e2231a;
+}
+
+.star-filter-item.active {
+  color: #fff;
+  background: #e2231a;
+}
+
+.comment-empty {
+  text-align: center;
+  padding: 60px 0;
+  color: #999;
+}
+
+.comment-item {
+  display: flex;
+  gap: 14px;
+  padding: 20px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.comment-avatar {
+  flex-shrink: 0;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.comment-user {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: #999;
+  margin-left: auto;
+}
+
+.comment-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.comment-append {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.append-label {
+  color: #e2231a;
+  font-weight: 500;
+}
+
+.append-time {
+  color: #999;
+  font-size: 12px;
+}
+
+.comment-reply {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #fff8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.reply-label {
+  color: #e6a23c;
+  font-weight: 500;
+}
+
+.reply-time {
+  color: #999;
+  font-size: 12px;
+}
+
+.comment-pagination {
+  display: flex;
+  justify-content: center;
+  padding-top: 24px;
 }
 
 /* 响应式 */

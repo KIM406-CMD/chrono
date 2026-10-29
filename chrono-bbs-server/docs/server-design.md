@@ -34,7 +34,7 @@ chrono-bbs-server/                # 父项目（聚合）
 ├── module-api/                   # API 模块（Controller + VO + DTO）
 │   └── 对外暴露的 REST 接口
 ├── module-service/               # 业务模块（Service 接口 + 实现）
-│   └── 核心业务逻辑
+│   └── 核心业务逻辑（含秒杀券并发控制）
 ├── module-mapper/                # 数据访问模块（Mapper + 实体 + XML）
 │   └── MyBatis 映射层
 └── module-start/                 # 启动模块
@@ -78,7 +78,8 @@ com.ncist.controller/
     ├── CommentController.java       # 评论接口
     ├── AdminController.java         # 管理员接口
     ├── MerchantController.java      # 商家接口
-    └── ChatController.java          # 即时通讯接口
+    ├── ChatController.java          # 即时通讯接口
+    └── SeckillController.java       # 秒杀券接口
 com.ncist.vo/                        # 出参 VO
 com.ncist.interceptor/               # 拦截器（JWT 鉴权、操作日志）
 ```
@@ -170,6 +171,14 @@ public enum ErrorCode {
     // 商家 6xxx
     MERCHANT_NOT_APPROVED(6001, "商家未审核通过"),
     MERCHANT_EXIST(6002, "已提交过入驻申请"),
+
+    // 秒杀券 7xxx
+    COUPON_NOT_FOUND(7001, "秒杀券不存在"),
+    COUPON_SOLD_OUT(7002, "秒杀券已被抢光"),
+    COUPON_ALREADY_CLAIMED(7003, "已领取过该秒杀券"),
+    COUPON_NOT_STARTED(7004, "秒杀券活动未开始或已结束"),
+    COUPON_MIN_AMOUNT(7005, "不满足最低消费门槛"),
+    COUPON_EXPIRED(7006, "优惠券已过期或已使用"),
 }
 ```
 

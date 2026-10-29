@@ -49,10 +49,23 @@ export interface CaptchaResponse {
   image: string
 }
 
-// 忘记密码请求
-export interface ForgotPasswordRequest {
-  phone: string
+// 发送重置密码验证码请求
+export interface ForgotCodeRequest {
+  account: string
+  captchaUuid: string
   captchaCode: string
+}
+
+// 发送重置密码验证码响应
+export interface ForgotCodeResponse {
+  uuid: string
+  maskAccount: string
+}
+
+// 重置密码请求
+export interface ForgotPasswordRequest {
+  uuid: string
+  code: string
   newPassword: string
   confirmPassword: string
 }

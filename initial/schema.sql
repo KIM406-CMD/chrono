@@ -376,7 +376,58 @@ CREATE TABLE `message`
   DEFAULT CHARSET = utf8mb4 COMMENT ='消息表';
 
 -- =====================================================
--- 18. 操作日志表
+-- 18. 秒杀券表
+-- =====================================================
+DROP TABLE IF EXISTS `seckill_coupon`;
+CREATE TABLE `seckill_coupon`
+(
+    `id`             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `name`           VARCHAR(100) NOT NULL COMMENT '券名称',
+    `description`    VARCHAR(500) DEFAULT NULL COMMENT '券描述',
+    `discount_type`  TINYINT      NOT NULL COMMENT '优惠类型：1-满减券，2-折扣券',
+    `discount_value` INT          NOT NULL COMMENT '优惠值：满减券为减多少分，折扣券为打几折（如85表示8.5折）',
+    `min_amount`     INT          NOT NULL DEFAULT 0 COMMENT '最低消费金额（分），0表示无门槛',
+    `total_count`    INT          NOT NULL COMMENT '发放总量',
+    `remain_count`   INT          NOT NULL COMMENT '剩余数量',
+    `start_time`     DATETIME     NOT NULL COMMENT '开始时间',
+    `end_time`       DATETIME     NOT NULL COMMENT '结束时间',
+    `per_user_limit` INT          NOT NULL DEFAULT 1 COMMENT '每人限领数量',
+    `status`         TINYINT      NOT NULL DEFAULT 0 COMMENT '状态：0-未开始，1-进行中，2-已结束',
+    `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_start_time` (`start_time`),
+    INDEX `idx_end_time` (`end_time`),
+    INDEX `idx_status_time` (`status`, `start_time`, `end_time`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='秒杀券表';
+
+-- =====================================================
+-- 19. 用户领券表
+-- =====================================================
+DROP TABLE IF EXISTS `user_coupon`;
+CREATE TABLE `user_coupon`
+(
+    `id`            BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `user_id`       BIGINT   NOT NULL COMMENT '关联user表',
+    `coupon_id`     BIGINT   NOT NULL COMMENT '关联seckill_coupon表',
+    `status`        TINYINT  NOT NULL DEFAULT 0 COMMENT '状态：0-未使用，1-已使用，2-已过期',
+    `used_order_id` BIGINT   DEFAULT NULL COMMENT '使用的订单ID',
+    `claim_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '领取时间',
+    `used_time`     DATETIME DEFAULT NULL COMMENT '使用时间',
+    `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_coupon_id` (`coupon_id`),
+    INDEX `idx_user_coupon` (`user_id`, `coupon_id`),
+    INDEX `idx_user_status` (`user_id`, `status`),
+    INDEX `idx_status` (`status`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='用户领券表';
+
+-- =====================================================
+-- 20. 操作日志表
 -- =====================================================
 DROP TABLE IF EXISTS `operation_log`;
 CREATE TABLE `operation_log`

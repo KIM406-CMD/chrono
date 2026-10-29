@@ -78,7 +78,7 @@ let cartItems = [
   },
 ]
 
-export default [
+const mockMethods: MockMethod[] = [
   // 5.1 获取购物车列表
   {
     url: '/api/cart/list',
@@ -199,19 +199,23 @@ export default [
       }
     },
   },
-  // 5.6 清空购物车
+  // 5.6 全选/取消全选
   {
-    url: '/api/cart/clear',
-    method: 'delete',
+    url: '/api/cart/select-all',
+    method: 'put',
     timeout: 300,
-    response: () => {
-      cartItems = []
+    response: ({ body }) => {
+      const { selected } = body
+      cartItems.forEach(item => {
+        item.selected = selected ? 1 : 0
+      })
       return {
         code: 200,
-        message: '清空成功',
+        message: '操作成功',
         data: null,
         timestamp: Date.now(),
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods

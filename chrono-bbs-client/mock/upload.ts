@@ -1,21 +1,27 @@
 import { MockMethod } from 'vite-plugin-mock'
-import Mock from 'mockjs'
 
-export default [
-  // 13.1 文件上传
+const avatarSamples = [
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=chrono1',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=chrono2',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=chrono3',
+  'https://api.dicebear.com/7.x/notionists/svg?seed=chrono4',
+  'https://api.dicebear.com/7.x/thumbs/svg?seed=chrono5',
+]
+
+const mockMethods: MockMethod[] = [
   {
-    url: '/api/upload',
+    url: '/api/upload/image',
     method: 'post',
-    timeout: 500,
+    timeout: 400,
     response: () => {
+      const url = avatarSamples[Math.floor(Math.random() * avatarSamples.length)]
       return {
         code: 200,
         message: '上传成功',
-        data: {
-          url: '', // 图片URL为空
-        },
+        data: { url },
         timestamp: Date.now(),
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods

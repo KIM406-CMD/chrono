@@ -1,6 +1,6 @@
 import { MockMethod } from 'vite-plugin-mock'
 
-export default [
+const mockMethods: MockMethod[] = [
   // 12.1 管理员 - 用户列表
   {
     url: '/api/admin/users',
@@ -56,7 +56,7 @@ export default [
   },
   // 12.3 管理员 - 商家审核列表
   {
-    url: '/api/admin/merchants/pending',
+    url: '/api/admin/merchants',
     method: 'get',
     timeout: 300,
     response: () => {
@@ -183,7 +183,7 @@ export default [
   },
   // 12.7 管理员 - 销售报表
   {
-    url: '/api/admin/report/sales',
+    url: '/api/admin/report',
     method: 'get',
     timeout: 500,
     response: ({ query }) => {
@@ -191,7 +191,7 @@ export default [
         code: 200,
         message: 'success',
         data: {
-          totalSales: 1234567, // 总销售额（分）
+          totalSales: 1234567,
           totalOrders: 150,
           totalUsers: 80,
           totalProducts: 50,
@@ -211,4 +211,47 @@ export default [
       }
     },
   },
-] as MockMethod[]
+  // 12.8 管理员 - 新增分类
+  {
+    url: '/api/admin/categories',
+    method: 'post',
+    timeout: 300,
+    response: ({ body }) => {
+      return {
+        code: 200,
+        message: '分类创建成功',
+        data: { id: 100 },
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 12.9 管理员 - 修改分类
+  {
+    url: '/api/admin/categories/:id',
+    method: 'put',
+    timeout: 300,
+    response: () => {
+      return {
+        code: 200,
+        message: '分类修改成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 12.10 管理员 - 删除分类
+  {
+    url: '/api/admin/categories/:id',
+    method: 'delete',
+    timeout: 300,
+    response: () => {
+      return {
+        code: 200,
+        message: '分类删除成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+]
+export default mockMethods

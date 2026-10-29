@@ -1,9 +1,9 @@
 import { MockMethod } from 'vite-plugin-mock'
 
-export default [
+const mockMethods: MockMethod[] = [
   // 9.1 商品评论列表
   {
-    url: '/api/comment/list',
+    url: '/api/comment/list/:productId',
     method: 'get',
     timeout: 300,
     response: ({ query }) => {
@@ -56,18 +56,33 @@ export default [
       }
     },
   },
-  // 9.3 删除评论
+  // 9.3 追加评论
   {
-    url: '/api/comment/:id',
-    method: 'delete',
+    url: '/api/comment/append',
+    method: 'post',
     timeout: 300,
     response: () => {
       return {
         code: 200,
-        message: '评论删除成功',
+        message: '追评成功',
         data: null,
         timestamp: Date.now(),
       }
     },
   },
-] as MockMethod[]
+  // 9.4 商家回复
+  {
+    url: '/api/comment/reply',
+    method: 'post',
+    timeout: 300,
+    response: () => {
+      return {
+        code: 200,
+        message: '回复成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+]
+export default mockMethods

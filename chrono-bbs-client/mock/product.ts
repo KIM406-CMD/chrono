@@ -88,7 +88,7 @@ function generateProducts(count: number) {
 
 export const allProducts = generateProducts(100)
 
-export default [
+const mockMethods: MockMethod[] = [
   // 4.1 分页查询商品列表
   {
     url: '/api/product/list',
@@ -223,4 +223,79 @@ export default [
       }
     },
   },
-] as MockMethod[]
+// 4.3 创建商品
+  {
+    url: '/api/product',
+    method: 'post',
+    timeout: 500,
+    response: ({ body }) => {
+      const newProduct = {
+        id: allProducts.length + 1,
+        name: body.name,
+        description: body.description || '',
+        images: [],
+        brand: body.brand || '',
+        categoryId: body.categoryId,
+        categoryName: '',
+        merchantId: 1,
+        merchantName: '测试店铺',
+        status: 0,
+        sales: 0,
+        minPrice: 0,
+        maxPrice: 0,
+        createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      }
+      allProducts.push(newProduct)
+      return {
+        code: 200,
+        message: '商品创建成功',
+        data: { id: newProduct.id },
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 4.4 编辑商品
+  {
+    url: '/api/product/:id',
+    method: 'put',
+    timeout: 300,
+    response: () => {
+      return {
+        code: 200,
+        message: '商品更新成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 4.5 上架/下架商品
+  {
+    url: '/api/product/:id/status',
+    method: 'put',
+    timeout: 300,
+    response: ({ body }) => {
+      return {
+        code: 200,
+        message: body.status === 1 ? '上架成功' : '下架成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 4.6 删除商品
+  {
+    url: '/api/product/:id',
+    method: 'delete',
+    timeout: 300,
+    response: () => {
+      return {
+        code: 200,
+        message: '商品删除成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+]
+export default mockMethods

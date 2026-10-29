@@ -9,7 +9,7 @@ function getProductInfo(productId: number) {
   return { name: p.name, price: p.minPrice }
 }
 
-export default [
+const mockMethods: MockMethod[] = [
   // 10.1 申请退款/退货
   {
     url: '/api/refund',
@@ -29,7 +29,7 @@ export default [
   },
   // 10.2 退款列表
   {
-    url: '/api/refund/list',
+    url: '/api/refund/my',
     method: 'get',
     timeout: 300,
     response: ({ query }) => {
@@ -140,4 +140,5 @@ export default [
       }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods

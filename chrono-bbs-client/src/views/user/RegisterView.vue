@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { User, Lock, Key, Phone } from '@element-plus/icons-vue'
@@ -15,6 +15,57 @@ const loading = ref(false)
 const agreeTerms = ref(false)
 const captchaUrl = ref('')
 const captchaUuid = ref('')
+const agreeDialogVisible = ref(false)
+const agreeDialogType = ref<'terms' | 'privacy'>('terms')
+
+const phoneDialogVisible = ref(false)
+const phoneLoading = ref(false)
+const phoneForm = reactive({
+  phone: '',
+  smsCode: '',
+})
+const smsCountdown = ref(0)
+let smsTimer: ReturnType<typeof setInterval> | null = null
+
+const agreementContents = {
+  terms: {
+    title: '用户服务协议',
+    paragraphs: [
+      '一、协议的接受',
+      '您在注册成为本商城用户前，应当认真阅读本协议全部内容。您勾选"我已阅读并同意"并完成注册，即表示您已充分理解并同意本协议的全部条款。',
+      '二、账号注册与管理',
+      '1. 您应提供真实、准确、完整的注册信息，并及时更新。\n2. 账号仅限本人使用，不得出借、转让或出售。\n3. 您应妥善保管账号与密码，因保管不当造成的损失由您自行承担。',
+      '三、用户行为规范',
+      '您承诺不利用本平台从事违法违规活动，包括但不限于：发布虚假信息、恶意刷单、侵犯他人知识产权、干扰平台正常运营等。如发现违规行为，平台有权限制或终止您的账号使用。',
+      '四、交易规则',
+      '商品信息由入驻商家发布，平台对商家资质进行审核。下单即视为您与商家达成买卖合同，具体权利义务以订单页面展示为准。',
+      '五、协议的变更与终止',
+      '平台有权根据业务需要修订本协议，修订内容将在平台公示。若您不同意修订内容，可停止使用本服务；继续使用则视为接受修订后的协议。',
+    ],
+  },
+  privacy: {
+    title: '隐私政策',
+    paragraphs: [
+      '一、我们收集的信息',
+      '1. 账号信息：用户名、密码、手机号、邮箱等注册信息。\n2. 交易信息：订单记录、收货地址、支付方式等。\n3. 使用信息：浏览记录、搜索关键词、设备信息等。',
+      '二、信息的使用',
+      '我们仅在以下场景使用您的信息：完成注册与登录验证、处理订单与物流配送、提供售后服务、改进产品与服务质量、在您同意的前提下推送营销信息。',
+      '三、信息的共享',
+      '除以下情形外，我们不会向第三方共享您的个人信息：\n1. 为完成订单配送，向物流服务商提供必要的收货信息；\n2. 为完成支付，向支付机构提供必要的交易信息；\n3. 依据法律法规或监管要求必须提供的情形。',
+      '四、信息的保护',
+      '我们采用加密传输、访问控制等技术手段保护您的信息安全，防止信息被未授权访问、泄露或篡改。',
+      '五、您的权利',
+      '您有权查询、更正、删除您的个人信息，也可在"账户设置"中管理相关偏好。如需注销账号，可通过帮助中心联系我们。',
+    ],
+  },
+} as const
+
+const currentAgreement = computed(() => agreementContents[agreeDialogType.value])
+
+const openAgreement = (type: 'terms' | 'privacy') => {
+  agreeDialogType.value = type
+  agreeDialogVisible.value = true
+}
 
 const registerForm = reactive<RegisterRequest>({
   username: '',
@@ -102,6 +153,71 @@ const handleRegister = async () => {
   }
 }
 
+// 手机号快捷注册
+const openPhoneRegister = () => {
+  phoneForm.phone = ''
+  phoneForm.smsCode = ''
+  phoneDialogVisible.value = true
+}
+
+const sendRegisterSmsCode = () => {
+  if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) {
+    ElMessage.warning('请输入正确的手机号')
+    return
+  }
+  smsCountdown.value = 60
+  smsTimer = setInterval(() => {
+    smsCountdown.value -= 1
+    if (smsCountdown.value <= 0 && smsTimer) {
+      clearInterval(smsTimer)
+      smsTimer = null
+    }
+  }, 1000)
+  ElMessage.success('验证码已发送（开发环境任意 6 位数字均可）')
+}
+
+const handlePhoneRegister = async () => {
+  if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) {
+    ElMessage.warning('请输入正确的手机号')
+    return
+  }
+  if (!/^\d{6}$/.test(phoneForm.smsCode)) {
+    ElMessage.warning('请输入 6 位短信验证码')
+    return
+  }
+
+  phoneLoading.value = true
+  try {
+    const res = await register({
+      username: phoneForm.phone,
+      password: phoneForm.smsCode,
+      confirmPassword: phoneForm.smsCode,
+      phone: phoneForm.phone,
+      role: Role.USER,
+      captchaUuid: '',
+      captchaCode: '',
+    })
+    userStore.setToken(res.data.token)
+    userStore.setUserInfo({
+      id: res.data.userInfo.id,
+      username: res.data.userInfo.username,
+      nickname: res.data.userInfo.nickname,
+      phone: res.data.userInfo.phone,
+      email: '',
+      avatar: '',
+      role: res.data.userInfo.role,
+      status: 1,
+    })
+    ElMessage.success('注册成功')
+    phoneDialogVisible.value = false
+    router.push('/')
+  } catch (error: any) {
+    ElMessage.error(error.message || '注册失败')
+  } finally {
+    phoneLoading.value = false
+  }
+}
+
 // 回车注册
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
@@ -116,6 +232,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  if (smsTimer) {
+    clearInterval(smsTimer)
+    smsTimer = null
+  }
 })
 </script>
 
@@ -251,10 +371,10 @@ onUnmounted(() => {
             <div class="form-agreement">
               <el-checkbox v-model="agreeTerms">
                 我已阅读并同意
-                <a href="#" class="link-agreement">《用户服务协议》</a>
-                和
-                <a href="#" class="link-agreement">《隐私政策》</a>
               </el-checkbox>
+              <span class="agreement-link" @click.stop="openAgreement('terms')">《用户服务协议》</span>
+              和
+              <span class="agreement-link" @click.stop="openAgreement('privacy')">《隐私政策》</span>
             </div>
 
             <el-form-item class="form-submit">
@@ -276,7 +396,7 @@ onUnmounted(() => {
           </div>
 
           <div class="other-methods">
-            <el-button text class="method-btn">
+            <el-button text class="method-btn" @click="openPhoneRegister">
               <span class="method-icon">📱</span>
               <span>手机号快捷注册</span>
             </el-button>
@@ -288,6 +408,48 @@ onUnmounted(() => {
         </div>
       </main>
     </div>
+
+    <el-dialog
+      v-model="agreeDialogVisible"
+      :title="currentAgreement.title"
+      width="600px"
+      class="agreement-dialog"
+    >
+      <div class="agreement-body">
+        <template v-for="(paragraph, index) in currentAgreement.paragraphs" :key="index">
+          <h4 v-if="index % 2 === 0" class="agreement-paragraph is-heading">{{ paragraph }}</h4>
+          <p v-else class="agreement-paragraph">{{ paragraph }}</p>
+        </template>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="agreeDialogVisible = false">我知道了</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="phoneDialogVisible" title="手机号快捷注册" width="420px">
+      <el-form label-position="top" class="phone-form">
+        <el-form-item label="手机号">
+          <el-input v-model="phoneForm.phone" placeholder="请输入手机号" maxlength="11" size="large" />
+        </el-form-item>
+        <el-form-item label="短信验证码">
+          <div class="sms-row">
+            <el-input v-model="phoneForm.smsCode" placeholder="请输入 6 位验证码" maxlength="6" size="large" />
+            <el-button
+              type="primary"
+              plain
+              :disabled="smsCountdown > 0"
+              @click="sendRegisterSmsCode"
+            >
+              {{ smsCountdown > 0 ? `${smsCountdown}s 后重发` : '获取验证码' }}
+            </el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="phoneDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="phoneLoading" @click="handlePhoneRegister">注册</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -574,13 +736,39 @@ onUnmounted(() => {
   color: #666;
 }
 
-.link-agreement {
+.agreement-link {
   color: #667eea;
-  text-decoration: none;
+  cursor: pointer;
+  font-size: 13px;
 }
 
-.link-agreement:hover {
+.agreement-link:hover {
   text-decoration: underline;
+}
+
+.agreement-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.agreement-paragraph {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #666;
+  white-space: pre-wrap;
+}
+
+.agreement-paragraph.is-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-top: 16px;
+}
+
+.agreement-paragraph.is-heading:first-child {
+  margin-top: 0;
 }
 
 /* 注册按钮 */

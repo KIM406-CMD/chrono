@@ -27,10 +27,11 @@
 - [12. 管理后台](#12-管理后台-apiadmin)
 - [13. 文件上传](#13-文件上传-apiupload)
 - [14. 即时通讯](#14-即时通讯-apichat)
-- [15. 商品搜索](#15-商品搜索-apisearch)
-- [16. WebSocket 通信](#16-websocket-通信)
-- [17. 错误码说明](#17-错误码说明)
-- [18. 接口权限总览](#18-接口权限总览)
+- [15. 秒杀券](#15-秒杀券-apiseckill)
+- [16. 商品搜索](#16-商品搜索-apisearch)
+- [17. WebSocket 通信](#17-websocket-通信)
+- [18. 错误码说明](#18-错误码说明)
+- [19. 接口权限总览](#19-接口权限总览)
 
 ---
 
@@ -1326,7 +1327,218 @@ GET /api/chat/unread-count
 
 ---
 
-## 15. 商品搜索 `/api/search`
+## 15. 秒杀券 `/api/seckill`
+
+**Controller**：`SeckillController`  
+**Swagger 分组**：秒杀券管理
+
+### 15.1 秒杀券列表（公开）
+
+> 展示所有进行中及未开始的秒杀券活动
+
+```
+GET /api/seckill/list
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | Integer | 否 | 1=进行中，0=未开始，不传查全部可抢券 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 3,
+    "list": [
+      {
+        "id": 1,
+        "name": "新人满减券",
+        "description": "新用户专享，满50减10元",
+        "discountType": 1,
+        "discountValue": 1000,
+        "minAmount": 5000,
+        "totalCount": 1000,
+        "remainCount": 987,
+        "startTime": "2024-01-01 00:00:00",
+        "endTime": "2026-12-31 23:59:59",
+        "perUserLimit": 1,
+        "status": 1
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 15.2 秒杀券详情（公开）
+
+```
+GET /api/seckill/detail/{id}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 券 ID（路径参数） |
+
+---
+
+### 15.3 抢领秒杀券
+
+> 权限：需登录
+
+```
+POST /api/seckill/claim/{couponId}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| couponId | Long | 是 | 秒杀券 ID（路径参数） |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "message": "领取成功",
+  "data": {
+    "userCouponId": 1,
+    "couponName": "新人满减券",
+    "discountType": 1,
+    "discountValue": 1000,
+    "minAmount": 5000,
+    "endTime": "2026-12-31 23:59:59"
+  }
+}
+```
+
+> **后端校验逻辑**：
+> 1. 校验活动是否进行中（status == 1 且 当前时间在 start_time ~ end_time 之间）
+> 2. Redis DECR `seckill:remain:{couponId}`，若结果 < 0 则恢复并返回"已抢光"
+> 3. Redis SETNX `seckill:claimed:{couponId}:{userId}`，防重复领券，同时检查 MySQL 的 `per_user_limit`
+> 4. MySQL 写入 `user_coupon` 记录
+> 5. 异步更新 MySQL `remain_count`
+
+---
+
+### 15.4 我的优惠券
+
+> 权限：需登录
+
+```
+GET /api/seckill/my-coupons
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | Integer | 否 | 0=未使用，1=已使用，2=已过期，不传查全部 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 5,
+    "list": [
+      {
+        "id": 1,
+        "couponId": 1,
+        "couponName": "新人满减券",
+        "discountType": 1,
+        "discountValue": 1000,
+        "minAmount": 5000,
+        "status": 0,
+        "endTime": "2026-12-31 23:59:59",
+        "claimTime": "2026-10-28 10:05:00"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 15.5 创建秒杀券（后台）
+
+> 权限：管理员 / 商家
+
+```
+POST /api/seckill/create
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | String | 是 | 券名称 |
+| description | String | 否 | 券描述 |
+| discountType | Integer | 是 | 1=满减券，2=折扣券 |
+| discountValue | Integer | 是 | 优惠值：满减券为减多少分，折扣券为打几折（如85表示8.5折） |
+| minAmount | Integer | 是 | 最低消费金额（分），0表示无门槛 |
+| totalCount | Integer | 是 | 发放总量 |
+| startTime | String | 是 | 开始时间 `yyyy-MM-dd HH:mm:ss` |
+| endTime | String | 是 | 结束时间 `yyyy-MM-dd HH:mm:ss` |
+| perUserLimit | Integer | 否 | 每人限领数量，默认 1 |
+
+---
+
+### 15.6 编辑秒杀券（后台）
+
+```
+PUT /api/seckill/update/{id}
+```
+
+参数同 15.5，但 `totalCount` 传入新值后自动同步 `remain_count`（即 remain_count += 新增量）。
+
+---
+
+### 15.7 删除秒杀券（后台）
+
+```
+DELETE /api/seckill/{id}
+```
+
+> 仅「未开始」状态的券可删除，进行中或已结束的券不可删除。
+
+---
+
+### 15.8 下单时计算优惠
+
+> 权限：需登录。在下单流程中，先调用此接口计算券后实付金额。
+
+```
+POST /api/seckill/calculate
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| userCouponId | Long | 否 | 用户优惠券 ID，不传则不使用券 |
+| totalAmount | Integer | 是 | 订单原始总金额（分） |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "originalAmount": 15000,
+    "discountAmount": 1000,
+    "finalAmount": 14000,
+    "couponName": "新人满减券"
+  }
+}
+```
+
+> 若 `totalAmount < minAmount`，返回错误"不满足最低消费门槛"。
+
+---
+
+## 16. 商品搜索 `/api/search`
 
 **Controller**：`SearchController`  
 **Swagger 分组**：商品搜索  
@@ -1427,7 +1639,7 @@ GET /api/search/hot
 
 ---
 
-## 16. WebSocket 通信
+## 17. WebSocket 通信
 
 **端点**：`ws://localhost:8080/chat/{userId}?token=<jwt_token>`  
 **协议**：JSR 356 原生 WebSocket（后端 `@OnOpen` / `@OnMessage` / `@OnClose`）
@@ -1484,7 +1696,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 ---
 
-## 17. 错误码说明
+## 18. 错误码说明
 
 | 错误码 | 含义 |
 |--------|------|
@@ -1507,10 +1719,16 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 5002 | 卡号无效（Luhn 校验不通过） |
 | 6001 | 商家未审核通过 |
 | 6002 | 已提交过入驻申请 |
+| 7001 | 秒杀券不存在 |
+| 7002 | 秒杀券已被抢光 |
+| 7003 | 已领取过该秒杀券 |
+| 7004 | 秒杀券活动未开始或已结束 |
+| 7005 | 不满足最低消费门槛 |
+| 7006 | 优惠券已过期或已使用 |
 
 ---
 
-## 18. 接口权限总览
+## 19. 接口权限总览
 
 | 模块 | 路径前缀 | 游客 | 注册用户 | 商家 | 管理员 |
 |------|----------|------|----------|------|--------|
@@ -1527,6 +1745,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 管理后台 | `/api/admin` | ❌ | ❌ | ❌ | ✅ 全部 |
 | 文件上传 | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | 即时通讯 | `/api/chat` | ❌ | ✅ | ✅ | — |
+| 秒杀券 | `/api/seckill` | ✅ 列表/详情 | ✅ 抢券/我的券/计算 | ✅ 抢券/管理 | ✅ 全管理 |
 | 商品搜索 | `/api/search` | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
 

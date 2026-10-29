@@ -3,11 +3,14 @@ import { MockMethod } from 'vite-plugin-mock'
 const conversations = [
   {
     id: 1,
-    targetId: 101,
-    targetName: '测试店铺客服',
-    targetAvatar: '',
+    userId: 100,
+    merchantId: 101,
+    merchantName: '测试店铺客服',
+    merchantAvatar: '',
+    productId: 1,
+    productName: '测试商品',
     lastMessage: '您好，有什么可以帮助您的？',
-    lastTime: '2025-01-02 10:00:00',
+    lastMessageTime: '2025-01-02T10:00:00',
     unreadCount: 2,
   },
 ]
@@ -18,7 +21,7 @@ const messages: any[] = [
   { id: 3, conversationId: 1, senderId: 101, senderName: '测试店铺客服', content: '有的，亲可以在商品详情页直接下单哦~', type: 'text', createdAt: '2025-01-02 10:00:00' },
 ]
 
-export default [
+const mockMethods: MockMethod[] = [
   {
     url: '/api/chat/conversations',
     method: 'get',
@@ -31,10 +34,10 @@ export default [
     }),
   },
   {
-    url: '/api/chat/:conversationId/messages',
+    url: '/api/chat/history/:conversationId',
     method: 'get',
     timeout: 300,
-    response: ({ query }: any) => {
+    response: ({ query }) => {
       const convId = parseInt(query.conversationId)
       const list = messages.filter((m) => m.conversationId === convId)
       return {
@@ -46,22 +49,19 @@ export default [
     },
   },
   {
-    url: '/api/chat/message',
-    method: 'post',
+    url: '/api/chat/read/:conversationId',
+    method: 'put',
     timeout: 300,
-    response: ({ body }: any) => {
-      const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
-      const msg = {
-        id: messages.length + 1,
-        conversationId: 1,
-        senderId: 100,
-        senderName: '我',
-        content: body.content,
-        type: body.type || 'text',
-        createdAt: now,
-      }
-      messages.push(msg)
-      return { code: 200, message: '发送成功', data: msg, timestamp: Date.now() }
+    response: () => {
+      return { code: 200, message: 'success', data: null, timestamp: Date.now() }
+    },
+  },
+  {
+    url: '/api/chat/unread-count',
+    method: 'get',
+    timeout: 300,
+    response: () => {
+      return { code: 200, message: 'success', data: { count: 2 }, timestamp: Date.now() }
     },
   },
   {
@@ -71,15 +71,16 @@ export default [
     response: () => {
       const conv = {
         id: conversations.length + 1,
-        targetId: 102,
-        targetName: '新对话客服',
-        targetAvatar: '',
+        merchantId: 102,
+        merchantName: '新对话客服',
+        merchantAvatar: '',
         lastMessage: '',
-        lastTime: '',
+        lastMessageTime: '',
         unreadCount: 0,
       }
       conversations.push(conv)
       return { code: 200, message: 'success', data: conv, timestamp: Date.now() }
     },
   },
-] as MockMethod[]
+]
+export default mockMethods
