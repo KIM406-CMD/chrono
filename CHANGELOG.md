@@ -31,10 +31,24 @@
 - UserMapper 新增 selectById、selectByAccount、updatePassword、updateProfile 四个数据访问方法
 - AuthErrorCode 新增 ACCOUNT_NOT_FOUND（404）
 - ForgotCodeVO 新增 code 字段（开发阶段模拟短信/邮件返回验证码）
+- 秒杀模块：Mock 数据层（seckill.ts），覆盖秒杀活动、秒杀商品、优惠券管理
+- 搜索模块：Mock 数据层（search.ts）与 API 层（search.ts）
+- 评论模块：评论 API 层（comment.ts）与类型定义（comment.ts）
+- 上传模块：上传 API 层（upload.ts）
+- 用户设置页面：SettingsView.vue，支持个人信息修改和安全设置
+- 工具模块：settings.ts 设置工具类
 
 ### Changed
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
 - AGENTS.md：新增"提交前必须更新 CHANGELOG.md"规则
+- Mock 层全面增强：address、admin、cart、category、chat、comment、merchant、order、payment、product、refund、upload、user 模块数据更新
+- API 层增强：admin、cart、chat、merchant、product、refund、user 接口扩展
+- 视图层优化：商城布局、聊天、首页、商家审核、订单管理、商品管理、销售统计、商品详情、搜索结果、登录、注册、忘记密码页面更新
+- 类型定义扩展：product.ts、user.ts 补充新字段
+- 后端优化：AuthController、WebMvcConfig、JwtInterceptor 逻辑增强
+- 数据库脚本更新：data.sql、schema.sql
+- 设计文档更新：api-doc、db-design、prd、requirements-analysis、server-design
+- UML 用例图更新
 
 ### Fixed
 - 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
