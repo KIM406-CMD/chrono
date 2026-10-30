@@ -40,6 +40,7 @@
 - 秒杀优惠券前端：管理员秒杀券管理页面（CouponManageView）与用户领券中心（CouponCenterView），API 层（seckill.ts）与类型定义（coupon.ts）
 - 分类管理：树形展示与新增/编辑/删除，支持子分类与三级层级限制
 - 商品管理：新增/编辑弹窗、上架/下架切换与删除
+- 搜索模块前端接入：搜索建议（自动补全）、热搜榜、搜索历史（含清空）
 
 ### Changed
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
@@ -54,6 +55,8 @@
 - UML 用例图更新
 - 类型定义 common.ts：枚举改为常量对象 + 类型（适配 erasableSyntaxOnly），order/product/user 类型导入改为 import type
 - 清理多处未使用变量与导入
+- 移除「进店逛逛」链接（后端无店铺主页接口）
+- 移除购物车 clearCart 接口（后端无清空接口）
 
 ### Fixed
 - 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
@@ -62,6 +65,13 @@
 - 修复商家审核/退款审核传参错误（approved 布尔值、reason 字段名）
 - 修复商品销量字段 totalSales → sales 导致销量不显示
 - 修复 admin.ts 缺失 MerchantInfo 导入
+- 对齐聊天会话字段与后端 API（merchantId/merchantName/merchantAvatar）
+- 对齐评论星级与头像字段（star/avatar）
+- 修复扫码支付误调卡号支付的问题（改走二维码接口）
+- 修复「立即购买」跳结算页被忽略的问题（先加入购物车）
+- 修复创建订单缺失防重复提交 token
+- 修复清空购物车调用不存在的接口（改循环删除）
+- 修复商品详情库存 fallback 用销量的语义错误
 
 ---
 

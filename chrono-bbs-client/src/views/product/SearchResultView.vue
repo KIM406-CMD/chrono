@@ -2,47 +2,51 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Search } from '@element-plus/icons-vue'
-import { getProductList, getCategoryTree } from '@/api/product'
+import { ArrowLeft, Search, Delete } from '@element-plus/icons-vue'
+import { searchProducts, getSearchSuggest, getSearchHistory, clearSearchHistory, getHotSearch } from '@/api/search'
+import type { SearchItem, SearchParams } from '@/api/search'
 import { formatPriceByPreference, generalSettings, reloadGeneralSettings } from '@/utils/settings'
-import type { Product, Category } from '@/types/product'
 
 const router = useRouter()
 const route = useRoute()
 
-const keyword = ref((route.query.keyword as string) || (route.query.q as string) || '')
+const keyword = ref((route.query.keyword as string) || '')
 const categoryId = ref(route.query.categoryId ? parseInt(route.query.categoryId as string) : 0)
-const products = ref<Product[]>([])
-const categories = ref<Category[]>([])
+const products = ref<SearchItem[]>([])
 const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
 const pageSize = 20
-const sortBy = ref<'default' | 'price_asc' | 'price_desc' | 'sales'>('default')
+const sortBy = ref<'default' | 'price_asc' | 'price_desc' | 'sales_desc'>('default')
+
+// 搜索建议（自动补全）
+const querySuggest = (query: string, cb: (data: { value: string }[]) => void) => {
+  const q = (query || '').trim()
+  if (!q) {
+    cb([])
+    return
+  }
+  getSearchSuggest(q)
+    .then((res) => {
+      cb((res.data || []).map((s: string) => ({ value: s })))
+    })
+    .catch(() => cb([]))
+}
+
+// 热搜榜 + 搜索历史
+const hotKeywords = ref<string[]>([])
+const historyKeywords = ref<string[]>([])
 
 const priceYuan = (fen: number) => formatPriceByPreference(fen)
-
-const currentCategoryName = ref('')
-
-const findCategoryName = (cats: Category[], id: number): string => {
-  for (const c of cats) {
-    if (c.id === id) return c.name
-    if (c.children) {
-      const found = findCategoryName(c.children, id)
-      if (found) return found
-    }
-  }
-  return ''
-}
 
 const sorts = [
   { label: '综合', value: 'default' as const },
   { label: '价格 ↑', value: 'price_asc' as const },
   { label: '价格 ↓', value: 'price_desc' as const },
-  { label: '销量', value: 'sales' as const },
+  { label: '销量', value: 'sales_desc' as const },
 ]
 
-const hasQuery = () => !!keyword.value || !!categoryId.value
+const hasQuery = () => !!keyword.value.trim() || !!categoryId.value
 
 const loadProducts = async () => {
   if (!hasQuery()) {
@@ -52,50 +56,56 @@ const loadProducts = async () => {
   }
   loading.value = true
   try {
-    const params: any = {
+    const params: SearchParams = {
+      keyword: keyword.value.trim(),
       page: page.value,
       size: pageSize,
     }
-    if (keyword.value) params.keyword = keyword.value
     if (categoryId.value) params.categoryId = categoryId.value
-    if (sortBy.value === 'price_asc') {
-      params.sortField = 'price'
-      params.sortOrder = 'asc'
-    } else if (sortBy.value === 'price_desc') {
-      params.sortField = 'price'
-      params.sortOrder = 'desc'
-    } else if (sortBy.value === 'sales') {
-      params.sortField = 'sales'
-      params.sortOrder = 'desc'
-    }
-    const res = await getProductList(params)
+    const currentSort = sortBy.value
+    if (currentSort !== 'default') params.sort = currentSort
+    const res = await searchProducts(params)
     products.value = res.data.list || []
     total.value = res.data.total
   } catch {
-    ElMessage.error('加载失败')
+    ElMessage.error('搜索失败')
   } finally {
     loading.value = false
   }
 }
 
-const handleSearch = () => {
-  if (!keyword.value.trim()) {
+const loadHotAndHistory = async () => {
+  try {
+    const [hotRes, hisRes] = await Promise.all([getHotSearch(), getSearchHistory()])
+    hotKeywords.value = hotRes.data || []
+    historyKeywords.value = hisRes.data || []
+  } catch {
+    hotKeywords.value = []
+    historyKeywords.value = []
+  }
+}
+
+const handleSearch = (kw?: string) => {
+  const k = (kw ?? keyword.value).trim()
+  if (!k) {
     ElMessage.warning('请输入搜索关键词')
     return
   }
+  keyword.value = k
   categoryId.value = 0
   page.value = 1
-  router.replace({ query: { keyword: keyword.value } })
+  router.replace({ query: { keyword: k } })
   loadProducts()
+  loadHotAndHistory()
 }
 
 const handleSort = (val: string) => {
-  sortBy.value = val as any
+  sortBy.value = val as typeof sortBy.value
   page.value = 1
   loadProducts()
 }
 
-const handleProductClick = (product: Product) => {
+const handleProductClick = (product: SearchItem) => {
   router.push(`/product/${product.id}`)
 }
 
@@ -104,45 +114,49 @@ const handlePageChange = (p: number) => {
   loadProducts()
 }
 
-const loadCategories = async () => {
+const handleClearHistory = async () => {
   try {
-    const res = await getCategoryTree()
-    categories.value = res.data || []
-    if (categoryId.value) {
-      currentCategoryName.value = findCategoryName(categories.value, categoryId.value)
-    }
+    await clearSearchHistory()
+    historyKeywords.value = []
+    ElMessage.success('已清除搜索历史')
   } catch {
-    // ignore
+    // 错误提示由拦截器统一处理
   }
 }
 
 onMounted(() => {
   reloadGeneralSettings()
-  loadCategories()
+  loadHotAndHistory()
   if (hasQuery()) {
     loadProducts()
   }
 })
 
-watch(() => route.query.keyword, (newKw) => {
-  if (newKw !== undefined && newKw !== keyword.value) {
-    keyword.value = (newKw as string) || ''
-    categoryId.value = 0
-    page.value = 1
-    loadProducts()
-  }
-})
+watch(
+  () => route.query.keyword,
+  (newKw) => {
+    const k = newKw ? String(newKw) : ''
+    if (k !== keyword.value) {
+      keyword.value = k
+      categoryId.value = 0
+      page.value = 1
+      loadProducts()
+    }
+  },
+)
 
-watch(() => route.query.categoryId, (newCat) => {
-  const newId = newCat ? parseInt(newCat as string) : 0
-  if (newId !== categoryId.value) {
-    categoryId.value = newId
-    keyword.value = ''
-    page.value = 1
-    currentCategoryName.value = newId ? findCategoryName(categories.value, newId) : ''
-    loadProducts()
-  }
-})
+watch(
+  () => route.query.categoryId,
+  (newCat) => {
+    const newId = newCat ? parseInt(String(newCat)) : 0
+    if (newId !== categoryId.value) {
+      categoryId.value = newId
+      keyword.value = ''
+      page.value = 1
+      loadProducts()
+    }
+  },
+)
 </script>
 
 <template>
@@ -152,33 +166,28 @@ watch(() => route.query.categoryId, (newCat) => {
         <ArrowLeft />
       </el-button>
       <div class="search-bar">
-        <el-input
+        <el-autocomplete
           v-model="keyword"
+          :fetch-suggestions="querySuggest"
           placeholder="搜索商品"
           size="large"
-          @keyup.enter="handleSearch"
+          :trigger-on-focus="false"
+          @keyup.enter="handleSearch()"
+          @select="(item: { value: string }) => handleSearch(item.value)"
         >
           <template #suffix>
-            <el-button
-              text
-              class="search-icon-btn"
-              @click="handleSearch"
-            >
+            <el-button text class="search-icon-btn" @click="handleSearch()">
               <Search />
             </el-button>
           </template>
-        </el-input>
+        </el-autocomplete>
       </div>
     </div>
 
+    <!-- 有关键词 / 分类：搜索结果 -->
     <template v-if="hasQuery()">
       <div class="search-meta">
-        <span class="result-count">
-          <template v-if="categoryId">
-            分类：<strong>{{ currentCategoryName }}</strong> ·
-          </template>
-          共找到 <strong>{{ total }}</strong> 件相关商品
-        </span>
+        <span class="result-count">共找到 <strong>{{ total }}</strong> 件相关商品</span>
         <div class="sort-bar">
           <span
             v-for="s in sorts"
@@ -206,19 +215,16 @@ watch(() => route.query.categoryId, (newCat) => {
           @click="handleProductClick(product)"
         >
           <div class="card-img">
-            <span class="img-placeholder">暂无图片</span>
+            <el-image v-if="product.image" :src="product.image" fit="cover" />
+            <span v-else class="img-placeholder">暂无图片</span>
           </div>
           <div class="card-info">
             <p class="card-name">{{ product.name }}</p>
             <div class="card-price-row">
               <span class="card-price">¥{{ priceYuan(product.minPrice) }}</span>
-              <span class="card-sold" v-if="product.sales">
-                已售 {{ product.sales }}
-              </span>
+              <span class="card-sold" v-if="product.sales">已售 {{ product.sales }}</span>
             </div>
-            <p class="card-merchant" v-if="product.merchantName">
-              {{ product.merchantName }}
-            </p>
+            <p class="card-brand" v-if="product.brand">{{ product.brand }}</p>
           </div>
         </div>
       </div>
@@ -234,9 +240,41 @@ watch(() => route.query.categoryId, (newCat) => {
       </div>
     </template>
 
-    <div v-else class="search-empty">
-      <p class="empty-icon">🔍</p>
-      <p>输入关键词搜索商品</p>
+    <!-- 无关键词：热搜榜 + 搜索历史 -->
+    <div v-else class="search-guide">
+      <section v-if="hotKeywords.length" class="guide-section">
+        <h3 class="guide-title">🔥 热门搜索</h3>
+        <div class="tag-list">
+          <span
+            v-for="(kw, idx) in hotKeywords"
+            :key="kw"
+            class="guide-tag hot-tag"
+            :class="{ 'top-three': idx < 3 }"
+            @click="handleSearch(kw)"
+          >
+            {{ kw }}
+          </span>
+        </div>
+      </section>
+
+      <section v-if="historyKeywords.length" class="guide-section">
+        <div class="guide-head">
+          <h3 class="guide-title">🕘 搜索历史</h3>
+          <el-button text size="small" :icon="Delete" class="clear-history" @click="handleClearHistory">
+            清空
+          </el-button>
+        </div>
+        <div class="tag-list">
+          <span
+            v-for="kw in historyKeywords"
+            :key="kw"
+            class="guide-tag history-tag"
+            @click="handleSearch(kw)"
+          >
+            {{ kw }}
+          </span>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -264,6 +302,9 @@ watch(() => route.query.categoryId, (newCat) => {
 
 .search-bar {
   flex: 1;
+}
+.search-bar :deep(.el-autocomplete) {
+  width: 100%;
 }
 
 .search-icon-btn {
@@ -358,6 +399,11 @@ watch(() => route.query.categoryId, (newCat) => {
   border-bottom: 1px solid #f0f0f0;
 }
 
+.card-img :deep(.el-image) {
+  width: 100%;
+  height: 100%;
+}
+
 .img-placeholder { font-size: 12px; color: #bbb; }
 
 .card-info {
@@ -392,14 +438,87 @@ watch(() => route.query.categoryId, (newCat) => {
   color: #bbb;
 }
 
-.card-merchant {
+.card-brand {
   margin: 4px 0 0;
   font-size: 11px;
   color: #aaa;
 }
 
+/* ========== 热搜 / 历史 ========== */
+.search-guide {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.guide-section + .guide-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.guide-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px;
+}
+
+.clear-history {
+  color: #999;
+  font-size: 12px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.guide-tag {
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hot-tag {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.hot-tag.top-three {
+  color: #e2231a;
+  background: #fff5f5;
+  font-weight: 600;
+}
+
+.hot-tag:hover {
+  color: #e2231a;
+}
+
+.history-tag {
+  background: #fafafa;
+  color: #888;
+}
+
+.history-tag:hover {
+  color: #e2231a;
+  background: #fff5f5;
+}
+
 /* ========== 空 ========== */
-.search-empty, .empty-result {
+.empty-result {
+  grid-column: 1 / -1;
   text-align: center;
   padding: 80px 20px;
   background: #fff;
@@ -411,7 +530,7 @@ watch(() => route.query.categoryId, (newCat) => {
   margin-bottom: 12px;
 }
 
-.empty-result p, .search-empty p {
+.empty-result p {
   font-size: 16px;
   color: #999;
   margin: 4px 0;
