@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminUsers, setUserStatus } from '@/api/admin'
 import type { AdminUser } from '@/api/admin'
-import { Search } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const users = ref<AdminUser[]>([])

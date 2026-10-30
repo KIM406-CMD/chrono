@@ -1,4 +1,4 @@
-import { Role } from './common'
+import type { Role } from './common'
 
 // 用户信息
 export interface UserInfo {

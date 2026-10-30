@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { UserFilled } from '@element-plus/icons-vue'
 
-const router = useRouter()
 const activeTab = ref<'info' | 'password'>('info')
 
 const form = reactive({

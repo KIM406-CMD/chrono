@@ -1,4 +1,4 @@
-import { OrderStatus } from './common'
+import type { OrderStatus } from './common'
 
 // 订单项
 export interface OrderItem {

@@ -51,9 +51,9 @@ const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 const loadOrders = async () => {
   loading.value = true
   try {
-    const params: { page: number; size: number; status?: number } = { page: page.value, size }
+    const params: { page: number; size: number; status?: OrderStatus } = { page: page.value, size }
     if (activeTab.value !== 'all') {
-      params.status = activeTab.value as number
+      params.status = activeTab.value as OrderStatus
     }
     const res = await getOrderList(params)
     orders.value = res.data.list || []

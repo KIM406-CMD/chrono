@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, ArrowRight } from '@element-plus/icons-vue'
+import { ArrowRight } from '@element-plus/icons-vue'
 import { getProductList, getCategoryTree } from '@/api/product'
 import { useUserStore } from '@/stores/user'
 import { formatPriceByPreference, generalSettings, reloadGeneralSettings } from '@/utils/settings'
 import type { Product, Category } from '@/types/product'
-import type { PageResult } from '@/types/common'
 
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
-const searchKeyword = ref('')
 
 const displayName = computed(() => userStore.userInfo?.nickname || userStore.userInfo?.username || '用户')
 
@@ -37,13 +35,6 @@ const fetchProducts = async () => {
     // Mock 模式
   } finally {
     loading.value = false
-  }
-}
-
-// 搜索
-const handleSearch = () => {
-  if (searchKeyword.value.trim()) {
-    router.push({ path: '/search', query: { keyword: searchKeyword.value } })
   }
 }
 

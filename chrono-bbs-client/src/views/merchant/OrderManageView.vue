@@ -4,7 +4,6 @@ import { ElMessage } from 'element-plus'
 import { getMerchantOrders, shipOrder } from '@/api/merchant'
 import type { OrderListItem } from '@/types/order'
 import { OrderStatus } from '@/types/common'
-import { Search } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const orders = ref<OrderListItem[]>([])

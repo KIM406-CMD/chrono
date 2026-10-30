@@ -4,7 +4,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { getOrderDetail, cancelOrder, receiveOrder, deleteOrder } from '@/api/order'
-import { payByCard } from '@/api/payment'
 import type { Order } from '@/types/order'
 import { OrderStatus } from '@/types/common'
 

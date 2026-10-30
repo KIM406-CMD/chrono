@@ -1,4 +1,4 @@
-import { ProductStatus } from './common'
+import type { ProductStatus } from './common'
 
 // 分类
 export interface Category {

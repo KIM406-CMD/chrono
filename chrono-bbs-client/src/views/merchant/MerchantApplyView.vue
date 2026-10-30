@@ -3,9 +3,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { applyMerchant, getMerchantInfo } from '@/api/merchant'
 import type { MerchantInfo } from '@/api/merchant'
-import { useUserStore } from '@/stores/user'
 
-const userStore = useUserStore()
 const loading = ref(false)
 const submitting = ref(false)
 const merchantInfo = ref<MerchantInfo | null>(null)
