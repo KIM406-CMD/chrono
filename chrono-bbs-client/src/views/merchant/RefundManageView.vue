@@ -36,7 +36,7 @@ const handleApprove = async (item: RefundItem) => {
     return
   }
   try {
-    await reviewRefund(item.id, { approved: true })
+    await reviewRefund(item.id, { approved: 1 })
     ElMessage.success('已同意退款')
     loadRefunds()
   } catch {
@@ -51,7 +51,7 @@ const handleReject = async (item: RefundItem) => {
       cancelButtonText: '取消',
       inputPlaceholder: '拒绝原因',
     })
-    await reviewRefund(item.id, { approved: false, reason: value })
+    await reviewRefund(item.id, { approved: 0, reviewReason: value })
     ElMessage.success('已拒绝退款')
     loadRefunds()
   } catch {

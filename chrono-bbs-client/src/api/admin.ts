@@ -1,5 +1,6 @@
 import service from '@/api'
 import type { PageResult } from '@/types/common'
+import type { MerchantInfo } from '@/api/merchant'
 
 export interface AdminUser {
   id: number

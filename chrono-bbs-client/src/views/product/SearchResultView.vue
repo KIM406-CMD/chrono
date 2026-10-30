@@ -212,8 +212,8 @@ watch(() => route.query.categoryId, (newCat) => {
             <p class="card-name">{{ product.name }}</p>
             <div class="card-price-row">
               <span class="card-price">¥{{ priceYuan(product.minPrice) }}</span>
-              <span class="card-sold" v-if="product.totalSales">
-                已售 {{ product.totalSales }}
+              <span class="card-sold" v-if="product.sales">
+                已售 {{ product.sales }}
               </span>
             </div>
             <p class="card-merchant" v-if="product.merchantName">

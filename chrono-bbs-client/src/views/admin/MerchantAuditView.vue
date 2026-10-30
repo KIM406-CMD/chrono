@@ -44,7 +44,7 @@ const handleReject = async (item: any) => {
       cancelButtonText: '取消',
       inputPlaceholder: '拒绝原因',
     })
-    await reviewMerchant(item.id, { approved: false, reason: value })
+    await reviewMerchant(item.id, { approved: 0, reviewReason: value })
     ElMessage.success(`已拒绝商家「${item.shopName}」`)
     loadData()
   } catch {
