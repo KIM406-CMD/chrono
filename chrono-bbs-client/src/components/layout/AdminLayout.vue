@@ -16,6 +16,7 @@ const router = useRouter()
         <el-menu-item index="/admin/products">商品管理</el-menu-item>
         <el-menu-item index="/admin/orders">订单管理</el-menu-item>
         <el-menu-item index="/admin/report">销售报表</el-menu-item>
+        <el-menu-item index="/admin/coupons">秒杀券管理</el-menu-item>
       </el-menu>
       <div class="back-home">
         <el-button text @click="router.push('/home')">&larr; 返回首页</el-button>

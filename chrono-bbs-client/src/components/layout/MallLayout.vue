@@ -123,6 +123,10 @@ const handleUserCommand = (command: string) => {
             </el-button>
           </el-badge>
 
+          <el-button text class="nav-btn" @click="router.push('/coupons')">
+            🎫 领券
+          </el-button>
+
           <!-- 已登录 -->
           <template v-if="userStore.isLoggedIn">
             <!-- 消息 -->

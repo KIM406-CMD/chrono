@@ -57,6 +57,12 @@ const userRoutes: RouteRecordRaw[] = [
         meta: { title: '首页' },
       },
       {
+        path: 'coupons',
+        name: 'CouponCenter',
+        component: () => import('@/views/coupon/CouponCenterView.vue'),
+        meta: { title: '领券中心', roles: ['USER', 'MERCHANT', 'ADMIN'] },
+      },
+      {
         path: 'search',
         name: 'SearchResult',
         component: () => import('@/views/product/SearchResultView.vue'),
@@ -217,6 +223,12 @@ const adminRoutes: RouteRecordRaw[] = [
         name: 'SalesReport',
         component: () => import('@/views/admin/SalesReportView.vue'),
         meta: { title: '销售报表' },
+      },
+      {
+        path: 'coupons',
+        name: 'CouponManage',
+        component: () => import('@/views/admin/CouponManageView.vue'),
+        meta: { title: '秒杀券管理' },
       },
     ],
   },
