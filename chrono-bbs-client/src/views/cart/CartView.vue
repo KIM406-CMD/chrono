@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, ShoppingCart, ArrowLeft } from '@element-plus/icons-vue'
-import { getCartList, updateCartQuantity, removeFromCart, selectCartItems, clearCart } from '@/api/cart'
+import { getCartList, updateCartQuantity, removeFromCart, selectCartItems } from '@/api/cart'
 import type { CartItem } from '@/types/cart'
 
 const router = useRouter()
@@ -139,7 +139,13 @@ const handleClear = async () => {
     return
   }
   try {
-    await clearCart()
+    // 后端无清空接口，逐个调用删除接口
+    const ids = cartList.value.map(i => i.id)
+    for (const id of ids) {
+      try {
+        await removeFromCart(id)
+      } catch { /* ignore */ }
+    }
     cartList.value = []
     ElMessage.success('购物车已清空')
   } catch {

@@ -62,7 +62,7 @@ const handleSend = async () => {
   if (!conv) return
   inputText.value = ''
   try {
-    const res = await sendMessage({ targetId: conv.targetId, content: text, type: 'text' })
+    const res = await sendMessage({ conversationId: conv.id, content: text, type: 'text' })
     messages.value.push(res.data)
     scrollToBottom()
   } catch {
@@ -92,12 +92,12 @@ onMounted(() => {
           :class="{ active: conv.id === activeConv }"
           @click="selectConv(conv)"
         >
-          <el-avatar :size="36" :src="conv.targetAvatar">
+          <el-avatar :size="36" :src="conv.merchantAvatar">
             <el-icon><UserFilled /></el-icon>
           </el-avatar>
           <div class="conv-info">
             <div class="conv-name">
-              {{ conv.targetName }}
+              {{ conv.merchantName }}
               <el-badge v-if="conv.unreadCount > 0" :value="conv.unreadCount" class="unread-badge" />
             </div>
             <div class="conv-last">{{ conv.lastMessage }}</div>
@@ -109,7 +109,7 @@ onMounted(() => {
     <section class="chat-body" v-loading="loading">
       <template v-if="activeConv">
         <div class="chat-top">
-          <span>{{ conversations.find((c) => c.id === activeConv)?.targetName || '聊天' }}</span>
+          <span>{{ conversations.find((c) => c.id === activeConv)?.merchantName || '聊天' }}</span>
         </div>
 
         <div ref="msgListRef" class="msg-list">

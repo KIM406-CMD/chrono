@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, Edit } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus } from '@element-plus/icons-vue'
 import { getCartList } from '@/api/cart'
 import { getAddressList } from '@/api/address'
 import { createOrder, getSubmitToken } from '@/api/order'
@@ -79,6 +79,7 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     const res = await createOrder({
+      token: submitToken.value,
       addressId: selectedAddress.value.id,
       cartItemIds: cartItems.value.map(i => i.id),
       remark: remark.value || undefined,
@@ -116,7 +117,7 @@ onMounted(() => {
         <section class="section-card">
           <div class="section-head">
             <h3>收货地址</h3>
-            <el-button text type="primary" size="small" :icon="Plus">
+            <el-button text type="primary" size="small" :icon="Plus" @click="router.push('/address')">
               添加新地址
             </el-button>
           </div>
@@ -148,7 +149,6 @@ onMounted(() => {
                   {{ addr.province }}{{ addr.city }}{{ addr.district }} {{ addr.detail }}
                 </p>
               </div>
-              <el-button text size="small" :icon="Edit" class="addr-edit">编辑</el-button>
             </div>
           </div>
         </section>

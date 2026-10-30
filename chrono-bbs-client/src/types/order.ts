@@ -46,6 +46,7 @@ export interface OrderListItem {
 
 // 创建订单请求
 export interface CreateOrderRequest {
+  token: string
   addressId: number
   cartItemIds: number[]
   remark?: string
