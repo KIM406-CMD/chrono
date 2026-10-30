@@ -37,6 +37,9 @@
 - 上传模块：上传 API 层（upload.ts）
 - 用户设置页面：SettingsView.vue，支持个人信息修改和安全设置
 - 工具模块：settings.ts 设置工具类
+- 秒杀优惠券前端：管理员秒杀券管理页面（CouponManageView）与用户领券中心（CouponCenterView），API 层（seckill.ts）与类型定义（coupon.ts）
+- 分类管理：树形展示与新增/编辑/删除，支持子分类与三级层级限制
+- 商品管理：新增/编辑弹窗、上架/下架切换与删除
 
 ### Changed
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
@@ -49,11 +52,16 @@
 - 数据库脚本更新：data.sql、schema.sql
 - 设计文档更新：api-doc、db-design、prd、requirements-analysis、server-design
 - UML 用例图更新
+- 类型定义 common.ts：枚举改为常量对象 + 类型（适配 erasableSyntaxOnly），order/product/user 类型导入改为 import type
+- 清理多处未使用变量与导入
 
 ### Fixed
 - 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
 - 修复忘记密码接口被 JWT 拦截器误拦的问题：WebMvcConfig 白名单补充 forgot-code、reset-password
 - 修正 AuthServiceImplTest 中 5 个用例的 status mock 值语义混写，单元测试 25/25 通过
+- 修复商家审核/退款审核传参错误（approved 布尔值、reason 字段名）
+- 修复商品销量字段 totalSales → sales 导致销量不显示
+- 修复 admin.ts 缺失 MerchantInfo 导入
 
 ---
 
