@@ -29,6 +29,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mybatis.version>3.0.4</mybatis.version>
         <knife4j.version>4.5.0</knife4j.version>
+        <springdoc.version>2.8.9</springdoc.version>
         <jwt.version>0.13.0</jwt.version>
         <security-crypto.version>6.4.4</security-crypto.version>
     </properties>
@@ -40,9 +41,17 @@
                 <artifactId>mybatis-spring-boot-starter</artifactId>
                 <version>${mybatis.version}</version>
             </dependency>
+            <!-- 强制 springdoc 升级到 2.8.9：knife4j 4.5.0 传递的 springdoc 2.2.0 与 Spring Boot 3.4.5
+                 不兼容（ControllerAdviceBean 构造器被移除，导致 /v3/api-docs 抛 NoSuchMethodError） -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <!-- knife4j 纯 UI 资源包：仅提供 doc.html 静态界面，API 文档生成由 springdoc 官方实现 -->
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
-                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <artifactId>knife4j-openapi3-ui</artifactId>
                 <version>${knife4j.version}</version>
             </dependency>
             <dependency>
