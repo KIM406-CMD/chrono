@@ -6,8 +6,10 @@ import { ArrowLeft, Plus } from '@element-plus/icons-vue'
 import { getCartList } from '@/api/cart'
 import { getAddressList } from '@/api/address'
 import { createOrder, getSubmitToken } from '@/api/order'
+import { getMyCoupons, calculateCoupon } from '@/api/seckill'
 import type { CartItem } from '@/types/cart'
 import type { Address } from '@/types/address'
+import { CouponType, UserCouponStatus, type UserCoupon, type CalculateResult } from '@/types/coupon'
 
 const router = useRouter()
 const loading = ref(false)
@@ -19,12 +21,36 @@ const selectedAddress = ref<Address | null>(null)
 const remark = ref('')
 const submitToken = ref('')
 
+// 优惠券
+const availableCoupons = ref<UserCoupon[]>([])
+const selectedCouponId = ref<number | null>(null)
+const couponLoading = ref(false)
+const calcResult = ref<CalculateResult | null>(null)
+
 const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 
-const totalAmountYuan = computed(() => {
-  const total = cartItems.value.reduce((s, i) => s + i.skuPrice * i.quantity, 0)
-  return (total / 100).toFixed(2)
-})
+const totalAmountFen = computed(() =>
+  cartItems.value.reduce((s, i) => s + i.skuPrice * i.quantity, 0)
+)
+const totalAmountYuan = computed(() => priceYuan(totalAmountFen.value))
+const payAmountFen = computed(() => calcResult.value?.finalAmount ?? totalAmountFen.value)
+const payAmountYuan = computed(() => priceYuan(payAmountFen.value))
+const discountAmountFen = computed(() => calcResult.value?.discountAmount ?? 0)
+const discountAmountYuan = computed(() => priceYuan(discountAmountFen.value))
+
+// 满足门槛的可用券（未使用且达到满减门槛）
+const usableCoupons = computed(() =>
+  availableCoupons.value.filter(c => c.minAmount <= totalAmountFen.value)
+)
+
+const discountText = (c: UserCoupon) => {
+  if (c.discountType === CouponType.FULL_REDUCTION) {
+    return `减 ¥${priceYuan(c.discountValue)}`
+  }
+  return `${(c.discountValue / 10).toFixed(1)} 折`
+}
+const minAmountText = (c: UserCoupon) =>
+  c.minAmount > 0 ? `满 ¥${priceYuan(c.minAmount)} 可用` : '无门槛'
 
 const itemCount = computed(() =>
   cartItems.value.reduce((s, i) => s + i.quantity, 0)
@@ -60,6 +86,41 @@ const loadData = async () => {
   } finally {
     loading.value = false
   }
+
+  loadCoupons()
+}
+
+// 加载可用优惠券（失败不影响下单主流程）
+const loadCoupons = async () => {
+  try {
+    const res = await getMyCoupons({ page: 1, size: 50, status: UserCouponStatus.UNUSED })
+    availableCoupons.value = (res.data.list || []).filter(c => c.status === UserCouponStatus.UNUSED)
+  } catch {
+    availableCoupons.value = []
+  }
+}
+
+// 选择优惠券：不传则不用券，选中后调后端重算优惠
+const selectCoupon = async (userCouponId: number | null) => {
+  selectedCouponId.value = userCouponId
+  if (userCouponId == null) {
+    calcResult.value = null
+    return
+  }
+  couponLoading.value = true
+  try {
+    const res = await calculateCoupon({
+      totalAmount: totalAmountFen.value,
+      userCouponId,
+    })
+    calcResult.value = res.data
+  } catch {
+    // 计算失败（如未达门槛）：回退为不使用券
+    selectedCouponId.value = null
+    calcResult.value = null
+  } finally {
+    couponLoading.value = false
+  }
 }
 
 const selectAddress = (addr: Address) => {
@@ -83,6 +144,7 @@ const handleSubmit = async () => {
       addressId: selectedAddress.value.id,
       cartItemIds: cartItems.value.map(i => i.id),
       remark: remark.value || undefined,
+      userCouponId: selectedCouponId.value ?? undefined,
     })
 
     ElMessage.success('订单创建成功')
@@ -182,6 +244,46 @@ onMounted(() => {
           </div>
         </section>
 
+        <!-- 优惠券 -->
+        <section class="section-card">
+          <div class="section-head">
+            <h3>优惠券</h3>
+            <span class="section-count" v-if="usableCoupons.length > 0">可用 {{ usableCoupons.length }} 张</span>
+          </div>
+
+          <div v-if="availableCoupons.length === 0" class="coupon-empty">
+            <p>暂无可用优惠券</p>
+          </div>
+          <div v-else-if="usableCoupons.length === 0" class="coupon-empty">
+            <p>暂无满足当前订单门槛的优惠券</p>
+          </div>
+          <div v-else class="coupon-list" v-loading="couponLoading">
+            <div
+              class="coupon-item"
+              :class="{ active: selectedCouponId === null }"
+              @click="selectCoupon(null)"
+            >
+              <span class="coupon-tag">不</span>
+              <div class="coupon-info">
+                <p class="coupon-name">不使用优惠券</p>
+              </div>
+            </div>
+            <div
+              v-for="c in usableCoupons"
+              :key="c.id"
+              class="coupon-item"
+              :class="{ active: selectedCouponId === c.id }"
+              @click="selectCoupon(c.id)"
+            >
+              <span class="coupon-tag">券</span>
+              <div class="coupon-info">
+                <p class="coupon-name">{{ c.couponName }}</p>
+                <p class="coupon-meta">{{ discountText(c) }} · {{ minAmountText(c) }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- 订单备注 -->
         <section class="section-card">
           <div class="section-head">
@@ -213,6 +315,11 @@ onMounted(() => {
             <span class="price">¥{{ totalAmountYuan }}</span>
           </div>
 
+          <div class="summary-row" v-if="discountAmountFen > 0">
+            <span>优惠券</span>
+            <span class="discount">-¥{{ discountAmountYuan }}</span>
+          </div>
+
           <div class="summary-row">
             <span>运费</span>
             <span class="free">免运费</span>
@@ -220,7 +327,7 @@ onMounted(() => {
 
           <div class="summary-total">
             <span>应付总额</span>
-            <span class="total-price">¥{{ totalAmountYuan }}</span>
+            <span class="total-price">¥{{ payAmountYuan }}</span>
           </div>
 
           <el-button
@@ -487,6 +594,72 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+/* ========== 优惠券选择 ========== */
+.coupon-empty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 13px;
+}
+
+.coupon-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.coupon-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(50% - 6px);
+  padding: 12px 14px;
+  border: 2px solid #eee;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.coupon-item:hover {
+  border-color: #f5a3a3;
+}
+
+.coupon-item.active {
+  border-color: #e2231a;
+  background: #fff7f6;
+}
+
+.coupon-tag {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e2231a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coupon-info {
+  min-width: 0;
+}
+
+.coupon-name {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.coupon-meta {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
 /* ========== 右侧结算栏 ========== */
 .checkout-sidebar {
   width: 320px;
@@ -527,6 +700,11 @@ onMounted(() => {
 
 .free {
   color: #67c23a;
+}
+
+.discount {
+  color: #e2231a;
+  font-weight: 600;
 }
 
 .summary-total {

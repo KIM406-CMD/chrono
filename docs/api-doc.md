@@ -590,6 +590,7 @@ POST /api/order/create
 | addressId | Long | 是 | 收货地址 ID |
 | cartItemIds | List\<Long\> | 是 | 购物车选中项的 ID 列表 |
 | remark | String | 否 | 订单备注 |
+| userCouponId | Long | 否 | 用户优惠券 ID（用户券记录 id，即 `/api/seckill/calculate` 的入参 `userCouponId`），不传则不用券 |
 
 **返回**：
 
