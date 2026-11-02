@@ -28,9 +28,10 @@
 - [13. 文件上传](#13-文件上传-apiupload)
 - [14. 即时通讯](#14-即时通讯-apichat)
 - [15. 商品搜索](#15-商品搜索-apisearch)
-- [16. WebSocket 通信](#16-websocket-通信)
-- [17. 错误码说明](#17-错误码说明)
-- [18. 接口权限总览](#18-接口权限总览)
+- [16. 秒杀券](#16-秒杀券-apiseckill)
+- [17. WebSocket 通信](#17-websocket-通信)
+- [18. 错误码说明](#18-错误码说明)
+- [19. 接口权限总览](#19-接口权限总览)
 
 ---
 
@@ -1349,7 +1350,7 @@ GET /api/search
 | page | Integer | 否 | 页码，默认 1 |
 | size | Integer | 否 | 每页大小，默认 20 |
 
-> 前端在 Vite 开发环境下通过代理直连 ES（`/es` → `localhost:9200`），也可以是后端中转。本文档按后端中转路径设计，方便统一。
+> 前端统一走后端中转路径 `/api/search`，由后端 `SearchController` 内部使用 Elasticsearch 检索。
 
 **返回**：
 
@@ -1427,18 +1428,233 @@ GET /api/search/hot
 
 ---
 
-## 16. WebSocket 通信
+## 16. 秒杀券 `/api/seckill`
+
+**Controller**：`SeckillController`（待实现）  
+**Swagger 分组**：秒杀券  
+**权限**：列表/详情公开，抢领/我的券/计算需登录，创建/编辑/删除仅管理员
+
+> 说明：本模块接口由前端 Mock（`mock/seckill.ts`）先行定义，后端 `SeckillController` 待实现。
+
+### 16.1 秒杀券列表
+
+```
+GET /api/seckill/list
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+| status | Integer | 否 | 券状态：0=未开始，1=进行中，2=已结束 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 5,
+    "page": 1,
+    "size": 10,
+    "list": [
+      {
+        "id": 1,
+        "name": "新人满减券",
+        "description": "新用户专享，满50减10元",
+        "discountType": 1,
+        "discountValue": 1000,
+        "minAmount": 5000,
+        "totalCount": 1000,
+        "remainCount": 987,
+        "startTime": "2024-01-01 00:00:00",
+        "endTime": "2026-12-31 23:59:59",
+        "perUserLimit": 1,
+        "status": 1
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 16.2 秒杀券详情
+
+```
+GET /api/seckill/detail/{id}
+```
+
+**返回**：单个 `SeckillCoupon` 对象（结构同 16.1 列表项）。
+
+---
+
+### 16.3 抢领秒杀券
+
+```
+POST /api/seckill/claim/{couponId}
+```
+
+> 登录用户。校验：券为进行中状态、未过有效期、剩余数量 > 0、每人限领未超。
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "userCouponId": 6,
+    "couponName": "新人满减券",
+    "discountType": 1,
+    "discountValue": 1000,
+    "minAmount": 5000,
+    "endTime": "2026-12-31 23:59:59"
+  }
+}
+```
+
+---
+
+### 16.4 我的优惠券
+
+```
+GET /api/seckill/my-coupons
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+| status | Integer | 否 | 用户券状态：0=未使用，1=已使用，2=已过期 |
+
+**返回**：`PageResult<UserCoupon>`，列表项字段见 16.9。
+
+---
+
+### 16.5 创建秒杀券（管理员）
+
+```
+POST /api/seckill/create
+```
+
+请求体：
+
+```json
+{
+  "name": "周末满减券",
+  "description": "周末特惠，满100减20",
+  "discountType": 1,
+  "discountValue": 2000,
+  "minAmount": 10000,
+  "totalCount": 300,
+  "startTime": "2026-11-01 00:00:00",
+  "endTime": "2026-11-30 23:59:59",
+  "perUserLimit": 2
+}
+```
+
+**返回**：`{ "code": 200, "data": { "id": 6 } }`
+
+---
+
+### 16.6 编辑秒杀券（管理员）
+
+```
+PUT /api/seckill/update/{id}
+```
+
+请求体同 16.5。若 `totalCount` 增加，剩余数量相应增加。
+
+---
+
+### 16.7 删除秒杀券（管理员）
+
+```
+DELETE /api/seckill/{id}
+```
+
+> 仅未开始（status=0）状态的券可删除。
+
+---
+
+### 16.8 下单优惠计算
+
+```
+POST /api/seckill/calculate
+```
+
+请求体：
+
+```json
+{
+  "userCouponId": 6,
+  "totalAmount": 15000
+}
+```
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "originalAmount": 15000,
+    "discountAmount": 1000,
+    "finalAmount": 14000,
+    "couponName": "新人满减券"
+  }
+}
+```
+
+---
+
+### 16.9 数据结构
+
+#### SeckillCoupon
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 券 ID |
+| name | String | 券名称 |
+| description | String | 描述 |
+| discountType | Integer | 券类型：1=满减，2=折扣 |
+| discountValue | Integer | 满减时为优惠金额（分）；折扣时为百分比（85=8.5 折） |
+| minAmount | Integer | 最低消费门槛（分） |
+| totalCount | Integer | 发行总量 |
+| remainCount | Integer | 剩余数量 |
+| startTime | String | 开始时间 |
+| endTime | String | 结束时间 |
+| perUserLimit | Integer | 每人限领数量 |
+| status | Integer | 0=未开始，1=进行中，2=已结束 |
+
+#### UserCoupon
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 用户券 ID |
+| couponId | Long | 券 ID |
+| couponName | String | 券名称 |
+| discountType | Integer | 券类型 |
+| discountValue | Integer | 优惠值 |
+| minAmount | Integer | 最低门槛（分） |
+| status | Integer | 0=未使用，1=已使用，2=已过期 |
+| endTime | String | 有效期截止 |
+| claimTime | String | 领取时间 |
+
+---
+
+## 17. WebSocket 通信
 
 **端点**：`ws://localhost:8080/chat/{userId}?token=<jwt_token>`  
 **协议**：JSR 356 原生 WebSocket（后端 `@OnOpen` / `@OnMessage` / `@OnClose`）
 
-### 16.1 连接
+### 17.1 连接
 
 ```typescript
 const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 ```
 
-### 16.2 发送消息（JSON 格式）
+### 17.2 发送消息（JSON 格式）
 
 ```json
 {
@@ -1458,7 +1674,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | productId | Long | 关联商品 ID（可选） |
 | timestamp | Long | 客户端时间戳（毫秒） |
 
-### 16.3 接收消息
+### 17.3 接收消息
 
 ```json
 {
@@ -1473,7 +1689,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 }
 ```
 
-### 16.4 连接生命周期
+### 17.4 连接生命周期
 
 | 事件 | `@OnOpen` | 校验 JWT Token，记录 `online:{userId}` 到 Redis |
 |------|-----------|------|
@@ -1484,7 +1700,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 ---
 
-## 17. 错误码说明
+## 18. 错误码说明
 
 | 错误码 | 含义 |
 |--------|------|
@@ -1507,10 +1723,16 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 5002 | 卡号无效（Luhn 校验不通过） |
 | 6001 | 商家未审核通过 |
 | 6002 | 已提交过入驻申请 |
+| 7001 | 秒杀券不存在 |
+| 7002 | 秒杀券已被抢光 |
+| 7003 | 已领取过该秒杀券 |
+| 7004 | 秒杀券活动未开始或已结束 |
+| 7005 | 不满足最低消费门槛 |
+| 7006 | 优惠券已使用或已过期 |
 
 ---
 
-## 18. 接口权限总览
+## 19. 接口权限总览
 
 | 模块 | 路径前缀 | 游客 | 注册用户 | 商家 | 管理员 |
 |------|----------|------|----------|------|--------|
@@ -1528,11 +1750,12 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 文件上传 | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | 即时通讯 | `/api/chat` | ❌ | ✅ | ✅ | — |
 | 商品搜索 | `/api/search` | ✅ | ✅ | ✅ | ✅ |
+| 秒杀券 | `/api/seckill` | ✅ 查看 | ✅ 抢领/我的券/计算 | — | ✅ 创建/编辑/删除 |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
 
 > ✅ = 可访问，❌ = 不可访问，← = 同左
 
 ---
 
-> **文档更新日期**：2024-10-22  
-> **对应版本**：v1.0.0
+> **文档更新日期**：2026-11-02  
+> **对应版本**：v0.1.0

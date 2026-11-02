@@ -45,6 +45,13 @@ Closes #42
 - 创建功能分支命名：`feature/<模块>-<简短描述>`
 - 紧急修复分支命名：`hotfix/<模块>-<简短描述>`
 
+### 提交工作流（每次提交必须遵循以下顺序）
+
+1. **创建新分支**：`git checkout -b feature/<模块>-<简短描述>`
+2. **提交**：`git add` + `git commit`（遵循 Conventional Commits 格式，提交前更新 `CHANGELOG.md`）
+3. **合并到本地 dev**：`git checkout dev` && `git merge <分支名>`
+4. **上传**：`git push origin dev`
+
 ---
 
 ## 3. 代码风格
@@ -69,6 +76,10 @@ Closes #42
 ## 5. 参考文档
 
 - Git 提交规范：`docs/git-commit-convention.md`
+- 产品需求：`docs/prd.md`、`docs/requirements-analysis.md`
 - 数据库设计：`docs/db-design.md`
 - 服务端设计：`docs/server-design.md`
 - 客户端设计：`docs/client-design.md`
+- 接口文档：`docs/api-doc.md`
+- 详细设计：`docs/detailed-design.md`
+- 测试规范：`docs/test-specification.md`

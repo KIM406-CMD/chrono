@@ -56,6 +56,8 @@ title 浏览商品 → 加入购物车 → 下单时序图
 
 actor 用户 as User
 participant "Vue前端" as Vue
+participant "SearchController" as SC
+participant "SearchService" as SS
 participant "ProductController" as PC
 participant "ProductService" as PS
 participant "CartController" as CC
@@ -68,8 +70,12 @@ database "Elasticsearch" as ES
 
 == 浏览/搜索商品 ==
 User -> Vue : 浏览首页/搜索关键词
-Vue -> ES : POST /product_index/_search { keyword, filters, sort }
-ES --> Vue : 商品列表 + 聚合筛选
+Vue -> SC : GET /api/search { keyword, categoryId, filters, sort }
+SC -> SS : search(params)
+SS -> ES : _search (multi_match / filter / sort)
+ES --> SS : 命中商品
+SS --> SC : SearchResult
+SC --> Vue : { code:200, data:{ list, total } }
 Vue -> Vue : 渲染商品卡片
 
 == 商品详情 ==
@@ -292,5 +298,46 @@ end
 
 User -> OC : GET /api/refund/detail/{id}
 OC --> User : 退款状态 + 进度
+
+@enduml
+
+
+@startuml 秒杀券抢领与使用
+
+title 秒杀券抢领与下单优惠时序图
+
+actor 用户 as User
+actor 管理员 as Admin
+participant "Vue前端" as Vue
+participant "SeckillController" as SC
+participant "SeckillService" as SS
+database "MySQL" as DB
+
+== 管理员创建秒杀券 ==
+Admin -> Vue : 填写券信息(满减/折扣/门槛/数量/时间)
+Vue -> SC : POST /api/seckill/create
+SC -> SS : createCoupon(dto)
+SS -> DB : INSERT INTO seckill_coupon
+SS --> SC : OK
+SC --> Vue : { code:200, data:{ id } }
+
+== 用户抢领秒杀券 ==
+User -> Vue : 领券中心 → 点击"立即领取"
+Vue -> SC : POST /api/seckill/claim/{couponId}
+SC -> SS : claim(userId, couponId)
+SS -> DB : 校验状态/剩余数量/每人限领
+SS -> DB : UPDATE seckill_coupon SET remain_count=remain_count-1
+SS -> DB : INSERT INTO user_coupon
+SS --> SC : ClaimResult
+SC --> Vue : { code:200, data:{ userCouponId, ... } }
+
+== 下单使用优惠券 ==
+User -> Vue : 结算页选择优惠券
+Vue -> SC : POST /api/seckill/calculate { userCouponId, totalAmount }
+SC -> SS : calculate(userId, dto)
+SS -> DB : 校验券状态 + 最低门槛
+SS -> SS : 计算优惠金额
+SS --> SC : CalculateResult
+SC --> Vue : { originalAmount, discountAmount, finalAmount }
 
 @enduml
