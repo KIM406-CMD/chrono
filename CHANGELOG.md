@@ -55,6 +55,7 @@
 - 新增 VO/DTO：SeckillCouponVO、SeckillClaimVO、MyCouponVO、SeckillCalculateVO；SeckillCouponDTO、SeckillCalculateDTO（时间格式 yyyy-MM-dd HH:mm:ss）
 - SeckillErrorCode 14 个错误码（券不存在/已抢光/已领取/未开始或已结束/不满足门槛/已过期或已使用等）
 - 秒杀券单元测试 25 个用例，全模块单测 68/68 通过；E2E 16 项检查全部通过
+- 结算页优惠券抵扣：加载可用优惠券、选券后调 `/api/seckill/calculate` 重算优惠、下单请求体新增 `userCouponId` 字段、侧边栏展示优惠与折后应付
 
 ### Changed
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
@@ -77,6 +78,7 @@
 - application.yaml：springdoc 改为全局包扫描 com.ncist.controller（移除 group-configs 分组配置）
 - 前端开发配置：vite.config.ts 新增 /api 代理到后端 8080，关闭 Mock 切换到真实后端联调
 - hmi-design.md：补全商家后台（订单/退款/统计/入驻）、管理员后台（7 页）、领券中心、账户设置、帮助中心及订单详情页
+- api-doc.md：6.2 创建订单参数表新增 `userCouponId`（可选），与前端契约对齐
 
 ### Fixed
 - 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
