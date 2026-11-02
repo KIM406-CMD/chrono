@@ -52,7 +52,7 @@ package "chrono-bbs-server (父项目)" {
     [CategoryController\n(分类)] as Category
     [AddressController\n(收货地址)] as Addr
     [SearchController\n(搜索)] as Search
-    [SeckillController\n(秒杀券-待实现)] as Seckill
+    [SeckillController\n(秒杀券)] as Seckill
 
     ' 横切面
     [JwtInterceptor\n(JWT鉴权拦截器)] as Jwt
@@ -73,7 +73,7 @@ package "chrono-bbs-server (父项目)" {
     interface "RefundService\n(退款服务接口)" as RS
     interface "ChatService\n(聊天服务接口)" as ChS
     interface "SearchService\n(搜索服务接口)" as SS
-    interface "SeckillService\n(秒杀券服务接口-待实现)" as SeckS
+    interface "SeckillService\n(秒杀券服务接口)" as SeckS
 
     [UserServiceImpl] as USI
     [ProductServiceImpl] as PSI
