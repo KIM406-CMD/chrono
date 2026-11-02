@@ -42,6 +42,19 @@
 - 商品管理：新增/编辑弹窗、上架/下架切换与删除
 - 搜索模块前端接入：搜索建议（自动补全）、热搜榜、搜索历史（含清空）
 - CLAUDE.md：新增 Claude Code 项目指引
+- 分类管理 2 个接口：GET /api/category/tree（全量分类树，Redis 缓存 `category:tree` 30min，缓存故障降级查库）、GET /api/category/children（按父分类查子分类）
+- 商品管理 6 个接口：商品列表（分页+分类筛选，仅展示上架 status=1，批量 MIN(price) 组装最低价）、商品详情（含 SKU 列表/图片/店铺名）、商家发布商品（需已审核商户，默认下架）、修改商品（属主校验）、上架/下架、删除（FK 引用保护，被购物车等引用时返回 409）
+- `@Public` 注解：公开接口免登录机制，JwtInterceptor 扫描 HandlerMethod 注解放行，替代通配白名单
+- CategoryMapper（3 方法）、ProductMapper（8 方法）、ProductSkuMapper（4 方法）、MerchantMapper（2 方法），全注解 SQL
+- 新增 VO/DTO：CategoryTreeVO（递归 children）、CategoryVO、ProductVO、ProductDetailVO、ProductSkuVO；ProductCreateDTO、ProductSkuDTO、ProductStatusDTO
+- 新增错误码：CategoryErrorCode（CATEGORY_NOT_FOUND）、ProductErrorCode（9 个：NOT_FOUND/NOT_MERCHANT/MERCHANT_NOT_APPROVED/NO_PERMISSION_OPERATE/SKU 校验三项/STATUS_ILLEGAL/PRODUCT_REFERENCED）
+- 分类/商品单元测试 18 个用例（4+14），全模块单测 43/43 通过
+- 秒杀券管理 8 个接口：券列表/详情（公开）、抢领（Redis DECR 防超卖 + INCR 领取计数防超领 + Redis 故障降级数据库原子扣减 + MySQL 失败补偿回滚）、我的优惠券（联查分页）、创建/编辑/删除（商家或管理员，编辑自动同步 remain_count=±增量，仅未开始可删）、下单优惠计算（满减券/折扣券，校验未使用、未过期、最低消费门槛）
+- SeckillCouponMapper（10 方法）、UserCouponMapper（6 方法），含原子扣减库存 `UPDATE ... WHERE remain_count > 0` 与状态流转 SQL
+- 秒杀券状态定时器：每 30 秒刷新 未开始→进行中→已结束，未使用的用户券随券结束自动过期（@EnableScheduling）
+- 新增 VO/DTO：SeckillCouponVO、SeckillClaimVO、MyCouponVO、SeckillCalculateVO；SeckillCouponDTO、SeckillCalculateDTO（时间格式 yyyy-MM-dd HH:mm:ss）
+- SeckillErrorCode 14 个错误码（券不存在/已抢光/已领取/未开始或已结束/不满足门槛/已过期或已使用等）
+- 秒杀券单元测试 25 个用例，全模块单测 68/68 通过；E2E 16 项检查全部通过
 
 ### Changed
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
@@ -59,6 +72,8 @@
 - 移除「进店逛逛」链接（后端无店铺主页接口）
 - 移除购物车 clearCart 接口（后端无清空接口）
 - 文档同步：client-design.md（目录结构/搜索走后端/路由总览）、api-doc.md（补秒杀券接口）、AGENTS.md（补参考文档与提交工作流）、UML 图（补秒杀券模块、修组件图/用例图错误、搜索时序走后端）
+- 接口文档依赖重构：knife4j-openapi3-jakarta-spring-boot-starter 替换为 springdoc-openapi-starter-webmvc-ui 2.8.9（官方实现，适配 Boot 3.4）+ knife4j-openapi3-ui 4.5.0（纯静态 doc.html 界面）
+- application.yaml：springdoc 改为全局包扫描 com.ncist.controller（移除 group-configs 分组配置）
 
 ### Fixed
 - 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
@@ -74,6 +89,8 @@
 - 修复创建订单缺失防重复提交 token
 - 修复清空购物车调用不存在的接口（改循环删除）
 - 修复商品详情库存 fallback 用销量的语义错误
+- 修复 Knife4j 文档页（doc.html）接口列表为空的问题：knife4j 4.5.0 传递的 springdoc 2.2.0 与 Spring Boot 3.4.5 二进制不兼容（`ControllerAdviceBean(Object)` 构造器被 Spring 6.2 移除，/v3/api-docs 抛 NoSuchMethodError），升级 springdoc 2.8.9 后 17 个接口全部可见
+- 修复 data.sql 管理员初始数据两处错误：role=1 应为 3（管理员），原 BCrypt 哈希与注释密码 admin123 不匹配导致 admin 无法登录，重新生成正确哈希
 
 ---
 

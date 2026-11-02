@@ -15,11 +15,7 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     enabled: true
-  group-configs:
-    - group: default
-      display-name: default
-      paths-to-match: /**
-      packages-to-scan: com.ncist.controller
+  packages-to-scan: com.ncist.controller
 
 knife4j:
   enable: true
