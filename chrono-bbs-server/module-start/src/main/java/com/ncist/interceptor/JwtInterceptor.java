@@ -1,5 +1,6 @@
 package com.ncist.interceptor;
 
+import com.ncist.common.annotation.Public;
 import com.ncist.common.context.UserContext;
 import com.ncist.common.enums.AuthErrorCode;
 import com.ncist.common.exception.BusinessException;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
@@ -27,6 +29,13 @@ public class JwtInterceptor implements HandlerInterceptor {
         // 忽略 OPTIONS 请求
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
+        }
+        // 标记 @Public 注解的接口直接放行（如分类树、商品浏览等游客可访问接口）
+        if (handler instanceof HandlerMethod handlerMethod) {
+            if (handlerMethod.hasMethodAnnotation(Public.class)
+                    || handlerMethod.getBeanType().isAnnotationPresent(Public.class)) {
+                return true;
+            }
         }
         // 从请求头中提取 JWT
         String token = extractToken(request);
