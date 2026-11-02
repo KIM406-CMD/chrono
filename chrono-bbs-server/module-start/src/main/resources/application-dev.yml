@@ -11,3 +11,10 @@ spring:
     elasticsearch:
       client:
         uris: http://localhost:9200
+
+aliyun:
+  oss:
+    endpoint: https://oss-cn-beijing.aliyuncs.com
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
+    bucket-name: chrono-bbs
