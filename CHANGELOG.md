@@ -53,8 +53,15 @@
 - 新增 VO/DTO：SeckillCouponVO、SeckillClaimVO、MyCouponVO、SeckillCalculateVO；SeckillCouponDTO、SeckillCalculateDTO（时间格式 yyyy-MM-dd HH:mm:ss）
 - SeckillErrorCode 14 个错误码（券不存在/已抢光/已领取/未开始或已结束/不满足门槛/已过期或已使用等）
 - 秒杀券单元测试 25 个用例，全模块单测 68/68 通过；E2E 16 项检查全部通过
+- 购物车 7 个接口：列表（联查商品/SKU/商户，首图提取，同时提供文档命名 specText/price/stock 与前端命名 skuSpecText/skuPrice/skuStock）、加入（同 SKU 累加数量，校验上架状态与库存）、修改数量（库存校验）、选中/取消选中（兼容文档单个 cartItemId+整型与前端批量 cartItemIds+布尔，缺省视为全部）、全选、删除、清空（前端扩展接口）
+- 收货地址 6 个接口：列表（默认地址在前）、详情、新增（上限 20 条，首个地址自动设默认）、修改（设默认时自动清除原默认）、设为默认、删除；全部带属主校验
+- CartItemMapper（9 方法）、AddressMapper（9 方法，动态 SET 更新）、ProductSkuMapper 新增 selectById
+- 新增 VO/DTO：CartItemVO、AddressVO；CartAddDTO、CartUpdateDTO、CartSelectDTO（兼容布尔/整型 selected）、SelectAllDTO、AddressDTO
+- 新增错误码：CartErrorCode（6 个：SKU 不存在/商品下架/库存不足/项不存在/越权/selected 非法）、AddressErrorCode（3 个：不存在/越权/超上限）
+- 购物车/地址单元测试 30 个用例（17+13），全模块单测 98/98 通过；E2E 38 项检查全部通过
 
 ### Changed
+- 接口文档（api-doc.md）与购物车/地址实际实现对齐：购物车列表响应补充前端命名兼容字段（skuSpecText/skuPrice/skuStock）、选中接口补充批量 cartItemIds+布尔与缺省视为全部的兼容说明、新增 5.7 清空购物车（前端扩展）、地址模块补充上限 20 条/首地址自动默认/设默认清除原默认/默认地址排序等行为说明；第 17 章错误码说明替换为按模块 ErrorCode 枚举整理的真实 HTTP 语义错误码
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
 - AGENTS.md：新增"提交前必须更新 CHANGELOG.md"规则
 - Mock 层全面增强：address、admin、cart、category、chat、comment、merchant、order、payment、product、refund、upload、user 模块数据更新
