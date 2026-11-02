@@ -72,6 +72,7 @@
 - 移除「进店逛逛」链接（后端无店铺主页接口）
 - 移除购物车 clearCart 接口（后端无清空接口）
 - 文档同步：client-design.md（目录结构/搜索走后端/路由总览）、api-doc.md（补秒杀券接口）、AGENTS.md（补参考文档与提交工作流）、UML 图（补秒杀券模块、修组件图/用例图错误、搜索时序走后端）
+- README.md：核心功能模块补秒杀券、文档索引补 hmi-design.md、技术栈更新（ES 8.10.x、springdoc+knife4j-ui）
 - 接口文档依赖重构：knife4j-openapi3-jakarta-spring-boot-starter 替换为 springdoc-openapi-starter-webmvc-ui 2.8.9（官方实现，适配 Boot 3.4）+ knife4j-openapi3-ui 4.5.0（纯静态 doc.html 界面）
 - application.yaml：springdoc 改为全局包扫描 com.ncist.controller（移除 group-configs 分组配置）
 

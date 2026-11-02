@@ -53,14 +53,14 @@
 | **ORM** | MyBatis | 3.0.4 |
 | **数据库** | MySQL | 8.0 |
 | **缓存** | Redis | 7.x |
-| **搜索引擎** | Elasticsearch | 7.17.x |
+| **搜索引擎** | Elasticsearch | 8.10.x |
 | **前端框架** | Vue 3 + Vite | Composition API |
 | **UI 组件库** | Element Plus | Vue 3 官方推荐 |
 | **状态管理** | Pinia | Vue 3 官方推荐 |
 | **构建工具** | Vite | 开发热更新 + Rollup 打包 |
 | **认证鉴权** | JWT + Redis + Spring AOP | RBAC 权限控制 |
 | **即时通讯** | WebSocket (JSR 356) | 用户与商家实时聊天 |
-| **接口文档** | Knife4j (OpenAPI 3.0) | 自动生成 API 文档 |
+| **接口文档** | springdoc-openapi + knife4j-ui | 自动生成 API 文档 |
 | **容器化** | Docker + Docker Compose | 中间件一键编排 |
 | **部署** | Nginx | 前后端分离 + 反向代理 |
 
@@ -90,6 +90,7 @@ chrono-bbs/
 │   ├── detailed-design.md            # 详细设计（含流程图）
 │   ├── api-doc.md                    # API 接口文档
 │   ├── test-specification.md         # 测试规范
+│   ├── hmi-design.md                 # 人机界面设计
 │   └── git-commit-convention.md      # Git 提交规范
 │
 ├── uml/                              # 📐 UML 图目录
@@ -186,6 +187,7 @@ npm run dev
 | [detailed-design.md](./docs/detailed-design.md) | 详细设计 — Mermaid 流程图 / 时序图 / 部署架构 |
 | [api-doc.md](./docs/api-doc.md) | API 接口文档 — 接口列表与请求响应示例 |
 | [test-specification.md](./docs/test-specification.md) | 测试规范 — 单元/集成/E2E 测试要求 |
+| [hmi-design.md](./docs/hmi-design.md) | 人机界面设计 — 页面原型与交互 |
 | [git-commit-convention.md](./docs/git-commit-convention.md) | Git 提交规范 — Conventional Commits + 分支模型 |
 | [CHANGELOG.md](./CHANGELOG.md) | 变更日志 — 版本发布记录 |
 | [AGENTS.md](./AGENTS.md) | AI 助手规范 — 编码与提交行为约束 |
@@ -212,6 +214,7 @@ npm run dev
 | 🛒 购物车 | 登录态购物车（数据库存储）、数量修改、库存校验 |
 | 📦 订单模块 | 下单（防重 Token + 分布式锁）、订单状态流转 |
 | 💳 支付模块 | 模拟支付（Luhn 算法卡号校验 + 二维码支付） |
+| 🎟 秒杀券 | 管理员创建/编辑/删除券，用户抢领（Redis 防超卖）、我的券、下单优惠计算 |
 | 🔄 退款/退货 | 申请 → 审核 → 退货寄回 → 退款 → 恢复库存 |
 | 🏬 商家后台 | 入驻审核、商品/库存管理、发货、退款审核、销售统计 |
 | 🛡 管理员后台 | 用户管理、商家审核、分类管理、全局报表（6 类） |
