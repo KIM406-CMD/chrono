@@ -40,7 +40,10 @@ chrono-bbs-client/
 │   ├── admin.ts                     # 管理员 Mock
 │   ├── refund.ts                    # 退款 Mock
 │   ├── chat.ts                      # 聊天 Mock
-│   └── upload.ts                    # 上传 Mock
+│   ├── upload.ts                    # 上传 Mock
+│   ├── search.ts                    # 搜索 Mock
+│   ├── comment.ts                   # 评论 Mock
+│   └── seckill.ts                   # 秒杀券 Mock
 ├── public/
 │   └── favicon.ico
 └── src/
@@ -57,7 +60,11 @@ chrono-bbs-client/
     │   ├── merchant.ts                  # 商家接口
     │   ├── admin.ts                     # 管理员接口
     │   ├── refund.ts                    # 退款接口
-    │   └── chat.ts                      # 聊天接口
+    │   ├── chat.ts                      # 聊天接口
+    │   ├── search.ts                    # 搜索接口
+    │   ├── comment.ts                   # 评论接口
+    │   ├── seckill.ts                   # 秒杀券接口
+    │   └── upload.ts                    # 上传接口
     ├── router/                          # ===== 路由层 =====
     │   └── index.ts                     # 路由配置 + 守卫 + 角色元信息
     ├── stores/                          # ===== 状态管理层 =====
@@ -70,6 +77,8 @@ chrono-bbs-client/
     │   │   └── SearchResultView.vue     # 搜索结果
     │   ├── cart/                        # 购物车
     │   │   └── CartView.vue
+    │   ├── coupon/                      # 优惠券
+    │   │   └── CouponCenterView.vue     # 领券中心
     │   ├── order/                       # 订单模块
     │   │   ├── CheckoutView.vue         # 结算/提交订单
     │   │   ├── OrderListView.vue        # 订单列表
@@ -80,6 +89,7 @@ chrono-bbs-client/
     │   │   ├── RegisterView.vue         # 注册
     │   │   ├── ForgotPasswordView.vue   # 忘记密码
     │   │   ├── ProfileView.vue          # 个人信息
+    │   │   ├── SettingsView.vue         # 账户设置
     │   │   └── AddressView.vue          # 收货地址管理
     │   ├── merchant/                    # 商家后台
     │   │   ├── MerchantApplyView.vue    # 入驻申请
@@ -93,7 +103,8 @@ chrono-bbs-client/
     │   │   ├── CategoryManageView.vue   # 分类管理
     │   │   ├── ProductAllView.vue       # 全平台商品管理
     │   │   ├── OrderAllView.vue         # 全平台订单管理
-    │   │   └── SalesReportView.vue      # 全局销售报表
+    │   │   ├── SalesReportView.vue      # 全局销售报表
+    │   │   └── CouponManageView.vue     # 秒杀券管理
     │   ├── chat/                        # 即时通讯
     │   │   └── ChatView.vue
     │   ├── common/                      # 通用页面
@@ -105,7 +116,8 @@ chrono-bbs-client/
     │       ├── MerchantLayout.vue       # 商家后台布局（侧边栏 + 内容区）
     │       └── AdminLayout.vue          # 管理员后台布局（侧边栏 + 内容区）
     ├── utils/                           # ===== 工具函数 =====
-    │   └── token.ts                     # Token 存取（localStorage）
+    │   ├── token.ts                     # Token 存取（localStorage）
+    │   └── settings.ts                  # 用户偏好设置（localStorage）
     ├── styles/                          # ===== 全局样式 =====
     │   ├── variables.css                # CSS 变量系统（设计 Token）
     │   └── global.css                   # 全局基础样式
@@ -115,7 +127,9 @@ chrono-bbs-client/
         ├── order.ts                     # Order、OrderItem、OrderStatus
         ├── cart.ts                      # CartItem、AddCartRequest
         ├── address.ts                   # Address
-        └── common.ts                    # Result<T>、PageResult<T>、Role、ErrorCode
+        ├── comment.ts                   # CommentItem、AddCommentRequest 等
+        ├── coupon.ts                    # 优惠券类型
+        └── common.ts                    # Result<T>、PageResult<T>、Role、OrderStatus
 ```
 
 ---
@@ -177,7 +191,6 @@ chrono-bbs-client/
 │  分类管理   │                                │
 │  商品管理   │                                │
 │  订单管理   │                                │
-│  评论管理   │                                │
 │  销售报表   │                                │
 └────────────┴────────────────────────────────┘
 ```
@@ -201,7 +214,7 @@ chrono-bbs-client/
 {
   path: '/merchant',
   component: MerchantLayout,
-  meta: { layout: 'merchant', roles: ['merchant'] },
+  meta: { layout: 'merchant', roles: ['MERCHANT'] },
   children: [
     { path: 'products', component: ProductManageView },
     // ...
@@ -210,7 +223,7 @@ chrono-bbs-client/
 {
   path: '/admin',
   component: AdminLayout,
-  meta: { layout: 'admin', roles: ['admin'] },
+  meta: { layout: 'admin', roles: ['ADMIN'] },
   children: [
     { path: 'users', component: UserManageView },
     // ...
@@ -588,55 +601,34 @@ export function useWebSocket(userId: number) {
 
 ---
 
-## 八、Elasticsearch 直连搜索
+## 八、商品搜索（后端接口）
 
-> **实现状态**：当前搜索功能通过 Mock 接口模拟（`mock/product.ts` 中的 `/product/search`）。后端 ES 服务就绪后，切换至下方直连 ES 方案。
+> **实现状态**：搜索已接入后端 `/api/search` 接口（后端内部使用 Elasticsearch，前端不直连 ES）。前端封装见 `api/search.ts`。
 
-### 8.1 搜索流程
+### 8.1 接口清单
 
-前端直接调用 ES REST API，需要在 Vite 开发环境配置代理，生产环境由 Nginx 转发。
+| 接口 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 全文检索 | GET | `/api/search` | 关键词 + 分类/品牌/价格区间筛选 + 排序 + 分页 |
+| 搜索建议 | GET | `/api/search/suggest` | 关键词自动补全 |
+| 搜索历史 | GET | `/api/search/history` | 登录用户最近 20 条 |
+| 清除搜索历史 | DELETE | `/api/search/history` | 清空搜索历史 |
+| 热搜榜 | GET | `/api/search/hot` | 近 7 天搜索频率 |
 
-### 8.2 Vite 代理配置 `vite.config.ts`
-
-```typescript
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import { viteMockServe } from 'vite-plugin-mock'
-
-export default defineConfig({
-  plugins: [
-    vue(),
-    viteMockServe({ mockPath: 'mock', enable: true }),
-  ],
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': {                         // 后端 API
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/es': {                          // Elasticsearch
-        target: 'http://localhost:9200',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/es/, ''),
-      },
-    },
-  },
-})
-```
-
-### 8.3 搜索 API 封装 `api/search.ts`
+### 8.2 搜索参数 `api/search.ts`
 
 ```typescript
-import axios from 'axios'
+import service from '@/api'
 
-const esClient = axios.create({
-  baseURL: '/es',                       // Vite proxy → ES
-  timeout: 10000,
-})
+interface SearchResponse<T> {
+  code: number
+  message: string
+  data: T
+  timestamp: number
+}
 
-interface SearchParams {
-  keyword?: string
+export interface SearchParams {
+  keyword: string
   categoryId?: number
   brand?: string
   minPrice?: number
@@ -646,64 +638,23 @@ interface SearchParams {
   size?: number
 }
 
-// 商品全文搜索
-export function searchProducts(params: SearchParams) {
-  const must: any[] = []
+export const searchProducts = (params: SearchParams) =>
+  service.get<any, SearchResponse<SearchResult>>('/search', { params })
 
-  if (params.keyword) {
-    must.push({
-      multi_match: {
-        query: params.keyword,
-        fields: ['name^3', 'description', 'brand'],
-      },
-    })
-  }
+export const getSearchSuggest = (keyword: string) =>
+  service.get<any, SearchResponse<string[]>>('/search/suggest', { params: { keyword } })
 
-  if (params.categoryId) {
-    must.push({ term: { category_id: params.categoryId } })
-  }
+export const getSearchHistory = () =>
+  service.get<any, SearchResponse<string[]>>('/search/history')
 
-  if (params.brand) {
-    must.push({ term: { brand: params.brand } })
-  }
+export const clearSearchHistory = () =>
+  service.delete<any, SearchResponse<null>>('/search/history')
 
-  const filter: any[] = []
-  if (params.minPrice || params.maxPrice) {
-    filter.push({
-      range: { price: { gte: params.minPrice || 0, lte: params.maxPrice || 99999999 } },
-    })
-  }
-
-  let sortArr: any[] = []
-  switch (params.sort) {
-    case 'sales_desc':   sortArr = [{ sales: 'desc' }]; break
-    case 'price_asc':    sortArr = [{ price: 'asc' }]; break
-    case 'price_desc':   sortArr = [{ price: 'desc' }]; break
-    case 'time_desc':    sortArr = [{ created_at: 'desc' }]; break
-  }
-
-  const from = ((params.page || 1) - 1) * (params.size || 20)
-
-  return esClient.post('/product_index/_search', {
-    query: { bool: { must, filter } },
-    sort: sortArr,
-    from,
-    size: params.size || 20,
-  })
-}
-
-// 搜索建议/自动补全
-export function searchSuggest(keyword: string) {
-  return esClient.post('/product_index/_search', {
-    suggest: {
-      keyword_suggest: {
-        prefix: keyword,
-        completion: { field: 'suggest' },
-      },
-    },
-  })
-}
+export const getHotSearch = () =>
+  service.get<any, SearchResponse<string[]>>('/search/hot')
 ```
+
+> 注：旧版「前端直连 ES（`/es` proxy）」方案已废弃，改由后端 `SearchController` 统一封装搜索逻辑。
 
 ---
 
@@ -873,17 +824,11 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # API 代理到后端 Spring Boot
+    # API 代理到后端 Spring Boot（含搜索 /api/search）
     location /api/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    # Elasticsearch 代理
-    location /es/ {
-        proxy_pass http://127.0.0.1:9200/;
-        proxy_set_header Host $host;
     }
 
     # WebSocket 代理
@@ -905,7 +850,8 @@ server {
 |------|------|------|------|
 | `/` | 首页/商品列表 | 游客/用户/商家/管理员 | 分类浏览、搜索入口 |
 | `/product/:id` | 商品详情 | 游客/用户/商家/管理员 | 含 SKU 选择、评论列表 |
-| `/search` | 搜索结果 | 游客/用户/商家/管理员 | ES 全文检索结果 |
+| `/search` | 搜索结果 | 游客/用户/商家/管理员 | 关键词全文检索结果 |
+| `/coupons` | 领券中心 | 用户/商家/管理员 | 秒杀券领取 |
 | `/login` | 登录 | 游客 | 用户名密码 + 验证码 |
 | `/register` | 注册 | 游客 | 选择角色 |
 | `/cart` | 购物车 | 用户/商家 | 需登录 |
@@ -914,8 +860,10 @@ server {
 | `/orders` | 我的订单 | 用户/商家 | 订单列表 |
 | `/order/:id` | 订单详情 | 用户/商家 | 含退款/退货入口 |
 | `/profile` | 个人信息 | 用户/商家/管理员 | 修改密码等 |
+| `/settings` | 账户设置 | 用户/商家/管理员 | 偏好设置 + 头像上传 |
 | `/address` | 收货地址 | 用户/商家 | 增删改查 |
 | `/chat/:id?` | 聊天 | 用户/商家 | WebSocket 即时通讯 |
+| `/help/:type` | 帮助中心 | 游客/用户 | 静态帮助页 |
 | `/merchant/apply` | 商家入驻 | 用户 | 提交入驻申请 |
 | `/merchant/products` | 商品管理 | 商家 | 增删改查、上下架 |
 | `/merchant/orders` | 订单管理 | 商家 | 发货操作 |
@@ -927,6 +875,7 @@ server {
 | `/admin/products` | 商品管理 | 管理员 | 全局商品管理 |
 | `/admin/orders` | 订单管理 | 管理员 | 全局订单管理 |
 | `/admin/report` | 销售报表 | 管理员 | 全局销售统计 |
+| `/admin/coupons` | 秒杀券管理 | 管理员 | 券的增删改查 |
 
 ---
 
@@ -941,8 +890,11 @@ server {
 | 获取用户信息 | GET | `/api/user/info` | — |
 | 商品列表 | GET | `/api/product/list` | `?categoryId=&page=&size=` |
 | 商品详情 | GET | `/api/product/{id}` | — |
-| 搜索 | POST | `/es/product_index/_search` | ES DSL JSON |
-| 搜索建议 | POST | `/es/product_index/_search` | suggest DSL |
+| 搜索 | GET | `/api/search` | `?keyword=&categoryId=&brand=&minPrice=&maxPrice=&sort=&page=&size=` |
+| 搜索建议 | GET | `/api/search/suggest` | `?keyword=` |
+| 搜索历史 | GET | `/api/search/history` | — |
+| 清除搜索历史 | DELETE | `/api/search/history` | — |
+| 热搜榜 | GET | `/api/search/hot` | — |
 | 获取购物车 | GET | `/api/cart/list` | — |
 | 加入购物车 | POST | `/api/cart/add` | `{ skuId, quantity }` |
 | 更新购物车数量 | PUT | `/api/cart/update` | `{ cartItemId, quantity }` |

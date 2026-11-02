@@ -86,20 +86,22 @@ const handleAddToCart = async () => {
   }
 }
 
-// 立即购买
+// 立即购买：后端创建订单基于 cartItemIds，故先加入购物车再进结算页
 const handleBuyNow = async () => {
   if (!selectedSku.value) {
     ElMessage.warning('请选择商品规格')
     return
   }
-  router.push({
-    path: '/checkout',
-    query: {
+  try {
+    await addToCart({
       productId: productId.value,
       skuId: selectedSku.value.id,
       quantity: quantity.value,
-    },
-  })
+    })
+    router.push('/checkout')
+  } catch (error: any) {
+    ElMessage.error(error.message || '加入购物车失败')
+  }
 }
 
 // 价格格式化（分转元）
@@ -290,7 +292,7 @@ onMounted(() => {
               <button class="qty-btn" @click="increaseQuantity">
                 <Plus />
               </button>
-              <span class="stock-info">库存 {{ selectedSku?.stock || product?.sales || 0 }} 件</span>
+              <span class="stock-info">库存 {{ selectedSku?.stock ?? 0 }} 件</span>
             </div>
           </div>
 
@@ -320,7 +322,6 @@ onMounted(() => {
                 <span class="shop-desc">官方认证店铺</span>
               </div>
             </div>
-            <router-link :to="`/shop/${product?.merchantId}`" class="shop-link">进店逛逛</router-link>
           </div>
 
           <!-- 商品参数 -->
@@ -407,7 +408,7 @@ onMounted(() => {
 
               <div v-for="item in comments" :key="item.id" class="comment-item">
                 <div class="comment-avatar">
-                  <el-avatar :size="40" :src="item.userAvatar">{{ item.username?.charAt(0) }}</el-avatar>
+                  <el-avatar :size="40" :src="item.avatar">{{ item.username?.charAt(0) }}</el-avatar>
                 </div>
                 <div class="comment-body">
                   <div class="comment-header">

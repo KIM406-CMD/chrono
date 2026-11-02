@@ -30,8 +30,3 @@ export const selectCartItems = (data: SelectCartRequest) => {
 export const selectAllCart = (selected: number) => {
   return service.put('/cart/select-all', { selected })
 }
-
-// 清空购物车
-export const clearCart = () => {
-  return service.delete('/cart/clear')
-}

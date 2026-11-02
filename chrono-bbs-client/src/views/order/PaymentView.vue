@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Clock, CircleCheckFilled } from '@element-plus/icons-vue'
 import { getOrderDetail } from '@/api/order'
-import { payByCard } from '@/api/payment'
+import { payByCard, getPaymentQRCode, confirmQRCodePayment } from '@/api/payment'
 import type { Order } from '@/types/order'
 
 const router = useRouter()
@@ -50,6 +50,41 @@ const handlePayCard = async () => {
       expireDate: cardForm.value.expireDate,
       cvv: cardForm.value.cvv,
     })
+    paid.value = true
+    ElMessage.success('支付成功！')
+  } catch {
+    ElMessage.error('支付失败，请重试')
+  } finally {
+    paying.value = false
+  }
+}
+
+const qrLoading = ref(false)
+const qrcodeUrl = ref('')
+
+const selectMethod = (m: 'card' | 'qrcode') => {
+  activeMethod.value = m
+  if (m === 'qrcode' && !qrcodeUrl.value) {
+    loadQRCode()
+  }
+}
+
+const loadQRCode = async () => {
+  qrLoading.value = true
+  try {
+    const res = await getPaymentQRCode(orderId.value)
+    qrcodeUrl.value = res.data.qrcodeUrl
+  } catch {
+    qrcodeUrl.value = ''
+  } finally {
+    qrLoading.value = false
+  }
+}
+
+const handlePayQRCode = async () => {
+  paying.value = true
+  try {
+    await confirmQRCodePayment(orderId.value)
     paid.value = true
     ElMessage.success('支付成功！')
   } catch {
@@ -127,7 +162,7 @@ onMounted(() => {
           <div
             class="method-tab"
             :class="{ active: activeMethod === 'card' }"
-            @click="activeMethod = 'card'"
+            @click="selectMethod('card')"
           >
             <span class="method-icon">💳</span>
             <span>银行卡支付</span>
@@ -135,7 +170,7 @@ onMounted(() => {
           <div
             class="method-tab"
             :class="{ active: activeMethod === 'qrcode' }"
-            @click="activeMethod = 'qrcode'"
+            @click="selectMethod('qrcode')"
           >
             <span class="method-icon">📱</span>
             <span>扫码支付</span>
@@ -184,17 +219,20 @@ onMounted(() => {
 
         <!-- 扫码支付 -->
         <div v-show="activeMethod === 'qrcode'" class="qrcode-section">
-          <div class="qrcode-placeholder">
-            <span class="qr-icon">📱</span>
-            <p>请使用手机扫码支付</p>
-            <p class="qr-hint">（Mock 模式，扫码即支付成功）</p>
+          <div class="qrcode-placeholder" v-loading="qrLoading">
+            <el-image v-if="qrcodeUrl" :src="qrcodeUrl" fit="contain" class="qr-img" />
+            <template v-else>
+              <span class="qr-icon">📱</span>
+              <p>请使用手机扫码支付</p>
+              <p class="qr-hint">（Mock 模式，扫码即支付成功）</p>
+            </template>
           </div>
           <el-button
             type="danger"
             size="large"
             class="pay-btn"
             :loading="paying"
-            @click="handlePayCard"
+            @click="handlePayQRCode"
           >
             模拟扫码支付
           </el-button>
@@ -411,6 +449,11 @@ onMounted(() => {
   font-size: 48px;
   display: block;
   margin-bottom: 12px;
+}
+
+.qr-img {
+  width: 200px;
+  height: 200px;
 }
 
 .qrcode-placeholder p {

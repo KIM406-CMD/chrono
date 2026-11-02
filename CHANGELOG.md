@@ -40,6 +40,8 @@
 - 秒杀优惠券前端：管理员秒杀券管理页面（CouponManageView）与用户领券中心（CouponCenterView），API 层（seckill.ts）与类型定义（coupon.ts）
 - 分类管理：树形展示与新增/编辑/删除，支持子分类与三级层级限制
 - 商品管理：新增/编辑弹窗、上架/下架切换与删除
+- 搜索模块前端接入：搜索建议（自动补全）、热搜榜、搜索历史（含清空）
+- CLAUDE.md：新增 Claude Code 项目指引
 - 分类管理 2 个接口：GET /api/category/tree（全量分类树，Redis 缓存 `category:tree` 30min，缓存故障降级查库）、GET /api/category/children（按父分类查子分类）
 - 商品管理 6 个接口：商品列表（分页+分类筛选，仅展示上架 status=1，批量 MIN(price) 组装最低价）、商品详情（含 SKU 列表/图片/店铺名）、商家发布商品（需已审核商户，默认下架）、修改商品（属主校验）、上架/下架、删除（FK 引用保护，被购物车等引用时返回 409）
 - `@Public` 注解：公开接口免登录机制，JwtInterceptor 扫描 HandlerMethod 注解放行，替代通配白名单
@@ -59,9 +61,10 @@
 - 新增 VO/DTO：CartItemVO、AddressVO；CartAddDTO、CartUpdateDTO、CartSelectDTO（兼容布尔/整型 selected）、SelectAllDTO、AddressDTO
 - 新增错误码：CartErrorCode（6 个：SKU 不存在/商品下架/库存不足/项不存在/越权/selected 非法）、AddressErrorCode（3 个：不存在/越权/超上限）
 - 购物车/地址单元测试 30 个用例（17+13），全模块单测 98/98 通过；E2E 38 项检查全部通过
+- 结算页优惠券抵扣：加载可用优惠券、选券后调 `/api/seckill/calculate` 重算优惠、下单请求体新增 `userCouponId` 字段、侧边栏展示优惠与折后应付
 
 ### Changed
-- 接口文档（api-doc.md）与购物车/地址实际实现对齐：购物车列表响应补充前端命名兼容字段（skuSpecText/skuPrice/skuStock）、选中接口补充批量 cartItemIds+布尔与缺省视为全部的兼容说明、新增 5.7 清空购物车（前端扩展）、地址模块补充上限 20 条/首地址自动默认/设默认清除原默认/默认地址排序等行为说明；第 17 章错误码说明替换为按模块 ErrorCode 枚举整理的真实 HTTP 语义错误码
+- 接口文档（api-doc.md）与购物车/地址实际实现对齐：购物车列表响应补充前端命名兼容字段（skuSpecText/skuPrice/skuStock）、选中接口补充批量 cartItemIds+布尔与缺省视为全部的兼容说明、新增 5.7 清空购物车（前端扩展）、地址模块补充上限 20 条/首地址自动默认/设默认清除原默认/默认地址排序等行为说明；错误码说明章节（现为第 18 章）替换为按模块 ErrorCode 枚举整理的真实 HTTP 语义错误码
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
 - AGENTS.md：新增"提交前必须更新 CHANGELOG.md"规则
 - Mock 层全面增强：address、admin、cart、category、chat、comment、merchant、order、payment、product、refund、upload、user 模块数据更新
@@ -74,8 +77,15 @@
 - UML 用例图更新
 - 类型定义 common.ts：枚举改为常量对象 + 类型（适配 erasableSyntaxOnly），order/product/user 类型导入改为 import type
 - 清理多处未使用变量与导入
+- 移除「进店逛逛」链接（后端无店铺主页接口）
+- 移除购物车 clearCart 接口（后端无清空接口）
+- 文档同步：client-design.md（目录结构/搜索走后端/路由总览）、api-doc.md（补秒杀券接口）、AGENTS.md（补参考文档与提交工作流）、UML 图（补秒杀券模块、修组件图/用例图错误、搜索时序走后端）
+- README.md：核心功能模块补秒杀券、文档索引补 hmi-design.md、技术栈更新（ES 8.10.x、springdoc+knife4j-ui）
 - 接口文档依赖重构：knife4j-openapi3-jakarta-spring-boot-starter 替换为 springdoc-openapi-starter-webmvc-ui 2.8.9（官方实现，适配 Boot 3.4）+ knife4j-openapi3-ui 4.5.0（纯静态 doc.html 界面）
 - application.yaml：springdoc 改为全局包扫描 com.ncist.controller（移除 group-configs 分组配置）
+- 前端开发配置：vite.config.ts 新增 /api 代理到后端 8080，关闭 Mock 切换到真实后端联调
+- hmi-design.md：补全商家后台（订单/退款/统计/入驻）、管理员后台（7 页）、领券中心、账户设置、帮助中心及订单详情页
+- api-doc.md：6.2 创建订单参数表新增 `userCouponId`（可选），与前端契约对齐
 
 ### Fixed
 - 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
@@ -84,8 +94,16 @@
 - 修复商家审核/退款审核传参错误（approved 布尔值、reason 字段名）
 - 修复商品销量字段 totalSales → sales 导致销量不显示
 - 修复 admin.ts 缺失 MerchantInfo 导入
+- 对齐聊天会话字段与后端 API（merchantId/merchantName/merchantAvatar）
+- 对齐评论星级与头像字段（star/avatar）
+- 修复扫码支付误调卡号支付的问题（改走二维码接口）
+- 修复「立即购买」跳结算页被忽略的问题（先加入购物车）
+- 修复创建订单缺失防重复提交 token
+- 修复清空购物车调用不存在的接口（改循环删除）
+- 修复商品详情库存 fallback 用销量的语义错误
 - 修复 Knife4j 文档页（doc.html）接口列表为空的问题：knife4j 4.5.0 传递的 springdoc 2.2.0 与 Spring Boot 3.4.5 二进制不兼容（`ControllerAdviceBean(Object)` 构造器被 Spring 6.2 移除，/v3/api-docs 抛 NoSuchMethodError），升级 springdoc 2.8.9 后 17 个接口全部可见
 - 修复 data.sql 管理员初始数据两处错误：role=1 应为 3（管理员），原 BCrypt 哈希与注释密码 admin123 不匹配导致 admin 无法登录，重新生成正确哈希
+- 修正 api-doc/UML 秒杀券模块标注：待实现→已实现、权限仅管理员→商家/管理员、错误码 7001-7006 → HTTP 状态码（与后端 SeckillController 实际实现对齐）
 
 ---
 

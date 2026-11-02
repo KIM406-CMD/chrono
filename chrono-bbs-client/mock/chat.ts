@@ -82,5 +82,25 @@ const mockMethods: MockMethod[] = [
       return { code: 200, message: 'success', data: conv, timestamp: Date.now() }
     },
   },
+  // 发送消息（Mock 模拟，后端实际走 WebSocket，见 api-doc 16.2）
+  {
+    url: '/api/chat/message',
+    method: 'post',
+    timeout: 300,
+    response: ({ body }) => {
+      const { conversationId, content, type } = body
+      const msg = {
+        id: messages.length + 1,
+        conversationId,
+        senderId: 100,
+        senderName: '我',
+        content,
+        type: type || 'text',
+        createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      }
+      messages.push(msg)
+      return { code: 200, message: 'success', data: msg, timestamp: Date.now() }
+    },
+  },
 ]
 export default mockMethods

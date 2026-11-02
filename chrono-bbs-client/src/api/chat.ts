@@ -3,11 +3,14 @@ import type { PageResult } from '@/types/common'
 
 export interface Conversation {
   id: number
-  targetId: number
-  targetName: string
-  targetAvatar: string
+  userId: number
+  merchantId: number
+  merchantName: string
+  merchantAvatar: string
+  productId?: number
+  productName?: string
   lastMessage: string
-  lastTime: string
+  lastMessageTime: string
   unreadCount: number
 }
 
@@ -22,7 +25,7 @@ export interface ChatMessage {
 }
 
 export interface SendMessageRequest {
-  targetId: number
+  conversationId: number
   content: string
   type: 'text' | 'image'
 }
@@ -38,6 +41,7 @@ export const getMessages = (conversationId: number, params?: { page?: number; si
   )
 }
 
+// 后端发送消息走 WebSocket（见 api-doc 16.2），此处 HTTP 接口仅用于 Mock 联调
 export const sendMessage = (data: SendMessageRequest) => {
   return service.post<any, { code: number; message: string; data: ChatMessage; timestamp: number }>('/chat/message', data)
 }

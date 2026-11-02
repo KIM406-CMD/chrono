@@ -46,9 +46,11 @@ export interface OrderListItem {
 
 // 创建订单请求
 export interface CreateOrderRequest {
+  token: string
   addressId: number
   cartItemIds: number[]
   remark?: string
+  userCouponId?: number  // 用户优惠券 ID（用户券记录 id），不传则不用券
 }
 
 // 创建订单响应

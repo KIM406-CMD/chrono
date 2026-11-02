@@ -19,7 +19,7 @@ const mockMethods: MockMethod[] = [
         nickname: `用户${(i % 10) + 1}`,
         avatar: '',
         content: `这是第${i + 1}条评论，商品质量很好，物流也很快。`,
-        rating: 5 - (i % 3), // 3-5星
+        star: 5 - (i % 3), // 3-5星
         images: [],
         createdAt: '2025-01-01 10:00:00',
       }))

@@ -32,7 +32,7 @@ const mockMethods: MockMethod[] = [
         data: {
           token: Mock.Random.guid(),
           userInfo: {
-            id: Mock.Random.integer(100, 999),
+            id: 100,
             username,
             nickname: username,
             phone: body.phone || '',
@@ -64,7 +64,7 @@ const mockMethods: MockMethod[] = [
         data: {
           token: Mock.Random.guid(),
           userInfo: {
-            id: Mock.Random.integer(100, 999),
+            id: 100,
             username,
             nickname: username === 'admin' ? '管理员' : username === 'merchant' ? '测试商家' : '测试用户',
             phone: '138****8000',

@@ -3,7 +3,7 @@ export interface CommentItem {
   productId: number
   userId: number
   username: string
-  userAvatar: string
+  avatar: string
   orderItemId: number
   content: string
   star: number
