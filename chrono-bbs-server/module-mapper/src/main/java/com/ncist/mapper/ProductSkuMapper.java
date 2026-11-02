@@ -16,6 +16,11 @@ import java.util.List;
 @Mapper
 public interface ProductSkuMapper {
 
+    // 按主键查询 SKU（加购/库存校验用）
+    @Select("SELECT id, product_id AS productId, spec_ids AS specIds, spec_text AS specText, "
+            + "price, stock, status, created_at AS createdAt FROM product_sku WHERE id = #{id}")
+    ProductSku selectById(Long id);
+
     // 按商品查询启用的 SKU 列表
     @Select("SELECT id, product_id AS productId, spec_ids AS specIds, spec_text AS specText, "
             + "price, stock, status, created_at AS createdAt FROM product_sku "
