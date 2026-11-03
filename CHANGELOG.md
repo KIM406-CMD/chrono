@@ -62,6 +62,13 @@
 - 新增错误码：CartErrorCode（6 个：SKU 不存在/商品下架/库存不足/项不存在/越权/selected 非法）、AddressErrorCode（3 个：不存在/越权/超上限）
 - 购物车/地址单元测试 30 个用例（17+13），全模块单测 98/98 通过；E2E 38 项检查全部通过
 - 结算页优惠券抵扣：加载可用优惠券、选券后调 `/api/seckill/calculate` 重算优惠、下单请求体新增 `userCouponId` 字段、侧边栏展示优惠与折后应付
+- 订单 7 个接口：获取防重复提交 Token（Redis 绑定用户 5 分钟有效、DELETE 影响 1 行保证一次性消费，兼容低版本 Redis 无 GETDEL）、创建订单（校验地址属主/购物车项上架与库存 → `UPDATE WHERE stock>=?` 原子锁库存 → 复用秒杀券 calculate 折扣 → 地址 JSON 快照 + 订单号（时间戳+6 位随机去重）→ 明细价格快照批量写入 → 清理购物车 → 核销 `userCouponId`（状态条件防并发重复核销））、我的订单分页（状态筛选）、详情（联查明细含商品名/首图/SKU 规格）、取消（仅待支付：回补库存+按 `used_order_id` 回退优惠券）、确认收货（仅已发货）、删除（仅已完成/已取消，连带删明细）
+- 支付 3 个接口（模拟支付）：卡号支付（16-19 位数字 + Luhn 校验，卡号脱敏存后 4 位）、获取支付二维码（qrserver 生成，payload 含订单号与金额）、确认二维码支付；均校验订单属主与待支付状态，状态条件更新防并发重复支付
+- OrderMapper（9 方法）、OrderItemMapper（5 方法含批量插入与联查）、PaymentMapper、ProductSkuMapper 新增 deductStock/restoreStock、UserCouponMapper 新增 markUsed/revokeByOrderId、CartItemMapper 新增 selectDetailByIds/deleteByIds
+- 新增 VO/DTO：SubmitTokenVO、CreateOrderVO、OrderListItemVO、OrderDetailVO、OrderItemVO、PayResultVO、PaymentQrVO；CreateOrderDTO（token+addressId+cartItemIds+remark+userCouponId）、CancelOrderDTO、CardPayDTO（JSR-303 校验 MM/YY、CVV）、OrderIdDTO
+- 新增错误码：OrderErrorCode（6 个：不存在/越权/状态非法/Token 无效/购物车项为空/订单号生成失败）、PaymentErrorCode（2 个：不可支付/Luhn 非法）
+- `order` 表新增 `remark` 列（schema.sql 同步，存量库需执行 `ALTER TABLE order ADD COLUMN remark VARCHAR(500)`）
+- 订单/支付单元测试 30 个用例（Order 22 + Payment 8），全模块单测 128 个全部通过；E2E 22 项检查全部通过（下单锁库存/购物车清理/token 一次性/重复支付 409/取消回补库存/状态机守卫/越权 403）
 
 ### Changed
 - 接口文档（api-doc.md）与购物车/地址实际实现对齐：购物车列表响应补充前端命名兼容字段（skuSpecText/skuPrice/skuStock）、选中接口补充批量 cartItemIds+布尔与缺省视为全部的兼容说明、新增 5.7 清空购物车（前端扩展）、地址模块补充上限 20 条/首地址自动默认/设默认清除原默认/默认地址排序等行为说明；错误码说明章节（现为第 18 章）替换为按模块 ErrorCode 枚举整理的真实 HTTP 语义错误码
