@@ -71,6 +71,7 @@
 - 订单/支付单元测试 30 个用例（Order 22 + Payment 8），全模块单测 128 个全部通过；E2E 22 项检查全部通过（下单锁库存/购物车清理/token 一次性/重复支付 409/取消回补库存/状态机守卫/越权 403）
 
 ### Changed
+- 全局异常处理：新增 HttpMessageNotReadableException 处理器，JSON 请求体格式错误（类型不匹配如 cartItemIds 传标量、语法错误）由 500「服务器内部错误」改为 400「请求体格式错误」
 - 接口文档（api-doc.md）与购物车/地址实际实现对齐：购物车列表响应补充前端命名兼容字段（skuSpecText/skuPrice/skuStock）、选中接口补充批量 cartItemIds+布尔与缺省视为全部的兼容说明、新增 5.7 清空购物车（前端扩展）、地址模块补充上限 20 条/首地址自动默认/设默认清除原默认/默认地址排序等行为说明；错误码说明章节（现为第 18 章）替换为按模块 ErrorCode 枚举整理的真实 HTTP 语义错误码
 - 客户端概要设计文档（client-design.md）：目录结构、技术选型、Pinia 实现、路由角色名与实际代码对齐
 - AGENTS.md：新增"提交前必须更新 CHANGELOG.md"规则
