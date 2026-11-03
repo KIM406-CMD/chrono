@@ -19,6 +19,7 @@ public class Order {
     private String addressSnapshot;
     private Integer totalAmount;
     private Integer status;
+    private String remark;
     private String cancelReason;
     private LocalDateTime paidAt;
     private LocalDateTime shippedAt;

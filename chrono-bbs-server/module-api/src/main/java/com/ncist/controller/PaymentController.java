@@ -1,0 +1,44 @@
+package com.ncist.controller;
+
+import com.ncist.common.context.UserContext;
+import com.ncist.common.result.Result;
+import com.ncist.dto.CardPayDTO;
+import com.ncist.dto.OrderIdDTO;
+import com.ncist.service.PaymentService;
+import com.ncist.vo.PaymentQrVO;
+import com.ncist.vo.PayResultVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(name = "支付管理", description = "模拟支付的卡号支付与二维码支付接口")
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/payment")
+public class PaymentController {
+
+    private final PaymentService paymentService;
+
+    @Operation(summary = "卡号支付（模拟）")
+    @PostMapping("/card")
+    public Result<PayResultVO> payByCard(@Valid @RequestBody CardPayDTO dto) {
+        return Result.success(paymentService.payByCard(UserContext.getUserId(), dto));
+    }
+
+    @Operation(summary = "获取支付二维码（模拟）")
+    @PostMapping("/qrcode")
+    public Result<PaymentQrVO> qrcode(@Valid @RequestBody OrderIdDTO dto) {
+        return Result.success(paymentService.getQrcode(UserContext.getUserId(), dto.getOrderId()));
+    }
+
+    @Operation(summary = "确认二维码支付（模拟）")
+    @PostMapping("/confirm-qrcode")
+    public Result<PayResultVO> confirmQrcode(@Valid @RequestBody OrderIdDTO dto) {
+        return Result.success(paymentService.confirmQrcode(UserContext.getUserId(), dto.getOrderId()));
+    }
+}

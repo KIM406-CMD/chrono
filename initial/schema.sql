@@ -188,6 +188,7 @@ CREATE TABLE `order`
     `address_snapshot` VARCHAR(500) DEFAULT NULL COMMENT '收货地址快照（JSON）',
     `total_amount`     INT          NOT NULL COMMENT '实付金额（单位：分）',
     `status`           TINYINT      NOT NULL COMMENT '订单状态码',
+    `remark`           VARCHAR(500) DEFAULT NULL COMMENT '订单备注',
     `cancel_reason`    VARCHAR(500) DEFAULT NULL COMMENT '取消原因',
     `paid_at`          DATETIME     DEFAULT NULL COMMENT '支付时间',
     `shipped_at`       DATETIME     DEFAULT NULL COMMENT '发货时间',
