@@ -51,6 +51,17 @@ public interface CartItemMapper {
             + "WHERE ci.id = #{id}")
     CartItemDetail selectDetailById(Long id);
 
+    // 按 ID 批量查询购物车项（SQL 限定属主，下单结算用，天然防越权）
+    @Select("<script> SELECT ci.id, ci.user_id AS userId, ci.product_id AS productId, ci.sku_id AS skuId, "
+            + "ci.quantity, ci.selected, ci.created_at AS createdAt, "
+            + "p.status AS productStatus, s.price, s.stock "
+            + "FROM cart_item ci "
+            + "JOIN product p ON ci.product_id = p.id "
+            + "JOIN product_sku s ON ci.sku_id = s.id "
+            + "WHERE ci.user_id = #{userId} AND ci.id IN "
+            + "<foreach collection='ids' item='id' open='(' separator=',' close=')'> #{id} </foreach> </script>")
+    List<CartItemDetail> selectDetailByIds(@Param("userId") Long userId, @Param("ids") List<Long> ids);
+
     @Insert("INSERT INTO cart_item (user_id, product_id, sku_id, quantity, selected) "
             + "VALUES (#{userId}, #{productId}, #{skuId}, #{quantity}, 1)")
     @org.apache.ibatis.annotations.Options(useGeneratedKeys = true, keyProperty = "id")
@@ -74,6 +85,11 @@ public interface CartItemMapper {
 
     @Delete("DELETE FROM cart_item WHERE id = #{id} AND user_id = #{userId}")
     int deleteById(@Param("userId") Long userId, @Param("id") Long id);
+
+    // 按 ID 批量删除（限定属主，下单后清理已购项）
+    @Delete("<script> DELETE FROM cart_item WHERE user_id = #{userId} AND id IN "
+            + "<foreach collection='ids' item='id' open='(' separator=',' close=')'> #{id} </foreach> </script>")
+    int deleteByIds(@Param("userId") Long userId, @Param("ids") List<Long> ids);
 
     @Delete("DELETE FROM cart_item WHERE user_id = #{userId}")
     int deleteByUserId(Long userId);

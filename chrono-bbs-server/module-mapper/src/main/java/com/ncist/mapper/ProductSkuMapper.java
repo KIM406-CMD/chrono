@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -44,4 +45,13 @@ public interface ProductSkuMapper {
             + "<foreach collection='productIds' item='pid' open='(' separator=',' close=')'> #{pid} </foreach> "
             + "GROUP BY product_id </script>")
     List<ProductMinPrice> selectMinPrices(@Param("productIds") List<Long> productIds);
+
+    // 原子扣减库存（WHERE stock >= 数量，影响行数 0 即库存不足），下单锁库存用
+    @Update("UPDATE product_sku SET stock = stock - #{quantity} "
+            + "WHERE id = #{id} AND stock >= #{quantity}")
+    int deductStock(@Param("id") Long id, @Param("quantity") Integer quantity);
+
+    // 回补库存（取消订单用）
+    @Update("UPDATE product_sku SET stock = stock + #{quantity} WHERE id = #{id}")
+    int restoreStock(@Param("id") Long id, @Param("quantity") Integer quantity);
 }

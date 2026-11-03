@@ -57,4 +57,14 @@ public interface UserCouponMapper {
     @Update("UPDATE user_coupon SET status = 2 WHERE status = 0 "
             + "AND coupon_id IN (SELECT id FROM seckill_coupon WHERE end_time < NOW())")
     int expireEnded();
+
+    // 下单核销用户券（状态条件保证并发下不重复核销，影响行数 0 即券已被使用）
+    @Update("UPDATE user_coupon SET status = 1, used_order_id = #{orderId}, used_time = NOW() "
+            + "WHERE id = #{id} AND status = 0")
+    int markUsed(@Param("id") Long id, @Param("orderId") Long orderId);
+
+    // 取消订单时按订单回退用户券为未使用
+    @Update("UPDATE user_coupon SET status = 0, used_order_id = NULL, used_time = NULL "
+            + "WHERE used_order_id = #{orderId} AND status = 1")
+    int revokeByOrderId(Long orderId);
 }

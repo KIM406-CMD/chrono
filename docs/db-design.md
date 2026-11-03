@@ -145,6 +145,7 @@
 | address_snapshot | VARCHAR(500) | 收货地址快照（JSON：姓名、电话、省市区、详细地址） |
 | total_amount | INT | 实付金额（单位：分） |
 | status | TINYINT | 状态码（见 PRD 3.5.2 节） |
+| remark | VARCHAR(500) | 订单备注（下单时买家填写，可空） |
 | cancel_reason | VARCHAR(500) | 取消原因 |
 | paid_at | DATETIME | 支付时间 |
 | shipped_at | DATETIME | 发货时间 |
