@@ -8,6 +8,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.util.List;
+
 @Mapper
 public interface UserMapper {
     @Select("select * from user where username = #{username}")
@@ -45,4 +47,38 @@ public interface UserMapper {
                      @Param("phone") String phone,
                      @Param("email") String email,
                      @Param("avatar") String avatar);
+
+    @Update("update user set role = #{role}, updated_at = now() where id = #{id}")
+    int updateRole(@Param("id") Long id, @Param("role") Integer role);
+
+    // 管理后台：用户分页（keyword 模糊匹配用户名/手机号，role/status 可选）
+    @Select("""
+            <script>
+            SELECT id, username, nickname, phone, email, role, status, avatar, created_at, updated_at
+            FROM user WHERE 1=1
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%') OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="role != null"> AND role = #{role} </if>
+            <if test="status != null"> AND status = #{status} </if>
+            ORDER BY id DESC LIMIT #{offset}, #{size}
+            </script>
+            """)
+    List<User> selectAdminPage(@Param("keyword") String keyword, @Param("role") Integer role,
+                               @Param("status") Integer status, @Param("offset") int offset, @Param("size") int size);
+
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM user WHERE 1=1
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%') OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="role != null"> AND role = #{role} </if>
+            <if test="status != null"> AND status = #{status} </if>
+            </script>
+            """)
+    long countAdmin(@Param("keyword") String keyword, @Param("role") Integer role, @Param("status") Integer status);
+
+    @Update("update user set status = #{status}, updated_at = now() where id = #{id}")
+    int updateStatus(@Param("id") Long id, @Param("status") Integer status);
 }

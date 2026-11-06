@@ -61,6 +61,7 @@
 | **认证鉴权** | JWT + Redis + Spring AOP | RBAC 权限控制 |
 | **即时通讯** | WebSocket (JSR 356) | 用户与商家实时聊天 |
 | **接口文档** | springdoc-openapi + knife4j-ui | 自动生成 API 文档 |
+| **对象存储** | 阿里云 OSS + Thumbnailator | 图片上传，800px 压缩 |
 | **容器化** | Docker + Docker Compose | 中间件一键编排 |
 | **部署** | Nginx | 前后端分离 + 反向代理 |
 

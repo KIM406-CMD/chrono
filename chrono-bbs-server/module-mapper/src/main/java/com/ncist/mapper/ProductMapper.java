@@ -62,4 +62,42 @@ public interface ProductMapper {
     // 删除商品
     @Delete("DELETE FROM product WHERE id = #{id}")
     int deleteById(Long id);
+
+    // 管理后台：全平台商品分页（keyword 匹配名称/品牌，categoryId/merchantId/status 可选）
+    @Select("""
+            <script>
+            SELECT id, name, description, images, brand,
+                   category_id AS categoryId, merchant_id AS merchantId, status, sales,
+                   created_at AS createdAt, updated_at AS updatedAt
+            FROM product WHERE 1=1
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%') OR brand LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="categoryId != null"> AND category_id = #{categoryId} </if>
+            <if test="merchantId != null"> AND merchant_id = #{merchantId} </if>
+            <if test="status != null"> AND status = #{status} </if>
+            ORDER BY id DESC LIMIT #{offset}, #{size}
+            </script>
+            """)
+    List<Product> selectAdminPage(@Param("keyword") String keyword, @Param("categoryId") Long categoryId,
+                                  @Param("merchantId") Long merchantId, @Param("status") Integer status,
+                                  @Param("offset") int offset, @Param("size") int size);
+
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM product WHERE 1=1
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%') OR brand LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="categoryId != null"> AND category_id = #{categoryId} </if>
+            <if test="merchantId != null"> AND merchant_id = #{merchantId} </if>
+            <if test="status != null"> AND status = #{status} </if>
+            </script>
+            """)
+    long countAdmin(@Param("keyword") String keyword, @Param("categoryId") Long categoryId,
+                    @Param("merchantId") Long merchantId, @Param("status") Integer status);
+
+    // 分类下商品数量（删除分类前校验）
+    @Select("SELECT COUNT(*) FROM product WHERE category_id = #{categoryId}")
+    long countByCategoryId(Long categoryId);
 }

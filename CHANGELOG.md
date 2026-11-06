@@ -69,6 +69,14 @@
 - 新增错误码：OrderErrorCode（6 个：不存在/越权/状态非法/Token 无效/购物车项为空/订单号生成失败）、PaymentErrorCode（2 个：不可支付/Luhn 非法）
 - `order` 表新增 `remark` 列（schema.sql 同步，存量库需执行 `ALTER TABLE order ADD COLUMN remark VARCHAR(500)`）
 - 订单/支付单元测试 30 个用例（Order 22 + Payment 8），全模块单测 128 个全部通过；E2E 22 项检查全部通过（下单锁库存/购物车清理/token 一次性/重复支付 409/取消回补库存/状态机守卫/越权 403）
+- 商家管理 6 个接口：入驻申请（同用户防重复申请）、商家信息、商家商品分页（需审核通过）、商家订单分页（订单商品全属于该商家才可见，addressSnapshot JSON 解析收货地址）、发货（订单商品归属校验 + `UPDATE WHERE status=2` 状态条件防并发，已支付→已发货）、销售统计（总销售额/订单数/Top10 商品/按分类/按日期趋势，仅统计已支付及以后状态订单）
+- 管理后台 10 个接口：用户分页（keyword/role/status 筛选）、启禁用（仅 0/1，管理员账号不可禁用）、商家申请列表、商家审核（status=0 条件防重复审核，通过时申请人角色升级为商家，同事务）、分类增（层级 1-3 校验，父分类必须存在且层级连续，一级分类强制 parentId=0）/改（仅名称/排序/图标）/删（有子分类或商品引用时拒绝）、全平台商品分页（四条件筛选）、全平台订单分页、全局销售报表（day/week/month 分组趋势 + 状态分布五键）
+- 文件上传 1 个接口：图片上传（非空/≤2MB/扩展名白名单 jpg jpeg png webp → ImageIO 真实图片内容校验 → 宽>800px 等比缩放 → 阿里云 OSS），OSS 客户端懒加载 + @PreDestroy 关闭，objectKey 规则 product/yyyyMMdd/uuid.ext
+- MerchantMapper 重写（+10 方法含统计 SQL）、OrderMapper（+markShipped/selectAdminPage/countAdmin/报表 8 条 XML SQL）、UserMapper（+updateRole/selectAdminPage/countAdmin/updateStatus）、CategoryMapper（+insert/update/deleteById/countChildren）、ProductMapper（+selectAdminPage/countAdmin/countByCategoryId）
+- 新增 VO/DTO：MerchantInfoVO、MerchantOrderVO、MerchantStatsVO；AdminUserVO、AdminMerchantVO、AdminReportVO；UploadResult 以 Map 返回；MerchantApplyDTO、MerchantReviewDTO、CategoryUpsertDTO
+- 新增错误码：MerchantErrorCode（7 个 4041-4047）、AdminErrorCode（6 个 4051-4056）、UploadErrorCode（4 个 4061-4064）
+- application.yaml：新增 spring.servlet.multipart 限制（单文件 2MB / 请求 10MB）
+- module-service 新增依赖：aliyun-sdk-oss 3.17.4、thumbnailator 0.4.20
 
 ### Changed
 - 全局异常处理：新增 HttpMessageNotReadableException 处理器，JSON 请求体格式错误（类型不匹配如 cartItemIds 传标量、语法错误）由 500「服务器内部错误」改为 400「请求体格式错误」
@@ -96,6 +104,10 @@
 - api-doc.md：6.2 创建订单参数表新增 `userCouponId`（可选），与前端契约对齐
 
 ### Fixed
+- 修复 MerchantController 遗漏 `@GetMapping("/stats")` 导致 11.6 销售统计端点不暴露的问题；同时修正 stats 参数注解顺序（@Parameter 内移到 @RequestParam 之后）
+- 修复 AdminServiceImpl 四处：分类修改三字段全空时 MyBatis `<set>` 渲染为空导致 SQL 语法错误（提前 400 拦截）；createCategory 补 level 取值 1-3 校验；一级分类强制 parentId=0 防脏数据；updateUserStatus 补 status ∈ {0,1} 校验
+- 修复上传文件超 multipart 限制时 MaxUploadSizeExceededException 被全局兜底成 500 的问题：新增专用异常处理器映射为业务错误码 4062
+- 修复 webp 上传无内容校验的安全缺口：改用 RIFF/WEBP 魔数头校验文件真实性
 - 统一用户 status 语义为 api-doc 规范（1=正常，0=禁用）：修正注册默认值、登录校验逻辑、data.sql 管理员初始数据及关联单元测试断言
 - 修复忘记密码接口被 JWT 拦截器误拦的问题：WebMvcConfig 白名单补充 forgot-code、reset-password
 - 修正 AuthServiceImplTest 中 5 个用例的 status mock 值语义混写，单元测试 25/25 通过

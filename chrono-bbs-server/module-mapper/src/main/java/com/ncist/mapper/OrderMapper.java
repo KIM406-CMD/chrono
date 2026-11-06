@@ -10,6 +10,7 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 订单数据访问
@@ -55,6 +56,10 @@ public interface OrderMapper {
             + "WHERE id = #{id} AND user_id = #{userId} AND status = 1")
     int cancel(@Param("id") Long id, @Param("userId") Long userId, @Param("reason") String reason);
 
+    // 已支付 → 已发货（商家发货，status 条件保证并发下不重复发货）
+    @Update("UPDATE `order` SET status = 3, shipped_at = NOW() WHERE id = #{id} AND status = 2")
+    int markShipped(@Param("id") Long id);
+
     // 已发货 → 已收货
     @Update("UPDATE `order` SET status = 4, received_at = NOW() "
             + "WHERE id = #{id} AND user_id = #{userId} AND status = 3")
@@ -75,4 +80,33 @@ public interface OrderMapper {
     // 退款中 → 已收货（审核拒绝，恢复原状态）
     @Update("UPDATE `order` SET status = 4, updated_at = NOW() WHERE id = #{id} AND status = 6")
     int revertRefunding(@Param("id") Long id);
+
+    // ================ 管理后台（SQL 见 OrderMapper.xml） ================
+
+    // 全平台订单分页（orderNo 精确 / status 筛选，联查用户名与商品件数）
+    List<Map<String, Object>> selectAdminPage(@Param("orderNo") String orderNo, @Param("status") Integer status,
+                                              @Param("offset") int offset, @Param("size") int size);
+
+    long countAdmin(@Param("orderNo") String orderNo, @Param("status") Integer status);
+
+    // 全局销售报表
+    Long sumSalesGlobal(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    Long countOrdersGlobal(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    List<Map<String, Object>> selectTopProductsGlobal(@Param("startDate") String startDate,
+                                                       @Param("endDate") String endDate, @Param("limit") int limit);
+
+    List<Map<String, Object>> selectSalesByCategoryGlobal(@Param("startDate") String startDate,
+                                                           @Param("endDate") String endDate);
+
+    List<Map<String, Object>> selectSalesByMerchantGlobal(@Param("startDate") String startDate,
+                                                           @Param("endDate") String endDate);
+
+    // groupBy: day / week / month
+    List<Map<String, Object>> selectSalesTrendGlobal(@Param("startDate") String startDate,
+                                                      @Param("endDate") String endDate, @Param("groupBy") String groupBy);
+
+    // 订单状态分布
+    List<Map<String, Object>> selectStatusDistribution();
 }

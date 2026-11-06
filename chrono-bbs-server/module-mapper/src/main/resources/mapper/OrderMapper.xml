@@ -2,4 +2,111 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ncist.mapper.OrderMapper">
 
+    <!-- 管理后台：全平台订单分页 -->
+    <select id="selectAdminPage" resultType="java.util.Map">
+        SELECT o.id, o.order_no AS orderNo, o.user_id AS userId, u.username,
+               o.total_amount AS totalAmount, o.status,
+               o.paid_at AS paidAt, o.shipped_at AS shippedAt, o.created_at AS createdAt,
+               (SELECT COUNT(*) FROM order_item oi WHERE oi.order_id = o.id) AS itemCount
+        FROM `order` o
+        LEFT JOIN user u ON u.id = o.user_id
+        WHERE 1=1
+        <if test="orderNo != null and orderNo != ''"> AND o.order_no = #{orderNo} </if>
+        <if test="status != null"> AND o.status = #{status} </if>
+        ORDER BY o.created_at DESC, o.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAdmin" resultType="long">
+        SELECT COUNT(*) FROM `order` o
+        WHERE 1=1
+        <if test="orderNo != null and orderNo != ''"> AND o.order_no = #{orderNo} </if>
+        <if test="status != null"> AND o.status = #{status} </if>
+    </select>
+
+    <!-- 全局销售额（已支付/已发货/已收货） -->
+    <select id="sumSalesGlobal" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(total_amount), 0) FROM `order`
+        WHERE status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''"> AND DATE(created_at) &gt;= #{startDate} </if>
+        <if test="endDate != null and endDate != ''"> AND DATE(created_at) &lt;= #{endDate} </if>
+    </select>
+
+    <select id="countOrdersGlobal" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM `order`
+        WHERE status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''"> AND DATE(created_at) &gt;= #{startDate} </if>
+        <if test="endDate != null and endDate != ''"> AND DATE(created_at) &lt;= #{endDate} </if>
+    </select>
+
+    <!-- 全局 Top 商品 -->
+    <select id="selectTopProductsGlobal" resultType="java.util.Map">
+        SELECT oi.product_id AS productId, p.name AS productName,
+               SUM(oi.quantity) AS salesCount, SUM(oi.subtotal) AS totalAmount
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''"> AND DATE(o.created_at) &gt;= #{startDate} </if>
+        <if test="endDate != null and endDate != ''"> AND DATE(o.created_at) &lt;= #{endDate} </if>
+        GROUP BY oi.product_id, p.name
+        ORDER BY totalAmount DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 全局按分类销售额 -->
+    <select id="selectSalesByCategoryGlobal" resultType="java.util.Map">
+        SELECT p.category_id AS categoryId, c.name AS categoryName, SUM(oi.subtotal) AS totalAmount
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id
+        LEFT JOIN category c ON c.id = p.category_id
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''"> AND DATE(o.created_at) &gt;= #{startDate} </if>
+        <if test="endDate != null and endDate != ''"> AND DATE(o.created_at) &lt;= #{endDate} </if>
+        GROUP BY p.category_id, c.name
+        ORDER BY totalAmount DESC
+    </select>
+
+    <!-- 全局按商家销售额 -->
+    <select id="selectSalesByMerchantGlobal" resultType="java.util.Map">
+        SELECT p.merchant_id AS merchantId, m.shop_name AS shopName, SUM(oi.subtotal) AS totalAmount
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id
+        LEFT JOIN merchant m ON m.id = p.merchant_id
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''"> AND DATE(o.created_at) &gt;= #{startDate} </if>
+        <if test="endDate != null and endDate != ''"> AND DATE(o.created_at) &lt;= #{endDate} </if>
+        GROUP BY p.merchant_id, m.shop_name
+        ORDER BY totalAmount DESC
+    </select>
+
+    <!-- 全局销售趋势：day/week/month 分组 -->
+    <select id="selectSalesTrendGlobal" resultType="java.util.Map">
+        SELECT
+        <choose>
+            <when test="groupBy == 'week'">YEARWEEK(o.created_at, 1)</when>
+            <when test="groupBy == 'month'">DATE_FORMAT(o.created_at, '%Y-%m')</when>
+            <otherwise>DATE(o.created_at)</otherwise>
+        </choose>
+        AS date, SUM(total_amount) AS amount
+        FROM `order` o
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''"> AND DATE(o.created_at) &gt;= #{startDate} </if>
+        <if test="endDate != null and endDate != ''"> AND DATE(o.created_at) &lt;= #{endDate} </if>
+        GROUP BY
+        <choose>
+            <when test="groupBy == 'week'">YEARWEEK(o.created_at, 1)</when>
+            <when test="groupBy == 'month'">DATE_FORMAT(o.created_at, '%Y-%m')</when>
+            <otherwise>DATE(o.created_at)</otherwise>
+        </choose>
+        ORDER BY date ASC
+    </select>
+
+    <!-- 订单状态分布 -->
+    <select id="selectStatusDistribution" resultType="java.util.Map">
+        SELECT status, COUNT(*) AS cnt FROM `order` GROUP BY status
+    </select>
+
 </mapper>

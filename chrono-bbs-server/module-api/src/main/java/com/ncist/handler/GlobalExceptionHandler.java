@@ -33,6 +33,14 @@ public class GlobalExceptionHandler {
         return Result.error(CommonErrorCode.BAD_REQUEST.getCode(), "请求体格式错误");
     }
 
+    /** 上传文件超过 multipart 限制时（进入 Controller 前抛出），映射为业务错误码 4062 */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public Result<Void> handleMaxUploadSize(org.springframework.web.multipart.MaxUploadSizeExceededException e) {
+        log.warn("上传文件超限: {}", e.getMessage());
+        return Result.error(com.ncist.common.enums.UploadErrorCode.FILE_TOO_LARGE.getCode(),
+                com.ncist.common.enums.UploadErrorCode.FILE_TOO_LARGE.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: {}", e.getMessage(), e);
