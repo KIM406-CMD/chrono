@@ -63,4 +63,16 @@ public interface OrderMapper {
     // 仅已完成/已取消的订单可删除（物理删，表无逻辑删除字段）
     @Delete("DELETE FROM `order` WHERE id = #{id} AND user_id = #{userId} AND status IN (4, 5)")
     int deleteById(@Param("id") Long id, @Param("userId") Long userId);
+
+    // 已支付/已发货/已收货 → 退款中
+    @Update("UPDATE `order` SET status = 6, updated_at = NOW() WHERE id = #{id} AND status IN (2, 3, 4)")
+    int markRefunding(@Param("id") Long id);
+
+    // 退款中 → 已退款（审核通过）
+    @Update("UPDATE `order` SET status = 7, updated_at = NOW() WHERE id = #{id} AND status = 6")
+    int markRefunded(@Param("id") Long id);
+
+    // 退款中 → 已收货（审核拒绝，恢复原状态）
+    @Update("UPDATE `order` SET status = 4, updated_at = NOW() WHERE id = #{id} AND status = 6")
+    int revertRefunding(@Param("id") Long id);
 }

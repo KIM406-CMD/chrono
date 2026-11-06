@@ -27,6 +27,10 @@ public interface OrderItemMapper {
             + "quantity, unit_price AS unitPrice, subtotal FROM order_item WHERE order_id = #{orderId} ORDER BY id")
     List<OrderItem> selectByOrderId(Long orderId);
 
+    @Select("SELECT id, order_id AS orderId, product_id AS productId, sku_id AS skuId, "
+            + "quantity, unit_price AS unitPrice, subtotal FROM order_item WHERE id = #{id}")
+    OrderItem selectById(Long id);
+
     // 订单项联查商品名称/图片/SKU 规格（详情/列表组装用）
     @Select("SELECT oi.id, oi.order_id AS orderId, oi.product_id AS productId, oi.sku_id AS skuId, "
             + "oi.quantity, oi.unit_price AS unitPrice, oi.subtotal, "

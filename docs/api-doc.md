@@ -404,7 +404,7 @@ POST /api/product
 |------|------|------|------|
 | name | String | 是 | 商品名称 |
 | description | String | 否 | 商品描述 |
-| images | String | 否 | 商品图片（JSON 数组字符串，最多 4 张） |
+| images | List&lt;String&gt; | 否 | 商品图片 URL 数组（最多 4 张），如 `["https://.../a.jpg"]`。注意：实现为 JSON 数组而非字符串 |
 | brand | String | 否 | 品牌 |
 | categoryId | Long | 是 | 三级分类 ID |
 | skuList | List | 是 | SKU 列表 |
@@ -844,6 +844,8 @@ DELETE /api/address/{id}
 **Controller**：`CommentController`  
 **Swagger 分组**：评论管理
 
+> 说明：本模块已实现。评论数据模型：一级评论（`parent_id IS NULL` 且 `is_append=0`，含星级）、追评（`parent_id=一级评论ID` 且 `is_append=1`）、商家回复（`parent_id=一级评论ID` 且 `is_append=0`）。规则：仅订单状态=已收货(4)可评价、每个订单明细仅一条首次评价、每条一级评论仅一次追评、商家仅可回复自己商品的评论。
+
 ### 9.1 商品评论列表（公开）
 
 ```
@@ -911,6 +913,8 @@ POST /api/comment/reply
 **Controller**：`RefundController`  
 **Swagger 分组**：退款管理  
 **权限**：需登录
+
+> 说明：本模块已实现。规则：订单状态为已支付(2)/已发货(3)/已收货(4)可申请退款，申请后订单进入退款中(6)；每个订单明细仅一条退款申请，退款金额须大于 0 且不超过明细小计；审核通过 → 订单已退款(7)，拒绝 → 订单恢复已收货(4)。错误码：404 退款单/订单明细不存在；403 无权操作/仅商家或管理员可审核；400 订单状态不可退款/金额非法；409 已存在退款申请/已审核。
 
 ### 10.1 申请退款/退货
 
