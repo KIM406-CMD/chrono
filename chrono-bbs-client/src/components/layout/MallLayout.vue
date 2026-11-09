@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { Role } from '@/types/common'
 import { getCategoryTree } from '@/api/product'
+import { getCartList } from '@/api/cart'
 import { getConversations } from '@/api/chat'
 import type { Category } from '@/types/product'
 
@@ -58,10 +59,32 @@ const loadUnreadCount = () => {
     })
 }
 
+// 购物车商品数量
+const cartCount = ref(0)
+
+const loadCartCount = async () => {
+  if (!userStore.isLoggedIn) {
+    cartCount.value = 0
+    return
+  }
+  try {
+    const res = await getCartList()
+    cartCount.value = (res.data || []).reduce((sum, item) => sum + item.quantity, 0)
+  } catch {
+    cartCount.value = 0
+  }
+}
+
 onMounted(() => {
   loadCategories()
-  if (userStore.isLoggedIn) loadUnreadCount()
+  if (userStore.isLoggedIn) {
+    loadUnreadCount()
+    loadCartCount()
+  }
 })
+
+watch(() => route.fullPath, loadCartCount)
+watch(() => userStore.token, loadCartCount)
 
 const handleUserCommand = (command: string) => {
   switch (command) {
@@ -120,7 +143,7 @@ const handleUserCommand = (command: string) => {
 
         <div class="header-actions">
           <!-- 购物车 -->
-          <el-badge :value="0" :hidden="true" class="cart-badge">
+          <el-badge :value="cartCount" :hidden="cartCount === 0" class="cart-badge">
             <el-button text class="nav-btn" @click="router.push('/cart')">
               🛒 购物车
             </el-button>

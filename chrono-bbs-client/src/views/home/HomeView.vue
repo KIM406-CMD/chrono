@@ -43,6 +43,11 @@ const goToProduct = (id: number) => {
   router.push(`/product/${id}`)
 }
 
+// 按分类查看商品
+const goToCategory = (id: number) => {
+  router.push({ path: '/search', query: { categoryId: String(id) } })
+}
+
 // 价格格式化（分转元，遵循通用设置）
 const formatPrice = (price: number) => {
   return formatPriceByPreference(price)
@@ -65,7 +70,12 @@ onMounted(() => {
           <div class="banner-left">
             <div class="category-sidebar">
               <ul class="category-list">
-                <li v-for="cat in categories.slice(0, 8)" :key="cat.id" class="category-item">
+                <li
+                  v-for="cat in categories.slice(0, 8)"
+                  :key="cat.id"
+                  class="category-item"
+                  @click="goToCategory(cat.id)"
+                >
                   <span class="cat-icon">📦</span>
                   <span class="cat-name">{{ cat.name }}</span>
                   <ArrowRight class="cat-arrow" />
@@ -380,6 +390,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
+  cursor: pointer;
   font-size: 14px;
   color: #333;
   cursor: pointer;
