@@ -630,17 +630,17 @@ User visits the registration page
 │           │  ① Email → ② New Password → ③ Done   │         │
 │           │                                      │         │
 │           │  ┌─ Current Step 1 ─┐                │         │
-│           │  │ Please enter your │                │         │
-│           │  │ registered email  │                │         │
-│           │  │ [_______________] │                │         │
-│           │  │                   │                │         │
-│           │  │ [   Send Code   ] │                │         │
-│           │  │                   │                │         │
-│           │  │ Verification Code │                │         │
-│           │  │ [__] [__] [__] [__]                │         │
-│           │  │                   │                │         │
-│           │  │ [     Next      ] │                │         │
-│           │  └───────────────────┘                │         │
+│           │  │ Please enter your │                │        │
+│           │  │ registered email  │                │        │
+│           │  │ [_______________] │                │        │
+│           │  │                   │                │        │
+│           │  │ [   Send Code   ] │                │        │
+│           │  │                   │                │        │
+│           │  │ Verification Code │                │        │
+│           │  │ [__] [__] [__] [__]                │        │
+│           │  │                   │                │        │
+│           │  │ [     Next      ] │                │        │
+│           │  └───────────────────┘                │        │
 │           │                                      │         │
 │           │  Back to Sign In                     │         │
 │           └──────────────────────────────────────┘         │
@@ -683,12 +683,12 @@ Step 3: Done
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
-│  All │ Electronics │ Clothing │ Food │ Home │ ...         │
+│  All │ Electronics │ Clothing │ Food │ Home │ ...          │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
-│  Filter: [Price ▼] [Sales ▼] [Date ▼] [Brand ▼] [Reset]   │
+│  Filter: [Price ▼] [Sales ▼] [Date ▼] [Brand ▼] [Reset]    │
 │                                                            │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
@@ -710,7 +710,7 @@ Step 3: Done
 │  └───────────┘  └───────────┘  └───────────┘  └───────────┘│
 │                                                            │
 ├────────────────────────────────────────────────────────────┤
-│  Total 100  [10/page ▼]  « 1 2 3 4 5 ... 10 »  Go [__]    │
+│  Total 100  [10/page ▼]  « 1 2 3 4 5 ... 10 »  Go [__]     │
 ├────────────────────────────────────────────────────────────┤
 │         © 2025 Online Supermarket. All rights reserved.    │
 └────────────────────────────────────────────────────────────┘
@@ -767,9 +767,9 @@ User visits the home page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
-│  Home > Electronics > Phones > Smartphones > Details      │
+│  Home > Electronics > Phones > Smartphones > Details       │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  ┌──────────────────┐  ┌──────────────────────────────────┐│
@@ -782,10 +782,10 @@ User visits the home page
 │  ┌──┬──┬──┬──┐         │ Merchant: XXX Flagship Store     ││
 │  │Th│Th│Th│Th│         │                                  ││
 │  └──┴──┴──┴──┘         │ Quantity:  [-] [ 1 ] [+]         ││
-│                        │ [🛒 Add to Cart]  [⚡ Buy Now]    ││
+│                        │ [🛒 Add to Cart]  [⚡ Buy Now]    │ │
 │                        └──────────────────────────────────┘│
 ├────────────────────────────────────────────────────────────┤
-│  [Product Details]  [Specifications]  [Reviews (20)]      │
+│  [Product Details]  [Specifications]  [Reviews (20)]       │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  Rich-text product description...                          │
@@ -840,11 +840,11 @@ User enters the product detail page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 phone _______________]     🛒 Cart  👤 Avatar  │
+│  LOGO  [🔍 phone _______________]     🛒 Cart  👤 Avatar      │
 ├────────────────────────────────────────────────────────────┤
-│  Search results: "phone" — 100 related products found     │
+│  Search results: "phone" — 100 related products found      │
 ├────────────────────────────────────────────────────────────┤
-│  Sort: [Relevance] [Sales] [Price ↑] [Price ↓] [Newest]   │
+│  Sort: [Relevance] [Sales] [Price ↑] [Price ↓] [Newest]    │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐│
@@ -858,7 +858,7 @@ User enters the product detail page
 │  └───────────┘  └───────────┘  └───────────┘  └───────────┘│
 │                                                            │
 ├────────────────────────────────────────────────────────────┤
-│  Total 100  « 1 2 3 4 5 ... 10 »                          │
+│  Total 100  « 1 2 3 4 5 ... 10 »                           │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -894,13 +894,13 @@ User enters a search keyword
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > Cart                                               │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ ☐ Select All                       Delete Selected    │  │
+│  │ ☐ Select All                       Delete Selected    │ │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ ☑ ┌─────┐  Product A                       ¥99.00    │  │
 │  │   │Image│  Merchant: XXX Flagship Store              │  │
@@ -977,7 +977,7 @@ User visits the cart page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > Checkout                                           │
 ├────────────────────────────────────────────────────────────┤
@@ -993,13 +993,13 @@ User visits the cart page
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Product List                                         │  │
 │  ├──────────────────────────────────────────────────────┤  │
-│  │ ┌─────┐  Product A  x2                   ¥198.00    │  │
-│  │ │Image│  Merchant: XXX Flagship Store               │  │
-│  │ └─────┘                                             │  │
+│  │ ┌─────┐  Product A  x2                   ¥198.00    │   │
+│  │ │Image│  Merchant: XXX Flagship Store               │   │
+│  │ └─────┘                                             │   │
 │  ├──────────────────────────────────────────────────────┤  │
-│  │ ┌─────┐  Product B  x1                    ¥59.00    │  │
-│  │ │Image│  Merchant: YYY Flagship Store               │  │
-│  │ └─────┘                                             │  │
+│  │ ┌─────┐  Product B  x1                    ¥59.00    │   │
+│  │ │Image│  Merchant: YYY Flagship Store               │   │
+│  │ └─────┘                                             │   │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
@@ -1008,7 +1008,7 @@ User visits the cart page
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Order Note: [_________________________________]       │  │
+│  │ Order Note: [_________________________________]       │ │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
@@ -1062,7 +1062,7 @@ User enters the checkout page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > My Orders                                          │
 ├────────────────────────────────────────────────────────────┤
@@ -1073,26 +1073,26 @@ User enters the checkout page
 │  │ Order ORD202501010001  2025-01-01 10:30     [To Pay] │  │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ ┌─────┐  Product A  x1                   ¥99.00      │  │
-│  │ │Image│  Merchant: XXX Flagship Store               │  │
-│  │ └─────┘                                             │  │
+│  │ │Image│  Merchant: XXX Flagship Store               │   │
+│  │ └─────┘                                             │   │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ 1 item  Total: ¥99.00                                │  │
-│  │                        [Cancel Order] [Pay Now]       │  │
+│  │                        [Cancel Order] [Pay Now]       │ │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Order ORD202412310002  2024-12-31 15:20      [Done]  │  │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ ┌─────┐  Product B  x2                  ¥118.00      │  │
-│  │ │Image│  Merchant: YYY Flagship Store               │  │
-│  │ └─────┘                                             │  │
+│  │ │Image│  Merchant: YYY Flagship Store               │   │
+│  │ └─────┘                                             │   │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ 2 items  Total: ¥118.00                              │  │
 │  │         [Logistics] [Confirm] [After-sales]          │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 ├────────────────────────────────────────────────────────────┤
-│  Total 20  « 1 2 3 4 »                                    │
+│  Total 20  « 1 2 3 4 »                                     │
 ├────────────────────────────────────────────────────────────┤
 │         © 2025 Online Supermarket. All rights reserved.    │
 └────────────────────────────────────────────────────────────┘
@@ -1132,7 +1132,7 @@ User visits the order list
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > My Orders > Payment                                │
 ├────────────────────────────────────────────────────────────┤
@@ -1153,7 +1153,7 @@ User visits the order list
 │             │                                │             │
 │             │  [      Confirm Payment      ] │             │
 │             │                                │             │
-│             │  🔒 Your payment information   │             │
+│             │  🔒 Your payment information   │              │
 │             │     is encrypted               │             │
 │             └────────────────────────────────┘             │
 │                                                            │
@@ -1166,7 +1166,7 @@ User visits the order list
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > My Orders > Payment                                │
 ├────────────────────────────────────────────────────────────┤
@@ -1191,7 +1191,7 @@ User visits the order list
 │             │                                │             │
 │             │  [      I Have Paid      ]     │             │
 │             │                                │             │
-│             │  🔒 Simulated payment.         │             │
+│             │  🔒 Simulated payment.         │              │
 │             │     No real charge is incurred.│             │
 │             └────────────────────────────────┘             │
 │                                                            │
@@ -1248,7 +1248,7 @@ User enters the payment page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > My Orders > Order Details                          │
 ├────────────────────────────────────────────────────────────┤
@@ -1269,13 +1269,13 @@ User enters the payment page
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Product List                                         │  │
 │  │ ┌─────┐  Product A  x2                   ¥198.00     │  │
-│  │ │Image│  Merchant: XXX Flagship Store               │  │
-│  │ └─────┘                                             │  │
+│  │ │Image│  Merchant: XXX Flagship Store               │   │
+│  │ └─────┘                                             │   │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Product Total: ¥257.00  Shipping: ¥0.00  Due: ¥257.00│  │
-│  │                         [Cancel Order] [Pay Now]      │  │
+│  │                         [Cancel Order] [Pay Now]      │ │
 │  └──────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -1310,7 +1310,7 @@ User enters the order detail page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > User Center > Personal Information                 │
 ├────────────────────────────────────────────────────────────┤
@@ -1387,7 +1387,7 @@ User visits the personal information page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Home > User Center > Shipping Addresses                   │
 ├────────────────────────────────────────────────────────────┤
@@ -1450,27 +1450,27 @@ User visits the address management page
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]            🛒 Cart   👤 Avatar                 │
+│  LOGO  [🔍 Search products...]            🛒 Cart   👤 Avatar                     │
 ├──────────────────────────┬─────────────────────────────────────────────────────┤
 │  Conversation List       │  Current Conversation: XXX Flagship Store           │
 │                          │                                                     │
-│  ┌──────────────────────┐│  ┌───────────────────────────────────────────────┐ │
-│  │ ● XXX Flagship Store ││  │                                               │ │
+│  ┌──────────────────────┐│  ┌───────────────────────────────────────────────┐  │
+│  │ ● XXX Flagship Store ││  │                                               │  │
 │  │   Hello, is this...   ││  │  Merchant  10:30                              │ │
 │  │   10:30               ││  │  Hello, how can I help you?                   │ │
-│  ├──────────────────────┤│  │                                               │ │
-│  │ ○ YYY Flagship Store ││  │  Me  10:32                                    │ │
+│  ├──────────────────────┤│  │                                               │  │
+│  │ ○ YYY Flagship Store ││  │  Me  10:32                                    │  │
 │  │   In stock            ││  │  Is this product in stock?                    │ │
 │  │   10:25               ││  │                                               │ │
-│  ├──────────────────────┤│  │  Merchant  10:33                              │ │
-│  │ ○ Customer Service   ││  │  Yes, stock is sufficient.                    │ │
+│  ├──────────────────────┤│  │  Merchant  10:33                              │  │
+│  │ ○ Customer Service   ││  │  Yes, stock is sufficient.                    │  │
 │  │   Welcome to inquire  ││  │  Please buy with confidence.                  │ │
 │  │   Yesterday           ││  │                                               │ │
-│  └──────────────────────┘│  ├───────────────────────────────────────────────┤ │
-│                          │  │  [ Type a message... ]          [Send]        │ │
-│                          │  └───────────────────────────────────────────────┘ │
+│  └──────────────────────┘│  ├───────────────────────────────────────────────┤  │
+│                          │  │  [ Type a message... ]          [Send]        │  │
+│                          │  └───────────────────────────────────────────────┘  │
 ├──────────────────────────┴─────────────────────────────────────────────────────┤
-│                    © 2025 Online Supermarket. All rights reserved.              │
+│                    © 2025 Online Supermarket. All rights reserved.             │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1528,13 +1528,13 @@ User visits the chat page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                           │
+│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                                │
 │                    │                                                           │
-│ 📦 Products        │                                                           │
-│ 💬 Reviews         │                                                           │
-│ 📋 Orders          │                                                           │
-│ 💰 Refund Review   │                    <router-view />                        │
-│ 📊 Sales Statistics│                                                           │
+│ 📦 Products        │                                                            │
+│ 💬 Reviews         │                                                            │
+│ 📋 Orders          │                                                            │
+│ 💰 Refund Review   │                    <router-view />                         │
+│ 📊 Sales Statistics│                                                            │
 │                    │                                                           │
 │                    │                                                           │
 │                    │                                                           │
@@ -1549,13 +1549,13 @@ User visits the chat page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                           │
+│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                                │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
-│ 📦 Products        │  Product Management                                       │
-│ 📋 Orders          │                                                           │
-│ 💰 Refund Review   │  [ + New Product ]  [Search products...]                  │
-│ 📊 Sales Statistics│                                                           │
-│                    │  ┌───────────────────────────────────────────────────────┐ │
+│ 📦 Products        │  Product Management                                        │
+│ 📋 Orders          │                                                            │
+│ 💰 Refund Review   │  [ + New Product ]  [Search products...]                   │
+│ 📊 Sales Statistics│                                                            │
+│                    │  ┌───────────────────────────────────────────────────────┐│
 │                    │  │ ☐ │ Img    │ Name       │ Price  │ Stock  │ Status │ Actions │ │
 │                    │  │───┼────────┼────────────┼────────┼────────┼────────┼─────────│ │
 │                    │  │ ☐ │ Img    │ Product A  │ ¥99    │ 100    │ Listed │ Edit    │ │
@@ -1565,7 +1565,7 @@ User visits the chat page
 │                    │  │ ☐ │ Img    │ Product B  │ ¥199   │ 50     │ Unlisted│ Edit   │ │
 │                    │  │   │        │            │        │        │        │ List    │ │
 │                    │  │   │        │            │        │        │        │ Delete  │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 │                    │                                                           │
 │                    │  Total 20  « 1 2 3 »                                      │
 └────────────────────┴───────────────────────────────────────────────────────────┘
@@ -1607,18 +1607,18 @@ Merchant enters the product management page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                           │
+│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                                │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
-│ 📦 Products        │  Order Management                                         │
-│ 📋 Orders          │                                                           │
+│ 📦 Products        │  Order Management                                          │
+│ 📋 Orders          │                                                            │
 │ 💰 Refund Review   │  Status: [All ▾] [Pending Shipment ▾] [Shipped ▾] [Completed ▾] │
-│ 📊 Sales Statistics│                                                           │
-│                    │  ┌───────────────────────────────────────────────────────┐ │
+│ 📊 Sales Statistics│                                                            │
+│                    │  ┌───────────────────────────────────────────────────────┐│
 │                    │  │ Order No. │ Product │ Qty │ Amount │ Status │ Actions  │ │
 │                    │  │───────────┼─────────┼─────┼────────┼────────┼──────────│ │
 │                    │  │ ORD001    │ Product A│ 2  │ ¥198   │ Pending│ [Ship]   │ │
 │                    │  │ ORD002    │ Product B│ 1  │ ¥59    │ Shipped│ [Details]│ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 │                    │                                                           │
 │                    │  Total 15  « 1 2 3 »                                      │
 └────────────────────┴───────────────────────────────────────────────────────────┘
@@ -1648,19 +1648,19 @@ Merchant enters the order management page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                           │
+│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                                │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
-│ 📦 Products        │  Refund Review                                            │
-│ 📋 Orders          │                                                           │
-│ 💰 Refund Review   │  Status: [Pending Review ▾] [Approved ▾] [Rejected ▾]     │
-│ 📊 Sales Statistics│                                                           │
-│                    │  ┌───────────────────────────────────────────────────────┐ │
+│ 📦 Products        │  Refund Review                                             │
+│ 📋 Orders          │                                                            │
+│ 💰 Refund Review   │  Status: [Pending Review ▾] [Approved ▾] [Rejected ▾]      │
+│ 📊 Sales Statistics│                                                            │
+│                    │  ┌───────────────────────────────────────────────────────┐│
 │                    │  │ Request No. │ Product │ Type │ Amount │ Status │ Actions│ │
 │                    │  │─────────────┼─────────┼──────┼────────┼────────┼────────│ │
 │                    │  │ RF001       │ Product A│ Refund│ ¥99  │ Pending│ [Approve]│ │
 │                    │  │             │          │      │      │ Review │ [Reject] │ │
 │                    │  │ RF002       │ Product B│ Return│ ¥59  │ Pending│ [Approve]│ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -1690,23 +1690,23 @@ Merchant enters the refund review page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                           │
+│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                                │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
-│ 📦 Products        │  Sales Statistics   Time: [Last 7 Days ▾] [Last 30 Days ▾]│
-│ 📋 Orders          │                                                           │
+│ 📦 Products        │  Sales Statistics   Time: [Last 7 Days ▾] [Last 30 Days ▾] │
+│ 📋 Orders          │                                                            │
 │ 💰 Refund Review   │  ┌───────────────────────────────────────────────────────┐ │
 │ 📊 Sales Statistics│  │  Sales Trend (Line Chart)                             │ │
-│                    │  │         ╱╲     ╱╲                                     │ │
+│                    │  │         ╱╲     ╱╲                                     ││
 │                    │  │    ╱╲  ╱  ╲  ╱  ╲                                    │ │
 │                    │  │   ╱  ╲╱    ╲╱    ╲                                   │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 │                    │                                                           │
 │                    │  Total Sales: ¥12,580   Orders: 86   Units Sold: 342      │
 │                    │                                                           │
 │                    │  Best-selling Ranking:                                    │
-│                    │  ┌───────────────────────────────────────────────────────┐ │
-│                    │  │ 1. Product A  120 units   2. Product B  80 units  ... │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  ┌───────────────────────────────────────────────────────┐│
+│                    │  │ 1. Product A  120 units   2. Product B  80 units  ... ││
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -1731,18 +1731,18 @@ Merchant enters the sales statistics page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                           │
+│ XXX Flagship Store │  🔔 3    👤 Merchant Name  ▼                                │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
-│ 📦 Products        │  Reviews          Product: [All Products ▾]               │
-│ 💬 Reviews         │                                                           │
+│ 📦 Products        │  Reviews          Product: [All Products ▾]                │
+│ 💬 Reviews         │                                                            │
 │ 📋 Orders          │  ┌───────────────────────────────────────────────────────┐ │
 │ 💰 Refund Review   │  │ User A ★★★★★  2026-11-01                              │ │
 │ 📊 Sales Statistics│  │ Great product, fast shipping                          │ │
-│                    │  │ Follow-up Review: Used it for a week,                 │ │
-│                    │  │ quality is still great                                │ │
-│                    │  │ Merchant Reply: Thanks for your support!              │ │
-│                    │  │                                           [Reply]     │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  │ Follow-up Review: Used it for a week,                 ││
+│                    │  │ quality is still great                                ││
+│                    │  │ Merchant Reply: Thanks for your support!              ││
+│                    │  │                                           [Reply]     ││
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -1765,7 +1765,7 @@ Merchant enters the review management page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Merchant Onboarding                                       │
 ├────────────────────────────────────────────────────────────┤
@@ -1814,15 +1814,15 @@ User enters the merchant onboarding page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ Admin Panel        │  🔔 5    👤 Administrator  ▼                            │
+│ Admin Panel        │  🔔 5    👤 Administrator  ▼                                │
 │                    │                                                           │
-│ 👤 Users           │                                                           │
-│ 🏬 Merchant Review │                                                           │
-│ 🗂 Categories      │                    <router-view />                        │
-│ 📦 Products        │                                                           │
-│ 📋 Orders          │                                                           │
-│ 📊 Sales Reports   │                                                           │
-│ 🎟 Flash-sale Coupons                                                          │
+│ 👤 Users           │                                                            │
+│ 🏬 Merchant Review │                                                            │
+│ 🗂 Categories      │                    <router-view />                         │
+│ 📦 Products        │                                                            │
+│ 📋 Orders          │                                                            │
+│ 📊 Sales Reports   │                                                            │
+│ 🎟 Flash-sale Coupons                                                           │
 │                    │                                                           │
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
@@ -1835,15 +1835,15 @@ User enters the merchant onboarding page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ Admin Panel        │  User Management   [Search users...] [Role ▾] [Status ▾] │
+│ Admin Panel        │  User Management   [Search users...] [Role ▾] [Status ▾]  │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
 │ 👤 Users           │  ┌───────────────────────────────────────────────────────┐ │
-│                    │  │ Username │ Role     │ Phone   │ Status │ Actions      │ │
-│                    │  │──────────┼──────────┼─────────┼────────┼──────────────│ │
-│                    │  │ zhangsan │ User     │ 138...  │ Active │ [Disable]    │ │
-│                    │  │ lisi     │ Merchant │ 139...  │ Active │ [Disable]    │ │
-│                    │  │ wangwu   │ User     │ 137...  │ Disabled│ [Enable]    │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  │ Username │ Role     │ Phone   │ Status │ Actions      ││
+│                    │  │──────────┼──────────┼─────────┼────────┼──────────────││
+│                    │  │ zhangsan │ User     │ 138...  │ Active │ [Disable]    ││
+│                    │  │ lisi     │ Merchant │ 139...  │ Active │ [Disable]    ││
+│                    │  │ wangwu   │ User     │ 137...  │ Disabled│ [Enable]    ││
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -1869,7 +1869,7 @@ Administrator enters the user management page
 │                    │  │ XX Flagship│ Zhang San│ 10-28│ Pending  │ —             │ │
 │                    │  │ YY Supermarket│ Li Si│ 10-26│ Approved │ Documents complete │ │
 │                    │  │ ZZ Convenience│ Wang Wu│ 10-25│ Rejected│ License blurry │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 │                    │  Total 12  « 1 2 »                                        │
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
@@ -1890,16 +1890,16 @@ Administrator enters the merchant review page
 
 ```
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
-│ Admin Panel        │  Category Management                   [ + New Category ]│
+│ Admin Panel        │  Category Management                   [ + New Category ] │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
 │ 🗂 Categories      │  ┌───────────────────────────────────────────────────────┐ │
-│                    │  │ ▼ Electronics                                         │ │
-│                    │  │     ├─ ▼ Mobile Phones                                │ │
-│                    │  │     │     ├─ Smartphones   [Edit] [Delete]            │ │
+│                    │  │ ▼ Electronics                                         ││
+│                    │  │     ├─ ▼ Mobile Phones                                ││
+│                    │  │     │     ├─ Smartphones   [Edit] [Delete]            ││
 │                    │  │     │     └─ Feature Phones [Edit] [Delete]            │ │
-│                    │  │     └─ ▼ Computers & Office                           │ │
-│                    │  │  ▼ Clothing & Shoes                                   │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  │     └─ ▼ Computers & Office                           ││
+│                    │  │  ▼ Clothing & Shoes                                   ││
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -1927,7 +1927,7 @@ Administrator enters the category management page
 │                    │  │─────────┼──────────┼───────┼───────┼──────────┼─────────│ │
 │                    │  │ Product A│ XX Store│ ¥99   │ 100   │ Listed   │ [Unlist]│ │
 │                    │  │ Product B│ YY Store│ ¥199  │ 50    │ Unlisted │ [List]  │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -1951,8 +1951,8 @@ Administrator enters the product management page
 │                    │  │ Order No. │ User    │ Amount │ Status    │ Order Time  │ │
 │                    │  │───────────┼─────────┼────────┼───────────┼─────────────│ │
 │                    │  │ ORD001    │ Zhang San│ ¥198  │ Paid      │ 10-28 10:30 │ │
-│                    │  │ ORD002    │ Li Si   │ ¥59   │ Completed │ 10-27 15:20 │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  │ ORD002    │ Li Si   │ ¥59   │ Completed │ 10-27 15:20 ││
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -1973,16 +1973,16 @@ Administrator enters the order management page
 │ Admin Panel        │  Sales Reports   Time: [Last 7 Days ▾] [Last 30 Days ▾] [Custom]
 ├────────────────────┼───────────────────────────────────────────────────────────┤
 │ 📊 Sales Reports   │  ┌───────────────────────────────────────────────────────┐ │
-│                    │  │  Platform-wide Sales Trend (Line Chart)               │ │
-│                    │  │       ╱╲   ╱╲    ╱╲                                   │ │
+│                    │  │  Platform-wide Sales Trend (Line Chart)               ││
+│                    │  │       ╱╲   ╱╲    ╱╲                                   ││
 │                    │  │   ╱╲╱  ╲╱  ╲  ╱  ╲                                   │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 │                    │                                                           │
 │                    │  Total Sales: ¥89,200  Orders: 1200  Active Merchants: 15 │
 │                    │                                                           │
-│                    │  ┌───────────────────────────────────────────────────────┐ │
+│                    │  ┌───────────────────────────────────────────────────────┐│
 │                    │  │ Category Share / Merchant Ranking / Best-selling     │ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -2004,14 +2004,14 @@ Administrator enters the sales reports page
 ┌────────────────────┬───────────────────────────────────────────────────────────┐
 │ Admin Panel        │  Flash-sale Coupon Management            [ + New Coupon ] │
 ├────────────────────┼───────────────────────────────────────────────────────────┤
-│ 🎟 Flash-sale Coupons                                                          │
-│                    │  ┌───────────────────────────────────────────────────────┐ │
+│ 🎟 Flash-sale Coupons                                                           │
+│                    │  ┌───────────────────────────────────────────────────────┐│
 │                    │  │ Name    │ Type     │ Discount │ Threshold │ Remaining │ Status    │ Actions│ │
 │                    │  │─────────┼──────────┼──────────┼───────────┼───────────┼───────────┼────────│ │
 │                    │  │ New User│ Fixed    │ ¥10      │ ¥50       │ 987       │ Ongoing   │ [Edit] │ │
 │                    │  │         │ Discount │          │           │           │           │ [Delete]│ │
 │                    │  │ Double11│ Percentage│ 15% off │ ¥100      │ 320       │ Not Started│ [Edit]│ │
-│                    │  └───────────────────────────────────────────────────────┘ │
+│                    │  └───────────────────────────────────────────────────────┘│
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
 
@@ -2035,23 +2035,23 @@ Administrator enters the flash-sale coupon management page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Coupon Center                             [ My Coupons ]  │
 ├────────────────────────────────────────────────────────────┤
 │  ┌──────────────────┐  ┌──────────────────┐                │
-│  │ New User Discount │  │ Double 11 Discount│               │
-│  │ ¥50 → ¥10         │  │ 15% off storewide │               │
-│  │ 987/1000 left     │  │ 320/500 left      │               │
-│  │ Valid until 12-31 │  │ Valid until 12-31 │               │
-│  │     [Claim Now]   │  │     [Claim Now]   │               │
+│  │ New User Discount │  │ Double 11 Discount│              │
+│  │ ¥50 → ¥10         │  │ 15% off storewide │              │
+│  │ 987/1000 left     │  │ 320/500 left      │              │
+│  │ Valid until 12-31 │  │ Valid until 12-31 │              │
+│  │     [Claim Now]   │  │     [Claim Now]   │              │
 │  └──────────────────┘  └──────────────────┘                │
 │                                                            │
 │  ┌──────────────────┐  ┌──────────────────┐                │
-│  │ Weekend Deal      │  │ Member Deal       │               │
-│  │ ¥100 → ¥20        │  │ 10% off storewide │               │
-│  │ Not Started       │  │ 1890/2000 left    │               │
-│  │ [Not Started]     │  │     [Claim Now]   │               │
+│  │ Weekend Deal      │  │ Member Deal       │              │
+│  │ ¥100 → ¥20        │  │ 10% off storewide │              │
+│  │ Not Started       │  │ 1890/2000 left    │              │
+│  │ [Not Started]     │  │     [Claim Now]   │              │
 │  └──────────────────┘  └──────────────────┘                │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -2115,7 +2115,7 @@ User clicks a coupon card
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Account Settings                                          │
 ├────────────────────────────────────────────────────────────┤
@@ -2150,7 +2150,7 @@ User enters the account settings page
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar    │
+│  LOGO  [🔍 Search products...]     🛒 Cart   👤 Avatar        │
 ├────────────────────────────────────────────────────────────┤
 │  Help Center                                               │
 ├────────────────────────────────────────────────────────────┤
