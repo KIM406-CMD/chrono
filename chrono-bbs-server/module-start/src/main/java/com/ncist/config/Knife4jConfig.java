@@ -6,9 +6,19 @@ import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * 接口文档配置。
+ *
+ * <p>配置在线接口文档的标题、版本、联系人等基础信息。</p>
+ */
 @Configuration
 public class Knife4jConfig {
 
+    /**
+     * 构建接口文档元信息。
+     *
+     * @return OpenAPI 文档配置
+     */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()

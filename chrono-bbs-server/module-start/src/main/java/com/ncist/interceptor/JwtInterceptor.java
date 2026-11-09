@@ -15,34 +15,52 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+/**
+ * JWT 登录拦截器。
+ *
+ * <p>拦截所有 {@code /api/**} 请求，完成以下校验：</p>
+ * <ol>
+ *   <li>放行 {@code OPTIONS} 预检请求；</li>
+ *   <li>放行标注 {@link Public} 的公开接口；</li>
+ *   <li>解析 {@code Authorization: Bearer <token>} 中的 JWT；</li>
+ *   <li>与缓存中的服务端 token 做二次校验，支持登出、改密、重置密码、禁用后立即失效；</li>
+ *   <li>将登录用户信息写入 {@link UserContext}，请求结束时清理。</li>
+ * </ol>
+ */
 @Component
 @RequiredArgsConstructor
-// JWT 拦截器
 public class JwtInterceptor implements HandlerInterceptor {
 
-    private final StringRedisTemplate stringRedisTemplate;
+    /** 服务端登录令牌缓存前缀。 */
     private static final String TOKEN_PREFIX = "token:";
 
-    // 拦截器在请求处理前执行
+    /** Redis 模板，用于读取服务端登录令牌。 */
+    private final StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * 请求处理前执行登录校验。
+     *
+     * @param request  当前请求
+     * @param response 当前响应
+     * @param handler  请求处理器
+     * @return {@code true} 表示放行，{@code false} 表示拦截
+     * @throws BusinessException 未登录、token 过期或 token 无效时抛出
+     */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        // 忽略 OPTIONS 请求
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        // 标记 @Public 注解的接口直接放行（如分类树、商品浏览等游客可访问接口）
         if (handler instanceof HandlerMethod handlerMethod) {
             if (handlerMethod.hasMethodAnnotation(Public.class)
                     || handlerMethod.getBeanType().isAnnotationPresent(Public.class)) {
                 return true;
             }
         }
-        // 从请求头中提取 JWT
         String token = extractToken(request);
-        // 解析 JWT 并获取用户信息
         Claims claims = JwtUtil.parseToken(token);
         Long userId = Long.valueOf(String.valueOf(claims.get("userId")));
-        // JWT + Redis 双校验：token 必须与服务端记录一致（登出/改密/重置密码/禁用后立即失效）
+        // JWT + 缓存双校验：token 必须与服务端记录一致
         String serverToken = stringRedisTemplate.opsForValue().get(TOKEN_PREFIX + userId);
         if (serverToken == null) {
             throw new BusinessException(AuthErrorCode.TOKEN_EXPIRED);
@@ -50,32 +68,41 @@ public class JwtInterceptor implements HandlerInterceptor {
         if (!serverToken.equals(token)) {
             throw new BusinessException(AuthErrorCode.TOKEN_INVALID);
         }
-        // 从 JWT 中提取用户信息
         UserContext.UserInfo userInfo = new UserContext.UserInfo(
                 userId,
                 String.valueOf(claims.get("username")),
                 Integer.valueOf(String.valueOf(claims.get("role")))
         );
-        // 将用户信息存储到线程上下文
         UserContext.set(userInfo);
         return true;
     }
 
+    /**
+     * 请求完成后清理线程上下文，避免线程复用导致用户信息串用。
+     *
+     * @param request  当前请求
+     * @param response 当前响应
+     * @param handler  请求处理器
+     * @param ex       请求处理过程中抛出的异常，可能为 {@code null}
+     */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         UserContext.clear();
     }
 
-    // 从请求头中提取 JWT
+    /**
+     * 从请求头中提取 Bearer token。
+     *
+     * @param request 当前请求
+     * @return JWT 字符串
+     * @throws BusinessException 请求头缺失或格式不合法时抛出 {@link AuthErrorCode#UNAUTHORIZED}
+     */
     private String extractToken(HttpServletRequest request) {
-        // 从请求头中提取 JWT
         String header = request.getHeader("Authorization");
-        // 检查请求头是否包含 JWT
         if (!StringUtils.hasText(header) || !header.startsWith("Bearer")) {
             throw new BusinessException(AuthErrorCode.UNAUTHORIZED);
         }
-        // 从请求头中提取 JWT 并返回
         return header.substring(7);
     }
 }
