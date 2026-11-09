@@ -98,8 +98,9 @@ chrono-bbs/
 │   └── docker-compose.yml            # MySQL + Redis + ES
 │
 ├── initial/                          # 🗄 数据库初始化脚本
-│   ├── schema.sql                    # 建表语句
-│   └── data.sql                      # 初始数据
+│   ├── schema.sql                    # 建表语句（含最新字段）
+│   ├── data.sql                      # 初始数据
+│   └── migration-2026-11-09.sql      # 已有库增量迁移（可重复执行）
 │
 ├── AGENTS.md                         # 🤖 AI 助手行为规范
 ├── CHANGELOG.md                      # 📝 变更日志
@@ -169,7 +170,8 @@ mysql -u root -p < initial/data.sql
 
 脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`。
 
-> Docker 模式首次启动会自动执行上述脚本，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
+> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行）。
+> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
 > 图片上传依赖阿里云 OSS，可复制 `script/.env.example` 为根目录 `.env` 并填写密钥；未配置时后端仍可启动，仅上传功能不可用。
 
 ### 4. 默认测试账号
