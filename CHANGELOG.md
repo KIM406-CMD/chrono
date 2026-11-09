@@ -85,7 +85,7 @@
 - 文档：`db-design.md` 补齐 `seckill_coupon`/`user_coupon` 两张表及索引、Redis 键设计；`detailed-design.md` 新增秒杀券模块（14.1-14.4）并按实际实现更新接口清单与数据库表；`server-design.md` 新增秒杀券模块设计（Redis 预扣减、降级补偿、定时任务）
 - 文档：`hmi-design.md` 补充商家评论管理页、管理员商家审核全状态筛选与审核意见、优惠券详情弹窗；`client-design.md` 补充 `/merchant/comments` 路由与游客领券中心说明
 - 文档：`requirements-analysis.md` 合并原 PRD 的项目概述、原始题目描述与核心业务规则（分类/商品属性/购物车/模拟支付），作为唯一需求文档
-- Docker：`docker-compose.yml` 增加编排说明并改为挂载 `docker/sql` 目录自动初始化；`initial/schema.sql`、`initial/data.sql` 与 `docker/sql` 统一为 `chrono_bbs_dev` 库
+- Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
 - 全局异常处理：新增 HttpMessageNotReadableException 处理器，JSON 请求体格式错误（类型不匹配如 cartItemIds 传标量、语法错误）由 500「服务器内部错误」改为 400「请求体格式错误」
@@ -118,6 +118,7 @@
 ### Removed
 - 文档：移除 `chrono-bbs-server/docs/` 下与根 `docs/` 重复的 10 份 Markdown 与 2 份 Word 副本，统一以根 `docs/` 为准
 - 文档：删除 `docs/prd.md`，其独有内容已合并至 `requirements-analysis.md`，并同步清理 README、AGENTS.md、db-design.md 中的引用
+- Docker：移除 `docker/sql/` 重复副本，统一复用仓库根目录 `initial/` 下的初始化脚本
 
 ### Fixed
 - 后台全平台商品上下架按钮改为禁用并提示“后端暂未提供管理员上下架接口”，移除仅弹成功提示的伪操作

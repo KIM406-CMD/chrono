@@ -5,9 +5,9 @@
 # 停止：docker compose down
 # 重置数据：docker compose down -v（会删除 MySQL/Redis/ES 数据卷）
 #
-# MySQL 首次创建数据卷时会自动执行 ./sql 下的初始化脚本：
-#   01-schema.sql —— 建库建表（20 张表）
-#   02-data.sql   —— 初始数据（管理员、分类、规格、秒杀券）
+# MySQL 首次创建数据卷时会自动执行 ../initial 下的初始化脚本：
+#   schema.sql —— 建库建表（20 张表）
+#   data.sql   —— 初始数据（管理员、分类、规格、秒杀券）
 # 注意：初始化脚本只在数据卷为空时执行；修改脚本后需 down -v 再启动。
 # ============================================================
 services:
@@ -28,7 +28,9 @@ services:
       - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./sql:/docker-entrypoint-initdb.d:ro
+      # 复用仓库根目录 initial/ 下的脚本，避免维护重复副本
+      - ../initial/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../initial/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci

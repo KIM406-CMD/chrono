@@ -132,7 +132,7 @@ cd docker
 docker compose up -d
 ```
 
-启动 MySQL、Redis、Elasticsearch。MySQL 首次创建数据卷时会自动执行 `docker/sql/01-schema.sql` 与 `02-data.sql`（创建 `chrono_bbs_dev` 库、20 张表并导入初始数据），无需手动导入。
+启动 MySQL、Redis、Elasticsearch。MySQL 首次创建数据卷时会自动执行 `initial/schema.sql` 与 `initial/data.sql`（创建 `chrono_bbs_dev` 库、20 张表并导入初始数据），无需手动导入。
 
 > 端口：MySQL `3307`（避免与本机 3306 冲突）、Redis `6379`、Elasticsearch `9200`。
 > 修改初始化脚本后需执行 `docker compose down -v` 删除数据卷再启动，脚本才会重新执行。
@@ -146,7 +146,7 @@ mysql -u root -p < initial/schema.sql
 mysql -u root -p < initial/data.sql
 ```
 
-两个脚本与 `docker/sql/` 内容一致，均创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`。
+脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`。
 
 ### 3. 启动后端
 
