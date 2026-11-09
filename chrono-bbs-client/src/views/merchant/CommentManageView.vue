@@ -28,8 +28,15 @@ const replyContent = ref('')
 const loadProducts = async () => {
   productsLoading.value = true
   try {
-    const res = await getMerchantProducts({ page: 1, size: 100 })
-    products.value = (res.data.list || []).map((item: MerchantProduct) => ({ id: item.id, name: item.name }))
+    // 商品数量可能超过单页上限，循环拉取全部分页，避免下拉框缺项
+    const first = await getMerchantProducts({ page: 1, size: 100 })
+    const list: MerchantProduct[] = [...(first.data.list || [])]
+    const pages = Math.ceil((first.data.total || 0) / 100)
+    for (let p = 2; p <= pages; p++) {
+      const res = await getMerchantProducts({ page: p, size: 100 })
+      list.push(...(res.data.list || []))
+    }
+    products.value = list.map((item) => ({ id: item.id, name: item.name }))
     if (products.value.length > 0) {
       selectedProductId.value = products.value[0].id
       loadComments()
