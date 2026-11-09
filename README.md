@@ -1,5 +1,7 @@
 # 🛒 网上超市系统 (Chrono BBS)
 
+> [English](./README.en.md) | 简体中文
+
 > 课程设计项目 — 基于 Spring Boot + Vue 3 的全栈电商系统
 
 ---
@@ -82,16 +84,8 @@ chrono-bbs/
 ├── chrono-bbs-client/                # 前端（Vue 3 + Vite + TS + Element Plus）
 │
 ├── docs/                             # 📄 文档目录
-│   ├── requirements-analysis.md      # 需求分析（含业务背景与核心规则）
-│   ├── feasibility-analysis.md       # 可行性分析
-│   ├── server-design.md              # 服务端概要设计
-│   ├── client-design.md              # 客户端概要设计
-│   ├── db-design.md                  # 数据库设计
-│   ├── detailed-design.md            # 详细设计（含流程图）
-│   ├── api-doc.md                    # API 接口文档
-│   ├── test-specification.md         # 测试规范
-│   ├── hmi-design.md                 # 人机界面设计
-│   └── git-commit-convention.md      # Git 提交规范
+│   ├── zh/                           # 中文文档（需求/设计/API/测试/HMI 等）
+│   └── en/                           # English documentation
 │
 ├── uml/                              # 📐 UML 图目录
 │   ├── uml-usecase.puml              # 用例图
@@ -198,19 +192,21 @@ npm run build
 
 ## 📖 文档索引
 
+> 中文文档位于 `docs/zh/`，英文文档位于 `docs/en/`；每篇文档顶部提供语言切换。
+
 | 文档 | 内容 |
 |------|------|
-| [requirements-analysis.md](./docs/requirements-analysis.md) | 需求分析 — 业务背景、核心业务规则、48 项功能需求（F-01~F-48）、优先级、业务流程与数据需求 |
-| [面向对象开发步骤与设计分析.md](./面向对象开发步骤与设计分析.md) | 面向对象开发 — 需求与用例、领域分析、职责分配、架构设计与详细设计步骤 |
-| [feasibility-analysis.md](./docs/feasibility-analysis.md) | 可行性分析 — 技术/进度/经济/运行四维度 |
-| [server-design.md](./docs/server-design.md) | 服务端概要设计 — Maven 模块 / 认证 / 异常体系 |
-| [client-design.md](./docs/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
-| [db-design.md](./docs/db-design.md) | 数据库设计 — 表结构 / 字段 / 索引 |
-| [detailed-design.md](./docs/detailed-design.md) | 详细设计 — Mermaid 流程图 / 时序图 / 部署架构 |
-| [api-doc.md](./docs/api-doc.md) | API 接口文档 — 接口列表与请求响应示例 |
-| [test-specification.md](./docs/test-specification.md) | 测试规范 — 单元/集成/E2E 测试要求 |
-| [hmi-design.md](./docs/hmi-design.md) | 人机界面设计 — 页面原型与交互 |
-| [git-commit-convention.md](./docs/git-commit-convention.md) | Git 提交规范 — Conventional Commits + 分支模型 |
+| [requirements-analysis.md](./docs/zh/requirements-analysis.md) | 需求分析 — 业务背景、核心业务规则、48 项功能需求（F-01~F-48）、优先级、业务流程与数据需求 |
+| [object-oriented-development.md](./docs/zh/object-oriented-development.md) | 面向对象开发 — 需求与用例、领域分析、职责分配、架构设计与详细设计步骤 |
+| [feasibility-analysis.md](./docs/zh/feasibility-analysis.md) | 可行性分析 — 技术/进度/经济/运行四维度 |
+| [server-design.md](./docs/zh/server-design.md) | 服务端概要设计 — Maven 模块 / 认证 / 异常体系 |
+| [client-design.md](./docs/zh/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
+| [db-design.md](./docs/zh/db-design.md) | 数据库设计 — 表结构 / 字段 / 索引 |
+| [detailed-design.md](./docs/zh/detailed-design.md) | 详细设计 — Mermaid 流程图 / 时序图 / 部署架构 |
+| [api-doc.md](./docs/zh/api-doc.md) | API 接口文档 — 接口列表与请求响应示例 |
+| [test-specification.md](./docs/zh/test-specification.md) | 测试规范 — 单元/集成/E2E 测试要求 |
+| [hmi-design.md](./docs/zh/hmi-design.md) | 人机界面设计 — 页面原型与交互 |
+| [git-commit-convention.md](./docs/zh/git-commit-convention.md) | Git 提交规范 — Conventional Commits + 分支模型 |
 | [CHANGELOG.md](./CHANGELOG.md) | 变更日志 — 版本发布记录 |
 | [AGENTS.md](./AGENTS.md) | AI 助手规范 — 编码与提交行为约束 |
 
@@ -270,7 +266,7 @@ npm run build
 
 本项目为课程设计团队项目，开发前请务必阅读以下规范：
 
-- [Git 提交规范](./docs/git-commit-convention.md) — 提交信息格式与分支模型
+- [Git 提交规范](./docs/zh/git-commit-convention.md) — 提交信息格式与分支模型
 - [AGENTS.md](./AGENTS.md) — AI 助手行为规范（编码风格与提交约束）
 
 开发流程：从 `dev` 分支拉取 → 创建 `feature/*` 分支 → 开发 → PR 合并到 `dev` → 稳定后合并到 `main`。

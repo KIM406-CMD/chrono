@@ -6,7 +6,7 @@
 
 ## 1. Git 提交规范
 
-**提交信息必须遵循 `docs/git-commit-convention.md` 中定义的 Conventional Commits 格式：**
+**提交信息必须遵循 `docs/zh/git-commit-convention.md` 中定义的 Conventional Commits 格式：**
 
 ```
 <type>(<scope>): <subject>
@@ -75,11 +75,11 @@ Closes #42
 
 ## 5. 参考文档
 
-- Git 提交规范：`docs/git-commit-convention.md`
-- 产品需求：`docs/requirements-analysis.md`
-- 数据库设计：`docs/db-design.md`
-- 服务端设计：`docs/server-design.md`
-- 客户端设计：`docs/client-design.md`
-- 接口文档：`docs/api-doc.md`
-- 详细设计：`docs/detailed-design.md`
-- 测试规范：`docs/test-specification.md`
+- Git 提交规范：`docs/zh/git-commit-convention.md`
+- 产品需求：`docs/zh/requirements-analysis.md`
+- 数据库设计：`docs/zh/db-design.md`
+- 服务端设计：`docs/zh/server-design.md`
+- 客户端设计：`docs/zh/client-design.md`
+- 接口文档：`docs/zh/api-doc.md`
+- 详细设计：`docs/zh/detailed-design.md`
+- 测试规范：`docs/zh/test-specification.md`

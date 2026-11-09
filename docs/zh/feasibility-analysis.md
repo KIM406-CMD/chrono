@@ -1,5 +1,8 @@
 # 网上超市系统 — 可行性分析文档
 
+> [English](../en/feasibility-analysis.md) | 简体中文
+
+
 ---
 
 ## 一、引言

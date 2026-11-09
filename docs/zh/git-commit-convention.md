@@ -1,5 +1,8 @@
 # Git 提交规范
 
+> [English](../en/git-commit-convention.md) | 简体中文
+
+
 本文档规定了 chrono-bbs 项目的 Git 提交信息格式与分支管理规范，所有团队成员必须遵守。
 
 ---

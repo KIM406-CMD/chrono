@@ -1,5 +1,8 @@
 # 网上超市系统 - 客户端概要设计
 
+> [English](../en/client-design.md) | 简体中文
+
+
 ---
 
 ## 一、技术选型
@@ -854,7 +857,7 @@ server {
 }
 ```
 
-> 完整可部署配置见仓库根目录 [deploy/nginx.conf](../deploy/nginx.conf)。
+> 完整可部署配置见仓库根目录 [deploy/nginx.conf](../../deploy/nginx.conf)。
 
 ---
 

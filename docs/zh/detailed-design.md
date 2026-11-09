@@ -1,5 +1,8 @@
 # 详细设计
 
+> [English](../en/detailed-design.md) | 简体中文
+
+
 > 本系统为**单体服务架构**，Maven 多模块仅用于代码分层组织，运行时为单个 Spring Boot 进程。用户信息通过 `UserContext`（`ThreadLocal`）在请求链路中传递。
 
 ---

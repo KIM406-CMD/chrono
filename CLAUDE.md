@@ -68,7 +68,7 @@ MyBatis 配置在 `application.yaml`：`map-underscore-to-camel-case: true`，Ma
 3. 校验通过后将 `userId` / `username` / `role` 写入 `UserContext`（ThreadLocal），`afterCompletion` 中 `clear()`。
 4. `GlobalExceptionHandler`（`@RestControllerAdvice`）统一把 `BusinessException`、参数校验异常、其他异常转为 `Result.error(...)`。
 
-所有 Controller 统一返回 `Result<T>`（`{code, message, data}`，成功 code=200）。新增接口时遵循此约定并更新 `docs/api-doc.md`。
+所有 Controller 统一返回 `Result<T>`（`{code, message, data}`，成功 code=200）。新增接口时遵循此约定并更新 `docs/zh/api-doc.md`。
 
 ### 前端结构（chrono-bbs-client/src）
 
@@ -90,6 +90,6 @@ MyBatis 配置在 `application.yaml`：`map-underscore-to-camel-case: true`，Ma
 
 ## 关键文档
 
-设计文档集中在 `docs/`：`db-design.md`（20 张表）、`server-design.md`、`client-design.md`、`api-doc.md`、`git-commit-convention.md`、`test-specification.md`。UML 图在 `uml/*.puml`（PlantUML）。
+设计文档集中在 `docs/zh/`（中文）与 `docs/en/`（英文）：`db-design.md`（20 张表）、`server-design.md`、`client-design.md`、`api-doc.md`、`git-commit-convention.md`、`test-specification.md` 等。UML 图在 `uml/*.puml`（PlantUML）。
 
 测试分层：`common` 的 `JwtUtilTest`（单元）、`module-service` 的 `*ServiceImplTest`（Mockito 单元）、`module-start` 的 `AuthServiceIntegrationTest` 与 `AuthControllerE2ETest`（`@SpringBootTest` + `@ActiveProfiles("test")`，使用 `chrono_bbs_test` MySQL 库与本地 Redis）。

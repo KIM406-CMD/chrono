@@ -1,5 +1,8 @@
 # 网上超市系统 — API 接口文档
 
+> [English](../en/api-doc.md) | 简体中文
+
+
 > 基础路径：`http://localhost:8080`
 >
 > 在线调试：启动项目后访问 `http://localhost:8080/doc.html`（Knife4j）
