@@ -1014,6 +1014,8 @@ GET /api/merchant/products
 | size | Integer | 否 | 每页大小 |
 | status | Integer | 否 | 状态筛选 |
 
+**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、createdAt、updatedAt`；不返回 `minPrice`、`merchantName`。
+
 ---
 
 ### 11.4 商家订单列表
@@ -1169,6 +1171,8 @@ GET /api/admin/products
 | status | Integer | 否 | 0=下架，1=上架 |
 | page | Integer | 否 | 页码 |
 | size | Integer | 否 | 每页大小 |
+
+**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、createdAt、updatedAt`；不返回 `minPrice`、`merchantName`。
 
 ---
 

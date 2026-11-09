@@ -38,6 +38,7 @@ export interface Product {
   id: number
   name: string
   description: string
+  image?: string
   images: string[]
   brand: string
   categoryId: number
@@ -47,7 +48,7 @@ export interface Product {
   status: ProductStatus
   sales: number
   minPrice: number
-  maxPrice: number
+  maxPrice?: number
   createdAt: string
   updatedAt: string
   skuList?: Sku[]

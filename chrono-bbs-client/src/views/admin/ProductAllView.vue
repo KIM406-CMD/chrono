@@ -39,10 +39,12 @@ onMounted(() => { loadProducts() })
     <el-table :data="products" v-loading="loading" stripe class="pa-table">
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="name" label="商品名称" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="merchantName" label="所属店铺" width="120" />
+      <el-table-column label="所属店铺" width="120">
+        <template #default="{ row }">{{ row.merchantName || '—' }}</template>
+      </el-table-column>
       <el-table-column prop="brand" label="品牌" width="80" />
       <el-table-column label="价格" width="100" align="right">
-        <template #default="{ row }">¥{{ priceYuan(row.minPrice) }}</template>
+        <template #default="{ row }">{{ row.minPrice != null ? `¥${priceYuan(row.minPrice)}` : '—' }}</template>
       </el-table-column>
       <el-table-column prop="sales" label="销量" width="80" align="center" />
       <el-table-column label="状态" width="80" align="center">

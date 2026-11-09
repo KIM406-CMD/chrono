@@ -21,6 +21,20 @@ const size = 10
 
 const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 
+// 商家列表的 images 为 JSON 数组字符串，兼容数组形式
+const firstImage = (images?: string | string[]) => {
+  if (!images) return ''
+  let list: unknown = images
+  if (typeof images === 'string') {
+    try {
+      list = JSON.parse(images)
+    } catch {
+      return ''
+    }
+  }
+  return Array.isArray(list) && list.length > 0 ? String(list[0]) : ''
+}
+
 const loadProducts = async () => {
   loading.value = true
   try {
@@ -199,13 +213,19 @@ onMounted(() => {
       <el-table-column label="商品" min-width="200">
         <template #default="{ row }">
           <div class="product-cell">
-            <div class="product-img"><span>暂无图片</span></div>
+            <el-image
+              v-if="firstImage(row.images)"
+              :src="firstImage(row.images)"
+              fit="cover"
+              class="product-img"
+            />
+            <div v-else class="product-img"><span>暂无图片</span></div>
             <p class="p-name">{{ row.name }}</p>
           </div>
         </template>
       </el-table-column>
       <el-table-column label="价格" width="120" align="right">
-        <template #default="{ row }">¥{{ priceYuan(row.minPrice) }}</template>
+        <template #default="{ row }">{{ row.minPrice != null ? `¥${priceYuan(row.minPrice)}` : '—' }}</template>
       </el-table-column>
       <el-table-column prop="sales" label="销量" width="80" align="center" />
       <el-table-column label="状态" width="80" align="center">

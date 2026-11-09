@@ -140,7 +140,8 @@ onMounted(() => {
               @click="goToProduct(product.id)"
             >
               <div class="product-image">
-                <div class="image-placeholder">
+                <el-image v-if="product.image" :src="product.image" fit="cover" class="product-img" />
+                <div v-else class="image-placeholder">
                   <span class="placeholder-icon">📷</span>
                   <span class="placeholder-text">暂无图片</span>
                 </div>
@@ -153,7 +154,7 @@ onMounted(() => {
                 </div>
                 <div class="product-price">
                   <span class="price-current">¥{{ formatPrice(product.minPrice) }}</span>
-                  <span class="price-original">¥{{ formatPrice(product.maxPrice) }}</span>
+                  <span v-if="product.maxPrice" class="price-original">¥{{ formatPrice(product.maxPrice) }}</span>
                 </div>
                 <div class="product-sales">
                   <span>{{ product.sales }}+ 人付款</span>
@@ -180,7 +181,8 @@ onMounted(() => {
               @click="goToProduct(product.id)"
             >
               <div class="product-image">
-                <div class="image-placeholder">
+                <el-image v-if="product.image" :src="product.image" fit="cover" class="product-img" />
+                <div v-else class="image-placeholder">
                   <span class="placeholder-icon">📷</span>
                   <span class="placeholder-text">暂无图片</span>
                 </div>
@@ -192,7 +194,7 @@ onMounted(() => {
                 </div>
                 <div class="product-price">
                   <span class="price-current">¥{{ formatPrice(product.minPrice) }}</span>
-                  <span class="price-original">¥{{ formatPrice(product.maxPrice) }}</span>
+                  <span v-if="product.maxPrice" class="price-original">¥{{ formatPrice(product.maxPrice) }}</span>
                 </div>
                 <div class="product-sales">
                   <span>{{ product.sales }}+ 人付款</span>
@@ -624,6 +626,13 @@ onMounted(() => {
 .product-image {
   aspect-ratio: 1;
   background: #f5f5f5;
+  overflow: hidden;
+}
+
+.product-img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .image-placeholder {
