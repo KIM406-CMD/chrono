@@ -120,24 +120,51 @@ chrono-bbs/
 |----------|---------|
 | JDK | 21+ |
 | Node.js | 18+ |
-| Docker Desktop | Latest |
 | Maven | 3.8+ |
+| Docker Desktop | Latest (Docker mode only) |
 
-### 1. Start middleware
+### 1. One-command startup (recommended)
 
-```bash
-cd docker
-docker compose up -d
+Windows (cmd / PowerShell):
+
+```bat
+script\start-all.bat            :: Docker middleware (MySQL 3307)
+script\start-all.bat --local    :: local middleware (MySQL 3306)
 ```
 
-This starts MySQL, Redis, and Elasticsearch. On first creation of the MySQL data volume, `initial/schema.sql` and `initial/data.sql` are executed automatically (creating the `chrono_bbs_dev` database, 20 tables, and seed data). No manual import is required.
+Bash / Git Bash / macOS / Linux:
 
-> Ports: MySQL `3307` (to avoid conflicting with a local 3306), Redis `6379`, Elasticsearch `9200`.
-> If you change the initialization scripts, run `docker compose down -v` to remove the data volume and re-run them.
+```bash
+./script/start-all.sh           # Docker middleware (MySQL 3307)
+./script/start-all.sh --local   # local middleware (MySQL 3306)
+```
 
-### 2. Initialize the database (optional, manual)
+The script starts middleware, backend, and frontend in order:
 
-If you use a local MySQL instead of Docker:
+| Service | URL |
+|---------|-----|
+| Frontend | <http://localhost:5173> |
+| Backend | <http://localhost:8080> |
+| Knife4j docs | <http://localhost:8080/doc.html> |
+
+> On Windows, the backend and frontend each open in a new console window; close the window to stop the service.
+> On Bash, the backend runs in the background with logs in `logs/backend.log`; `Ctrl+C` stops both backend and frontend.
+> For more options (`--skip-build`, `--install`, `--volumes`), see [script/README.md](script/README.md).
+
+### 2. Step-by-step startup (optional)
+
+| Step | Windows | Bash |
+|------|---------|------|
+| Start middleware | `script\start-middleware.bat` | `./script/start-middleware.sh` |
+| Start backend | `script\start-backend.bat` | `./script/start-backend.sh` |
+| Start frontend | `script\start-frontend.bat` | `./script/start-frontend.sh` |
+| Stop middleware | `script\stop-middleware.bat` | `./script/stop-middleware.sh` |
+
+> Docker middleware is used by default (MySQL exposed on host port `3307`); add `--local` to use locally running MySQL / Redis / Elasticsearch (MySQL uses `3306` from `application-dev.yml`).
+
+### 3. Initialize a local database (optional)
+
+When using `--local` for the first time, initialize the database:
 
 ```bash
 mysql -u root -p < initial/schema.sql
@@ -146,28 +173,10 @@ mysql -u root -p < initial/data.sql
 
 The scripts are in `initial/` and create the `chrono_bbs_dev` database. The default administrator is `admin` / `admin123`.
 
-### 3. Start the backend
+> In Docker mode, the initialization scripts run automatically on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
+> Image upload requires Aliyun OSS. Copy `script/.env.example` to `.env` in the repository root and fill in the keys; the backend still starts without them, but uploads are unavailable.
 
-```bash
-cd chrono-bbs-server
-mvn clean install -DskipTests
-cd module-start
-mvn spring-boot:run
-```
-
-The backend runs at `http://localhost:8080`. Knife4j API documentation is available at `http://localhost:8080/doc.html`.
-
-### 4. Start the frontend
-
-```bash
-cd chrono-bbs-client
-npm install
-npm run dev
-```
-
-The frontend runs at `http://localhost:5173`.
-
-### 5. Default test account
+### 4. Default test account
 
 | Role | Username | Password |
 |------|----------|----------|
@@ -175,7 +184,7 @@ The frontend runs at `http://localhost:5173`.
 
 > Regular users can register through the frontend.
 
-### 6. Production deployment (Nginx)
+### 5. Production deployment (Nginx)
 
 ```bash
 cd chrono-bbs-client
