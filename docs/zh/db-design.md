@@ -30,8 +30,8 @@
 | phone | VARCHAR(20) | 手机号 |
 | email | VARCHAR(100) | 邮箱 |
 | avatar | VARCHAR(500) | 头像 URL |
-| role | TINYINT | 0-普通用户, 1-管理员 |
-| status | TINYINT | 0-正常, 1-禁用 |
+| role | TINYINT | 1-普通用户, 2-商家, 3-管理员 |
+| status | TINYINT | 1-正常, 0-禁用 |
 | created_at | DATETIME | 注册时间 |
 | updated_at | DATETIME | 更新时间 |
 
@@ -82,6 +82,8 @@
 | template_id | BIGINT FK | 关联 spec_template |
 | value | VARCHAR(50) | 规格值（如"红色"、"XL"） |
 | sort_order | INT | 排序序号 |
+
+> **实现状态**：规格模板/规格值为预留表；当前商家建品直接提交 SKU 列表（`product_sku.spec_text` / `spec_ids`），尚未提供模板管理接口。
 
 ### `product` 商品表
 
@@ -241,11 +243,11 @@
 | created_at | DATETIME | 评论时间 |
 
 > **整体设计思路**：
-> - 所有登录用户均可发表一级评论和回复。
+> - 当前仅已收货订单的用户可发表一级评论；商家可回复自己商品的评论。
 > - 用户确认收货后弹出星级评分窗口，提交后生成 `star + is_append=0` 的评论；之后用户可再次评论同一商品，此时 `is_append=1`，实现追评。
-> - 回复采用 `parent_id` 递归实现无限级嵌套，查询时用 MySQL 递归 CTE 或应用层递归组装。
-> - Redis 缓存热门商品的评论总数、平均星级等聚合数据；新增评论时异步更新 Redis 并批量同步 MySQL。
-> - 商家和管理员可删除/回复任何评论，删除为物理删除。
+> - 当前实现为“一级评论 + 追评 + 商家回复”两层结构（通过 `parent_id` 关联一级评论），不做无限级嵌套。
+> - `status` 为逻辑删除预留字段（0-正常，1-已删除）；当前尚未提供评论删除接口。
+> - Redis 评论统计与 ES 同步属于后续规划，当前未实现。
 
 ---
 
@@ -270,7 +272,7 @@
 |------|------|------|
 | id | BIGINT PK | 主键 |
 | user_id | BIGINT | 普通用户 ID，关联 user 表 |
-| merchant_id | BIGINT | 商家用户 ID，关联 user 表 |
+| merchant_id | BIGINT | 关联 merchant 表主键（merchant.id），非 user_id |
 | product_id | BIGINT | 关联的商品 ID（可选，标记从哪个商品发起的对话） |
 | last_message | VARCHAR(500) | 最后一条消息摘要 |
 | last_message_time | DATETIME | 最后一条消息时间 |
@@ -535,6 +537,8 @@
 
 ## 十三、Redis 缓存设计
 
+> **实现状态**：当前已使用 `token:*`、`reset:*`、`captcha:*`、`category:tree`、`order:submit-token:*`、`seckill:*`；下表其余缓存项为规划。
+
 | 缓存 Key 示例 | 内容 | 数据结构 | 过期策略 |
 |------|------|------|------|
 | `token:{userId}` | 用户登录态 | String | 设置过期时间 |
@@ -552,6 +556,8 @@
 ---
 
 ## 十四、搜索引擎（Elasticsearch）
+
+> **实现状态**：`SearchServiceImpl` 目前为占位实现，尚未接入 ES；下表为规划。
 
 | 索引 | 同步字段 | 说明 |
 |------|------|------|

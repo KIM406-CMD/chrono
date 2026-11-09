@@ -136,7 +136,7 @@ POST /api/user/register
 | password | String | Yes | Password, length 6-20 |
 | phone | String | Yes | Phone number, format `1[3-9]\d{9}` |
 | email | String | No | Email |
-| role | Integer | Yes | Role: 1=regular user, 2=merchant |
+| role | Integer | No | Reserved field; registration always creates a regular user (1). Merchant role is granted only after merchant approval |
 | captchaUuid | String | Yes | Captcha UUID (from 2.1) |
 | captchaCode | String | Yes | Captcha input value |
 
@@ -804,6 +804,23 @@ POST /api/payment/confirm-qrcode
 
 ---
 
+### 7.4 My Payment Records (Mock Extension)
+
+> Permission: logged-in user. The backend does not provide a payment-record query API yet; this endpoint is provided by Mock during development.
+
+```
+GET /api/payment/records
+```
+
+| Parameter | Type | Required | Description |
+|------|------|------|------|
+| page | Integer | No | Page number, default 1 |
+| size | Integer | No | Page size, default 10 |
+
+**Return**: `PageResult<PaymentRecord>` with `id`, `orderId`, `orderNo`, `payMethod` (1=card, 2=QR code), `cardNo` (masked), `amount` (cents), `status` (0=processing, 1=success, 2=failed), `paidAt`, `createdAt`.
+
+---
+
 ## 8. Shipping Address `/api/address`
 
 **Controller**: `AddressController`  
@@ -1335,6 +1352,9 @@ GET /api/admin/report
     "salesTrend": [
       { "date": "2024-10-01", "amount": 1500000 },
       { "date": "2024-10-02", "amount": 2300000 }
+    ],
+    "orderTrend": [
+      { "date": "2024-10-01", "createdCount": 120, "paidCount": 100, "completedCount": 80 }
     ],
     "orderStatusDistribution": {
       "pending": 50,

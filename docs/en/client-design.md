@@ -879,6 +879,7 @@ server {
 | `/checkout` | Checkout | User/Merchant | Confirm address, products, amount |
 | `/payment/:orderId` | Payment | User/Merchant | Card/QR code payment |
 | `/orders` | My Orders | User/Merchant | Order list |
+| `/payments` | Payment Records | User/Merchant/Administrator | Payment method, amount and time |
 | `/order/:id` | Order Details | User/Merchant | Includes refund/return entry |
 | `/profile` | Personal Information | User/Merchant/Administrator | Change password, etc. |
 | `/settings` | Account Settings | User/Merchant/Administrator | Preferences + avatar upload |
@@ -1010,3 +1011,9 @@ All items below can be verified independently with `npm run dev:mock`, without t
 - When a keyword is present, the page calls `/api/search` (category/brand/price/sort/pagination); suggestions, history and hot keywords use APIs 15.2-15.5.
 - Category-only browsing or filters without a keyword use local filtering over `/api/product/list`; the same fallback applies when search APIs are unavailable.
 - Mock expands category filters to all descendants, matching the three-level navigation behavior.
+
+### 15.12 Payment Records and Order Trend
+
+- Added the `/payments` page showing payment method, masked card number, amount, status and time; Mock provides `GET /api/payment/records`.
+- The admin sales report adds an order-count trend chart (created/paid/completed); `AdminReportVO.orderTrend` and Mock data are synchronized.
+- Search sorting adds "listing time"; category navigation renders `category.icon` when available.

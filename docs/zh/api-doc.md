@@ -137,7 +137,7 @@ POST /api/user/register
 | password | String | 是 | 密码，长度 6-20 |
 | phone | String | 是 | 手机号，格式 `1[3-9]\d{9}` |
 | email | String | 否 | 邮箱 |
-| role | Integer | 是 | 角色：1=普通用户，2=商家 |
+| role | Integer | 否 | 保留字段，注册固定为普通用户（1）；商家角色只能通过入驻审核升级 |
 | captchaUuid | String | 是 | 验证码 UUID（来自 2.1） |
 | captchaCode | String | 是 | 验证码输入值 |
 
@@ -805,6 +805,23 @@ POST /api/payment/confirm-qrcode
 
 ---
 
+### 7.4 我的支付记录（Mock 扩展）
+
+> 权限：登录用户。正式后端尚未提供支付记录查询接口，开发阶段由 Mock 实现。
+
+```
+GET /api/payment/records
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+
+**返回**：`PageResult<PaymentRecord>`，字段：`id`、`orderId`、`orderNo`、`payMethod`（1=银行卡，2=二维码）、`cardNo`（脱敏）、`amount`（分）、`status`（0=处理中，1=成功，2=失败）、`paidAt`、`createdAt`。
+
+---
+
 ## 8. 收货地址 `/api/address`
 
 **Controller**：`AddressController`  
@@ -1336,6 +1353,9 @@ GET /api/admin/report
     "salesTrend": [
       { "date": "2024-10-01", "amount": 1500000 },
       { "date": "2024-10-02", "amount": 2300000 }
+    ],
+    "orderTrend": [
+      { "date": "2024-10-01", "createdCount": 120, "paidCount": 100, "completedCount": 80 }
     ],
     "orderStatusDistribution": {
       "pending": 50,

@@ -29,8 +29,8 @@
 | phone | VARCHAR(20) | Phone number |
 | email | VARCHAR(100) | Email |
 | avatar | VARCHAR(500) | Avatar URL |
-| role | TINYINT | 0-Regular user, 1-Administrator |
-| status | TINYINT | 0-Normal, 1-Disabled |
+| role | TINYINT | 1-Regular user, 2-Merchant, 3-Administrator |
+| status | TINYINT | 1-Normal, 0-Disabled |
 | created_at | DATETIME | Registration time |
 | updated_at | DATETIME | Update time |
 
@@ -81,6 +81,8 @@
 | template_id | BIGINT FK | References `spec_template` |
 | value | VARCHAR(50) | Specification value (e.g., "Red", "XL") |
 | sort_order | INT | Sort order |
+
+> **Status**: Specification templates/values are reserved tables; merchants currently submit a SKU list directly (`product_sku.spec_text` / `spec_ids`), and no template management API is provided yet.
 
 ### `product` Product Table
 
@@ -240,11 +242,11 @@
 | created_at | DATETIME | Comment time |
 
 > **Overall design rationale**:
-> - All logged-in users can post first-level comments and replies.
+> - Currently only users with a received order can post a first-level comment; merchants can reply to comments on their own products.
 > - After the user confirms receipt, a star rating window pops up; after submission, a comment with `star + is_append=0` is generated. The user can later comment on the same product again, with `is_append=1`, implementing a follow-up comment.
-> - Replies use `parent_id` recursion to achieve unlimited nesting; queries use MySQL recursive CTEs or application-layer recursive assembly.
-> - Redis caches aggregate data such as the total comment count and average star rating of popular products; when a new comment is added, Redis is updated asynchronously and synchronized to MySQL in batches.
-> - Merchants and administrators can delete/reply to any comment; deletion is physical.
+> - The current implementation uses two levels: top-level comment + follow-up review/merchant reply (linked by `parent_id`); unlimited nesting is not implemented.
+> - `status` is reserved for soft deletion (0-normal, 1-deleted); no comment deletion API is provided yet.
+> - Redis comment statistics and ES synchronization are planned, not implemented yet.
 
 ---
 
@@ -269,7 +271,7 @@
 |------|------|------|
 | id | BIGINT PK | Primary key |
 | user_id | BIGINT | Regular user ID, references the user table |
-| merchant_id | BIGINT | Merchant user ID, references the user table |
+| merchant_id | BIGINT | References the merchant table primary key (merchant.id), not user_id |
 | product_id | BIGINT | Associated product ID (optional; marks which product the conversation originated from) |
 | last_message | VARCHAR(500) | Summary of the last message |
 | last_message_time | DATETIME | Time of the last message |
@@ -534,6 +536,8 @@
 
 ## 13. Redis Cache Design
 
+> **Status**: The implementation currently uses `token:*`, `reset:*`, `captcha:*`, `category:tree`, `order:submit-token:*` and `seckill:*`; the remaining entries below are planned.
+
 | Cache Key Example | Content | Data Structure | Expiration Strategy |
 |------|------|------|------|
 | `token:{userId}` | User login state | String | Set expiration time |
@@ -551,6 +555,8 @@
 ---
 
 ## 14. Search Engine (Elasticsearch)
+
+> **Status**: `SearchServiceImpl` is currently a placeholder and does not use ES yet; the table below is planned.
 
 | Index | Synchronized Fields | Description |
 |------|------|------|
