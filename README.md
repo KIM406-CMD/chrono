@@ -184,6 +184,7 @@ npm run dev
 | 文档 | 内容 |
 |------|------|
 | [requirements-analysis.md](./docs/requirements-analysis.md) | 需求分析 — 业务背景、核心业务规则、48 项功能需求（F-01~F-48）、优先级、业务流程与数据需求 |
+| [面向对象开发步骤与设计分析.md](./面向对象开发步骤与设计分析.md) | 面向对象开发 — 需求与用例、领域分析、职责分配、架构设计与详细设计步骤 |
 | [feasibility-analysis.md](./docs/feasibility-analysis.md) | 可行性分析 — 技术/进度/经济/运行四维度 |
 | [server-design.md](./docs/server-design.md) | 服务端概要设计 — Maven 模块 / 认证 / 异常体系 |
 | [client-design.md](./docs/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
