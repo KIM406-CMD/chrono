@@ -1,7 +1,7 @@
 import { MockMethod } from 'vite-plugin-mock'
 import Mock from 'mockjs'
 
-let seckillCoupons = [
+const seckillCoupons = [
   {
     id: 1,
     name: '新人满减券',
@@ -74,7 +74,7 @@ let seckillCoupons = [
   },
 ]
 
-let userCoupons = [
+const userCoupons = [
   {
     id: 1,
     userId: 100,

@@ -75,6 +75,12 @@ class AuthControllerE2ETest {
 }
 ```
 
+### 1.4 前端测试
+
+- **单元测试**：Vitest（`src/**/*.spec.ts`），当前覆盖银行卡 Luhn/有效期/CVV 校验与富文本清洗。
+- **E2E 冒烟测试**：Playwright（`e2e/*.spec.ts`），通过 `dev:mock` 启动前端，验证游客浏览首页、进入商品详情、打开领券中心。
+- **代码规范**：ESLint（`eslint.config.js`），提交前执行 `npm run lint`。
+
 ---
 
 ## 2. 技术栈
@@ -216,6 +222,12 @@ mvn test -pl module-start -Dtest=AuthServiceImplTest
 
 # 运行指定测试方法
 mvn test -pl module-start -Dtest=AuthServiceImplTest#shouldRegisterNewUser
+
+# 前端质量检查
+cd chrono-bbs-client
+npm run lint
+npm run test
+npm run test:e2e   # 首次执行前：npx playwright install chromium
 ```
 
 ### 7.2 报告位置

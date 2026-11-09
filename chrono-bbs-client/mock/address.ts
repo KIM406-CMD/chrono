@@ -1,7 +1,7 @@
 import { MockMethod } from 'vite-plugin-mock'
 
 // 地址数据
-let addresses = [
+const addresses = [
   {
     id: 1,
     userId: 100,

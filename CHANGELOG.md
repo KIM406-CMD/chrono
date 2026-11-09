@@ -10,6 +10,8 @@
 ## [Unreleased]
 
 ### Added
+- 前端工程化：新增 ESLint（`npm run lint`）、Vitest 单元测试（`npm run test`，覆盖 Luhn 与富文本清洗）和 Playwright E2E 冒烟测试（`npm run test:e2e`）
+- 构建优化：Element Plus 改为按需引入，主包由约 833 kB 降至约 87 kB；ECharts 保持报表页懒加载
 - 退货寄回确认：退款单新增 `merchant_id`、退货快递/物流单号、寄回与收货时间字段及 3/4/5 状态；买家可填写退货物流，商家/管理员可确认收货并完成退款
 - 管理员编辑商品：全平台商品列表新增编辑弹窗，支持修改基础信息与 SKU 价格/库存，Mock 提供 `PUT /api/admin/products/{id}`
 - 评论图片：`comment` 增加 `images` 字段，发表评价支持上传最多 4 张图片，商品详情评论列表展示图片
