@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus, Minus, Shop, Share, Star, ShoppingCart } from '@element-plus/icons-vue'
 import { getProductDetail } from '@/api/product'
 import { addToCart } from '@/api/cart'
-import { getComments, addComment } from '@/api/comment'
+import { getComments } from '@/api/comment'
 import type { Product, Sku } from '@/types/product'
 import type { CommentItem } from '@/types/comment'
 
@@ -118,14 +118,6 @@ const commentSize = 10
 const commentStar = ref<number | ''>('')
 const commentLoading = ref(false)
 
-const commentForm = reactive({
-  content: '',
-  star: 5,
-})
-const commentSubmitting = ref(false)
-
-const starLabels = ['非常差', '差', '一般', '好', '非常好']
-
 const loadComments = async () => {
   commentLoading.value = true
   try {
@@ -152,31 +144,6 @@ const handleStarFilter = (star: number | '') => {
   commentStar.value = star
   commentPage.value = 1
   loadComments()
-}
-
-const handleAddComment = async () => {
-  if (!commentForm.content.trim()) {
-    ElMessage.warning('请输入评论内容')
-    return
-  }
-  commentSubmitting.value = true
-  try {
-    await addComment({
-      productId: productId.value,
-      orderItemId: 0,
-      content: commentForm.content,
-      star: commentForm.star,
-    })
-    ElMessage.success('评论发表成功')
-    commentForm.content = ''
-    commentForm.star = 5
-    commentPage.value = 1
-    loadComments()
-  } catch {
-    // error handled by interceptor
-  } finally {
-    commentSubmitting.value = false
-  }
 }
 
 const switchTab = (tab: 'detail' | 'specs' | 'comments') => {
@@ -364,25 +331,8 @@ onMounted(() => {
 
           <template v-else-if="activeTab === 'comments'">
             <div class="comment-section" v-loading="commentLoading">
-              <!-- 评论表单 -->
-              <div class="comment-form">
-                <h4>发表评论</h4>
-                <div class="comment-star-row">
-                  <span class="comment-form-label">评分：</span>
-                  <el-rate v-model="commentForm.star" :texts="starLabels" show-text />
-                </div>
-                <el-input
-                  v-model="commentForm.content"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="请输入您的评价..."
-                  maxlength="500"
-                  show-word-limit
-                />
-                <el-button type="primary" :loading="commentSubmitting" @click="handleAddComment" class="comment-submit-btn">
-                  发表评论
-                </el-button>
-              </div>
+              <!-- 评价入口位于订单详情，仅已收货订单可评价 -->
+              <p class="comment-tip">发表评价请前往「我的订单」→ 订单详情</p>
 
               <!-- 星级筛选 -->
               <div class="comment-filter">
@@ -405,22 +355,22 @@ onMounted(() => {
 
               <div v-for="item in comments" :key="item.id" class="comment-item">
                 <div class="comment-avatar">
-                  <el-avatar :size="40" :src="item.avatar">{{ item.username?.charAt(0) }}</el-avatar>
+                  <el-avatar :size="40" :src="item.avatar">{{ (item.nickname || item.username)?.charAt(0) }}</el-avatar>
                 </div>
                 <div class="comment-body">
                   <div class="comment-header">
-                    <span class="comment-user">{{ item.username }}</span>
+                    <span class="comment-user">{{ item.nickname || item.username }}</span>
                     <el-rate :model-value="item.star" disabled show-score size="small" />
                     <span class="comment-time">{{ item.createdAt }}</span>
                   </div>
                   <p class="comment-text">{{ item.content }}</p>
-                  <div v-if="item.appendContent" class="comment-append">
-                    <span class="append-label">追评：</span>{{ item.appendContent }}
-                    <span class="append-time">（{{ item.appendAt }}）</span>
+                  <div v-if="item.append" class="comment-append">
+                    <span class="append-label">追评：</span>{{ item.append.content }}
+                    <span class="append-time">（{{ item.append.createdAt }}）</span>
                   </div>
-                  <div v-if="item.replyContent" class="comment-reply">
-                    <span class="reply-label">商家回复：</span>{{ item.replyContent }}
-                    <span class="reply-time">（{{ item.replyAt }}）</span>
+                  <div v-for="reply in item.replies || []" :key="reply.id" class="comment-reply">
+                    <span class="reply-label">{{ reply.nickname || reply.username || '商家' }}回复：</span>{{ reply.content }}
+                    <span class="reply-time">（{{ reply.createdAt }}）</span>
                   </div>
                 </div>
               </div>
@@ -971,33 +921,13 @@ onMounted(() => {
   padding: 24px 0;
 }
 
-.comment-form {
+.comment-tip {
+  margin: 0 0 20px;
+  padding: 12px 16px;
   background: #f9fafb;
   border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 24px;
-}
-
-.comment-form h4 {
-  margin: 0 0 12px;
-  font-size: 16px;
-  color: #333;
-}
-
-.comment-star-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.comment-form-label {
-  font-size: 14px;
-  color: #666;
-  margin-right: 8px;
-}
-
-.comment-submit-btn {
-  margin-top: 12px;
+  font-size: 13px;
+  color: #999;
 }
 
 .comment-filter {

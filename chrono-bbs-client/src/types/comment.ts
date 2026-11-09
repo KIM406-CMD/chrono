@@ -3,16 +3,16 @@ export interface CommentItem {
   productId: number
   userId: number
   username: string
+  nickname?: string
   avatar: string
   orderItemId: number
   content: string
   star: number
-  appendContent?: string
-  appendAt?: string
-  replyContent?: string
-  replyAt?: string
-  merchantId?: number
   createdAt: string
+  // 追评（仅一级评论可能有）
+  append?: CommentItem | null
+  // 商家回复列表
+  replies?: CommentItem[]
 }
 
 export interface AddCommentRequest {

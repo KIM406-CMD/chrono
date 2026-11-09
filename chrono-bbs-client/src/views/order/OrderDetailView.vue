@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { getOrderDetail, cancelOrder, receiveOrder, deleteOrder } from '@/api/order'
-import type { Order } from '@/types/order'
+import { addComment } from '@/api/comment'
+import type { Order, OrderItem } from '@/types/order'
 import { OrderStatus } from '@/types/common'
 
 const router = useRouter()
@@ -148,6 +149,41 @@ const handleDelete = async () => {
   }
 }
 
+// 评价（仅已收货订单可评价）
+const commentDialogVisible = ref(false)
+const commentSubmitting = ref(false)
+const commentTarget = ref<OrderItem | null>(null)
+const commentForm = reactive({ star: 5, content: '' })
+
+const openComment = (item: OrderItem) => {
+  commentTarget.value = item
+  commentForm.star = 5
+  commentForm.content = ''
+  commentDialogVisible.value = true
+}
+
+const handleSubmitComment = async () => {
+  if (!commentTarget.value || !commentForm.content.trim()) {
+    ElMessage.warning('请输入评价内容')
+    return
+  }
+  commentSubmitting.value = true
+  try {
+    await addComment({
+      productId: commentTarget.value.productId,
+      orderItemId: commentTarget.value.id,
+      content: commentForm.content,
+      star: commentForm.star,
+    })
+    ElMessage.success('评价发表成功')
+    commentDialogVisible.value = false
+  } catch {
+    // 错误提示由拦截器统一处理
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
 onMounted(() => {
   loadOrder()
 })
@@ -250,6 +286,9 @@ onMounted(() => {
             <div class="od-item-sub">
               ¥{{ priceYuan(item.subtotal) }}
             </div>
+            <div class="od-item-actions" v-if="order.status === OrderStatus.COMPLETED">
+              <el-button size="small" plain type="primary" @click="openComment(item)">评价</el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -315,6 +354,33 @@ onMounted(() => {
         <el-button type="danger" text @click="handleDelete">删除订单</el-button>
       </div>
     </template>
+
+    <el-dialog v-model="commentDialogVisible" title="发表评价" width="480px">
+      <p class="comment-product">{{ commentTarget?.productName }}</p>
+      <el-form label-width="60px">
+        <el-form-item label="评分">
+          <el-rate
+            v-model="commentForm.star"
+            :texts="['非常差', '差', '一般', '好', '非常好']"
+            show-text
+          />
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-input
+            v-model="commentForm.content"
+            type="textarea"
+            :rows="4"
+            maxlength="1000"
+            show-word-limit
+            placeholder="请输入您的评价"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="commentDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="commentSubmitting" @click="handleSubmitComment">提交评价</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -343,6 +409,12 @@ onMounted(() => {
   font-weight: 700;
   color: #333;
   margin: 0;
+}
+
+.comment-product {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #666;
 }
 
 /* ========== 状态栏 ========== */
@@ -493,6 +565,10 @@ onMounted(() => {
   border-bottom: 1px solid #f5f5f5;
 }
 .od-item:last-child { border-bottom: none; }
+
+.od-item-actions {
+  flex-shrink: 0;
+}
 
 .od-item-img {
   width: 60px;

@@ -894,7 +894,22 @@ GET /api/comment/list/{productId}
 | size | Integer | 否 | 每页大小，默认 10 |
 | star | Integer | 否 | 按星级筛选（1-5） |
 
-**返回**：含评论内容、星级、用户信息、追评内容
+**返回**：`PageResult<CommentVO>`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 评论 ID |
+| productId | Long | 商品 ID |
+| userId | Long | 用户 ID |
+| username | String | 用户名 |
+| nickname | String | 昵称 |
+| avatar | String | 头像 |
+| orderItemId | Long | 订单明细 ID |
+| content | String | 评论内容 |
+| star | Integer | 星级（1-5） |
+| createdAt | LocalDateTime | 评论时间 |
+| append | CommentVO | 追评（仅一级评论可能返回，结构同本表） |
+| replies | List&lt;CommentVO&gt; | 商家回复列表（结构同本表） |
 
 ---
 
