@@ -9,13 +9,23 @@ const users = ref<AdminUser[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = 10
+const keyword = ref('')
+const roleFilter = ref<number | ''>('')
+const statusFilter = ref<number | ''>('')
 
 const roleMap: Record<number, string> = { 1: '买家', 2: '商家', 3: '管理员' }
 
 const loadUsers = async () => {
   loading.value = true
   try {
-    const res = await getAdminUsers({ page: page.value, size })
+    const params: { page: number; size: number; keyword?: string; role?: number; status?: number } = {
+      page: page.value,
+      size,
+    }
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
+    if (roleFilter.value !== '') params.role = roleFilter.value
+    if (statusFilter.value !== '') params.status = statusFilter.value
+    const res = await getAdminUsers(params)
     users.value = res.data.list || []
     total.value = res.data.total
   } catch {
@@ -23,6 +33,19 @@ const loadUsers = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleSearch = () => {
+  page.value = 1
+  loadUsers()
+}
+
+const handleReset = () => {
+  keyword.value = ''
+  roleFilter.value = ''
+  statusFilter.value = ''
+  page.value = 1
+  loadUsers()
 }
 
 const handleToggleStatus = async (user: AdminUser) => {
@@ -53,6 +76,27 @@ onMounted(() => { loadUsers() })
 <template>
   <div class="um-page">
     <h2>用户管理</h2>
+
+    <div class="um-filter">
+      <el-input
+        v-model="keyword"
+        placeholder="用户名 / 手机号"
+        clearable
+        style="width: 200px"
+        @keyup.enter="handleSearch"
+      />
+      <el-select v-model="roleFilter" placeholder="角色" clearable style="width: 120px">
+        <el-option label="买家" :value="1" />
+        <el-option label="商家" :value="2" />
+        <el-option label="管理员" :value="3" />
+      </el-select>
+      <el-select v-model="statusFilter" placeholder="状态" clearable style="width: 120px">
+        <el-option label="正常" :value="1" />
+        <el-option label="禁用" :value="0" />
+      </el-select>
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+      <el-button @click="handleReset">重置</el-button>
+    </div>
 
     <el-table :data="users" v-loading="loading" stripe class="um-table">
       <el-table-column prop="id" label="ID" width="70" />
@@ -108,6 +152,13 @@ onMounted(() => { loadUsers() })
   font-weight: 700;
   margin: 0 0 16px;
   color: #333;
+}
+.um-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .um-table {
   background: #fff;

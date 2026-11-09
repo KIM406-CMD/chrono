@@ -90,6 +90,7 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- 管理后台用户、订单、商品列表新增条件筛选：关键词、角色、状态、订单号，支持查询与重置
 - 移除商品详情页无实际行为的收藏/分享占位按钮，避免点击无反馈
 - 站点标题与语言本地化为中文；首页分类/商品加载失败时增加错误提示；移除未使用的个人信息占位页
 - 全局异常处理：新增 HttpMessageNotReadableException 处理器，JSON 请求体格式错误（类型不匹配如 cartItemIds 传标量、语法错误）由 500「服务器内部错误」改为 400「请求体格式错误」

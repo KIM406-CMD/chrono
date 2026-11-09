@@ -8,6 +8,8 @@ const orders = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = 10
+const orderNo = ref('')
+const statusFilter = ref<number | ''>('')
 
 const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 
@@ -34,7 +36,13 @@ const statusTagType = (s: number) => {
 const loadOrders = async () => {
   loading.value = true
   try {
-    const res = await getAdminOrders({ page: page.value, size })
+    const params: { page: number; size: number; orderNo?: string; status?: number } = {
+      page: page.value,
+      size,
+    }
+    if (orderNo.value.trim()) params.orderNo = orderNo.value.trim()
+    if (statusFilter.value !== '') params.status = statusFilter.value
+    const res = await getAdminOrders(params)
     orders.value = res.data.list || []
     total.value = res.data.total
   } catch {
@@ -44,12 +52,45 @@ const loadOrders = async () => {
   }
 }
 
+const handleSearch = () => {
+  page.value = 1
+  loadOrders()
+}
+
+const handleReset = () => {
+  orderNo.value = ''
+  statusFilter.value = ''
+  page.value = 1
+  loadOrders()
+}
+
 onMounted(() => { loadOrders() })
 </script>
 
 <template>
   <div class="oa-page">
     <h2>全平台订单管理</h2>
+
+    <div class="oa-filter">
+      <el-input
+        v-model="orderNo"
+        placeholder="订单编号"
+        clearable
+        style="width: 220px"
+        @keyup.enter="handleSearch"
+      />
+      <el-select v-model="statusFilter" placeholder="订单状态" clearable style="width: 140px">
+        <el-option label="待付款" :value="OrderStatus.PENDING_PAYMENT" />
+        <el-option label="待发货" :value="OrderStatus.PAID" />
+        <el-option label="已发货" :value="OrderStatus.SHIPPED" />
+        <el-option label="已完成" :value="OrderStatus.COMPLETED" />
+        <el-option label="已取消" :value="OrderStatus.CANCELLED" />
+        <el-option label="退款中" :value="OrderStatus.REFUNDING" />
+        <el-option label="已退款" :value="OrderStatus.REFUNDED" />
+      </el-select>
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+      <el-button @click="handleReset">重置</el-button>
+    </div>
 
     <el-table :data="orders" v-loading="loading" stripe class="oa-table">
       <el-table-column prop="id" label="ID" width="80" />
@@ -92,6 +133,13 @@ onMounted(() => { loadOrders() })
   font-weight: 700;
   margin: 0 0 16px;
   color: #333;
+}
+.oa-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .oa-table {
   background: #fff;

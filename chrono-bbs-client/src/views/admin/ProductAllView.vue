@@ -7,13 +7,21 @@ const products = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = 10
+const keyword = ref('')
+const statusFilter = ref<number | ''>('')
 
 const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 
 const loadProducts = async () => {
   loading.value = true
   try {
-    const res = await getAdminProducts({ page: page.value, size })
+    const params: { page: number; size: number; keyword?: string; status?: number } = {
+      page: page.value,
+      size,
+    }
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
+    if (statusFilter.value !== '') params.status = statusFilter.value
+    const res = await getAdminProducts(params)
     products.value = res.data.list || []
     total.value = res.data.total
   } catch {
@@ -23,12 +31,40 @@ const loadProducts = async () => {
   }
 }
 
+const handleSearch = () => {
+  page.value = 1
+  loadProducts()
+}
+
+const handleReset = () => {
+  keyword.value = ''
+  statusFilter.value = ''
+  page.value = 1
+  loadProducts()
+}
+
 onMounted(() => { loadProducts() })
 </script>
 
 <template>
   <div class="pa-page">
     <h2>全平台商品管理</h2>
+
+    <div class="pa-filter">
+      <el-input
+        v-model="keyword"
+        placeholder="商品名称 / 品牌"
+        clearable
+        style="width: 200px"
+        @keyup.enter="handleSearch"
+      />
+      <el-select v-model="statusFilter" placeholder="状态" clearable style="width: 120px">
+        <el-option label="上架" :value="1" />
+        <el-option label="下架" :value="0" />
+      </el-select>
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+      <el-button @click="handleReset">重置</el-button>
+    </div>
 
     <el-table :data="products" v-loading="loading" stripe class="pa-table">
       <el-table-column prop="id" label="ID" width="70" />
@@ -80,6 +116,13 @@ onMounted(() => { loadProducts() })
   font-weight: 700;
   margin: 0 0 16px;
   color: #333;
+}
+.pa-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .pa-table {
   background: #fff;
