@@ -86,6 +86,7 @@
 - 文档：`hmi-design.md` 补充商家评论管理页、管理员商家审核全状态筛选与审核意见、优惠券详情弹窗；`client-design.md` 补充 `/merchant/comments` 路由与游客领券中心说明
 - 文档：`requirements-analysis.md` 合并原 PRD 的项目概述、原始题目描述与核心业务规则（分类/商品属性/购物车/模拟支付），作为唯一需求文档
 - 文档：新增根目录《面向对象开发步骤与设计分析.md》，梳理需求与用例、领域分析、职责分配、架构设计与详细设计步骤
+- 部署：新增 `deploy/nginx.conf`（History 回退、`/api` 反向代理、上传大小限制、静态缓存与 gzip），README 补充生产部署步骤
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed

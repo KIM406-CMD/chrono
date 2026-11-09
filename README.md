@@ -177,6 +177,23 @@ npm run dev
 
 > 普通用户可通过前端注册功能自行创建。
 
+### 6. 生产部署（Nginx）
+
+```bash
+cd chrono-bbs-client
+npm run build
+# 将 dist/ 下的内容部署到 Nginx 静态目录
+```
+
+将 `deploy/nginx.conf` 放入 Nginx 配置目录并重新加载。配置已包含：
+
+- History 路由回退 `try_files $uri $uri/ /index.html`；
+- `/api/` 反向代理到后端 `8080`；
+- `client_max_body_size 10m`，满足商品图片上传；
+- `/assets/` 静态资源长缓存与 gzip。
+
+> 若 Nginx 运行在容器中，请把 `proxy_pass` 中的 `127.0.0.1` 改为后端服务名或 `host.docker.internal`。
+
 ---
 
 ## 📖 文档索引

@@ -820,6 +820,9 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # 商品图片单张 2MB、请求总大小 10MB
+    client_max_body_size 10m;
+
     # History 模式 fallback
     location / {
         try_files $uri $uri/ /index.html;
@@ -830,10 +833,18 @@ server {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 60s;
     }
 
-    # WebSocket 代理
-    location /chat/ {
+    # 构建产物长缓存
+    location /assets/ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800, immutable";
+    }
+
+    # WebSocket 代理（聊天功能实现后启用）
+    location /ws/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -842,6 +853,8 @@ server {
     }
 }
 ```
+
+> 完整可部署配置见仓库根目录 [deploy/nginx.conf](../deploy/nginx.conf)。
 
 ---
 
