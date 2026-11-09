@@ -26,8 +26,8 @@ const loadUsers = async () => {
 }
 
 const handleToggleStatus = async (user: AdminUser) => {
-  const newStatus = user.status === 0 ? 1 : 0
-  const action = newStatus === 1 ? '禁用' : '启用'
+  const newStatus = user.status === 1 ? 0 : 1
+  const action = newStatus === 1 ? '启用' : '禁用'
   try {
     await ElMessageBox.confirm(`确定要${action}用户「${user.nickname}」吗？`, `${action}用户`, {
       confirmButtonText: `确认${action}`,
@@ -68,8 +68,8 @@ onMounted(() => { loadUsers() })
       </el-table-column>
       <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.status === 0 ? 'success' : 'danger'" size="small">
-            {{ row.status === 0 ? '正常' : '禁用' }}
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+            {{ row.status === 1 ? '正常' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -78,10 +78,10 @@ onMounted(() => { loadUsers() })
         <template #default="{ row }">
           <el-button
             size="small"
-            :type="row.status === 0 ? 'danger' : 'success'"
+            :type="row.status === 1 ? 'danger' : 'success'"
             @click="handleToggleStatus(row)"
           >
-            {{ row.status === 0 ? '禁用' : '启用' }}
+            {{ row.status === 1 ? '禁用' : '启用' }}
           </el-button>
         </template>
       </el-table-column>
