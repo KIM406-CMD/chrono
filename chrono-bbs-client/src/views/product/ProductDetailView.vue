@@ -25,8 +25,8 @@ const fetchProductDetail = async () => {
   try {
     const res = await getProductDetail(productId.value)
     product.value = res.data
-    if (res.data.skus && res.data.skus.length > 0) {
-      selectedSku.value = res.data.skus[0]
+    if (res.data.skuList && res.data.skuList.length > 0) {
+      selectedSku.value = res.data.skuList[0]
     }
   } catch (error) {
     ElMessage.error('获取商品详情失败')
@@ -251,10 +251,7 @@ onMounted(() => {
               <span class="price-label">价格</span>
               <div class="price-value">
                 <span class="price-symbol">¥</span>
-                <span class="price-number">{{ formatPrice(selectedSku?.price || product?.minPrice || 0) }}</span>
-                <span class="price-range" v-if="product && product.minPrice !== product.maxPrice">
-                  - ¥{{ formatPrice(product.maxPrice) }}
-                </span>
+                <span class="price-number">{{ formatPrice(selectedSku?.price || 0) }}</span>
               </div>
             </div>
             <div class="price-row">
@@ -267,11 +264,11 @@ onMounted(() => {
           </div>
 
           <!-- SKU选择 -->
-          <div class="sku-section" v-if="product?.skus && product.skus.length > 0">
+          <div class="sku-section" v-if="product?.skuList && product.skuList.length > 0">
             <div class="sku-label">规格</div>
             <div class="sku-options">
               <div
-                v-for="sku in product.skus"
+                v-for="sku in product.skuList"
                 :key="sku.id"
                 :class="['sku-item', { selected: selectedSku?.id === sku.id }]"
                 @click="selectSku(sku)"
@@ -318,7 +315,7 @@ onMounted(() => {
             <div class="shop-info">
               <Shop class="shop-icon" />
               <div class="shop-text">
-                <span class="shop-name">{{ product?.merchantName }}</span>
+                <span class="shop-name">{{ product?.shopName }}</span>
                 <span class="shop-desc">官方认证店铺</span>
               </div>
             </div>

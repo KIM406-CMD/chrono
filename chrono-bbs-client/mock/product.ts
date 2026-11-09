@@ -233,7 +233,7 @@ const mockMethods: MockMethod[] = [
         id: allProducts.length + 1,
         name: body.name,
         description: body.description || '',
-        images: [],
+        images: body.images || [],
         brand: body.brand || '',
         categoryId: body.categoryId,
         categoryName: '',

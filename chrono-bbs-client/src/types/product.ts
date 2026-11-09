@@ -43,15 +43,14 @@ export interface Product {
   categoryId: number
   categoryName: string
   merchantId: number
-  merchantName: string
+  shopName?: string
   status: ProductStatus
   sales: number
   minPrice: number
   maxPrice: number
   createdAt: string
   updatedAt: string
-  skus?: Sku[]
-  specs?: Spec[]
+  skuList?: Sku[]
 }
 
 // 商品列表查询参数
@@ -78,7 +77,7 @@ export interface ProductSkuItem {
 export interface ProductFormData {
   name: string
   description?: string
-  images?: string
+  images?: string[]
   brand?: string
   categoryId: number
   skuList: ProductSkuItem[]

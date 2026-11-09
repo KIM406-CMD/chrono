@@ -372,7 +372,17 @@ GET /api/product/list
 | page | Integer | 否 | 页码，默认 1 |
 | size | Integer | 否 | 每页大小，默认 20 |
 
-**返回**：`PageResult<ProductVO>`，每条包含商品名、图片、最低价、销量
+**返回**：`PageResult<ProductVO>`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 商品 ID |
+| name | String | 商品名称 |
+| image | String | 商品首图 URL（单图） |
+| brand | String | 品牌 |
+| categoryId | Long | 分类 ID |
+| minPrice | Integer | 最低 SKU 价格（分） |
+| sales | Integer | 销量 |
 
 ---
 
@@ -388,7 +398,32 @@ GET /api/product/{id}
 |------|------|------|------|
 | id | Long | 是 | 商品 ID（路径参数） |
 
-**返回**：商品全量信息 + SKU 列表 + 规格列表
+**返回**：`ProductDetailVO`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 商品 ID |
+| name | String | 商品名称 |
+| description | String | 商品描述 |
+| images | List&lt;String&gt; | 商品图片 URL 数组 |
+| brand | String | 品牌 |
+| categoryId | Long | 分类 ID |
+| categoryName | String | 分类名称 |
+| merchantId | Long | 商家 ID |
+| shopName | String | 店铺名称 |
+| status | Integer | 状态：0-下架，1-上架 |
+| sales | Integer | 销量 |
+| skuList | List&lt;ProductSkuVO&gt; | SKU 列表 |
+
+**SKU 项（ProductSkuVO）**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | SKU ID |
+| specIds | String | 规格 ID 组合，如 `"1,3"` |
+| specText | String | 规格文本，如 `"红色 / 64GB"` |
+| price | Integer | 价格（分） |
+| stock | Integer | 库存数量 |
 
 ---
 

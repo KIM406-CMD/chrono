@@ -104,6 +104,7 @@
 - api-doc.md：6.2 创建订单参数表新增 `userCouponId`（可选），与前端契约对齐
 
 ### Fixed
+- 商品详情页改用后端返回的 `skuList`/`shopName` 字段，修复 SKU 不显示、无法加购及店铺名空白；商品图片字段统一为字符串数组，接口文档 4.1/4.2 补充实际响应字段并与前端类型同步
 - 修复 MerchantController 遗漏 `@GetMapping("/stats")` 导致 11.6 销售统计端点不暴露的问题；同时修正 stats 参数注解顺序（@Parameter 内移到 @RequestParam 之后）
 - 修复 AdminServiceImpl 四处：分类修改三字段全空时 MyBatis `<set>` 渲染为空导致 SQL 语法错误（提前 400 拦截）；createCategory 补 level 取值 1-3 校验；一级分类强制 parentId=0 防脏数据；updateUserStatus 补 status ∈ {0,1} 校验
 - 修复上传文件超 multipart 限制时 MaxUploadSizeExceededException 被全局兜底成 500 的问题：新增专用异常处理器映射为业务错误码 4062

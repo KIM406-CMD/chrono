@@ -96,7 +96,7 @@ const openEdit = async (product: Product) => {
     form.brand = detail.brand
     form.categoryId = detail.categoryId
     form.description = detail.description
-    const firstSku = detail.skus?.[0]
+    const firstSku = detail.skuList?.[0]
     form.price = firstSku ? firstSku.price / 100 : 0
     form.stock = firstSku ? firstSku.stock : 100
   } catch {
