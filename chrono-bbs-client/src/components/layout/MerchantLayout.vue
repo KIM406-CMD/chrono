@@ -11,6 +11,7 @@ const router = useRouter()
       <div class="panel-title">商家中心</div>
       <el-menu router :default-active="route.path" class="merchant-menu">
         <el-menu-item index="/merchant/products">商品管理</el-menu-item>
+        <el-menu-item index="/merchant/comments">评论管理</el-menu-item>
         <el-menu-item index="/merchant/orders">订单管理</el-menu-item>
         <el-menu-item index="/merchant/refunds">退款审核</el-menu-item>
         <el-menu-item index="/merchant/stats">销售统计</el-menu-item>

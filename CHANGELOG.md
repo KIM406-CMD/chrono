@@ -10,6 +10,7 @@
 ## [Unreleased]
 
 ### Added
+- 商家后台新增评论管理页：按商品查看评论、追评与回复记录，支持商家回复（`POST /api/comment/reply`）
 - 商家商品表单接入图片上传（最多 4 张、单张 ≤2MB，随创建/编辑提交 `images`）；分类管理支持图标上传与树节点展示；USER 菜单新增商家入驻入口并移至商城布局；`/profile` 重定向账户设置
 - 前端项目骨架：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router
 - Mock 数据层：基于 vite-plugin-mock，覆盖用户、商品、分类、购物车、订单、支付、地址、商家、管理员、退款、聊天、上传 12 个模块

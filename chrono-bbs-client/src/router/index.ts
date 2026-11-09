@@ -157,6 +157,12 @@ const merchantRoutes: RouteRecordRaw[] = [
         meta: { title: '商品管理' },
       },
       {
+        path: 'comments',
+        name: 'MerchantComments',
+        component: () => import('@/views/merchant/CommentManageView.vue'),
+        meta: { title: '评论管理' },
+      },
+      {
         path: 'orders',
         name: 'MerchantOrders',
         component: () => import('@/views/merchant/OrderManageView.vue'),
