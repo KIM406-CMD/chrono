@@ -2197,3 +2197,22 @@ User enters the help center
 ```
 ```
 ```
+
+
+### 5.11 Frontend Enhancement Interactions (Mock-verifiable)
+
+- Merchant product dialog: specification group editor and an auto-generated SKU table with per-row price and stock.
+- Search page: cascading category, brand and price-range filters, category path display and reset.
+- Top category bar / home sidebar: hover flyouts for level-2/level-3 categories; clicking any level opens the search results.
+- Product detail: rich text description and a specification table; the order progress keeps the existing step indicator.
+- Sales report / merchant stats: line, bar and pie charts alongside detail tables.
+- Cashier: automatic 4-digit card grouping, automatic MM/YY slash, and frontend Luhn / expiry / CVV validation.
+- Home: pagination for "Guess You Like"; hot recommendations sorted by sales.
+
+
+### 5.12 Mock Integration for Previously Backend-blocked Features
+
+- Chat: header message entry, unread badge, conversation list/history/send, and "Contact Support" on the product detail page.
+- Refund review: merchant and admin backends reuse one review page with status filtering and approve/reject actions.
+- Admin products: inline on/off-shelf and delete actions in the global product list.
+- Search: keyword searches use `/api/search`; category-only browsing uses local filtering over the product list.

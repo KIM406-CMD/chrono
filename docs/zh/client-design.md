@@ -114,13 +114,19 @@ chrono-bbs-client/
     │   │   └── HelpView.vue             # 帮助中心
     │   └── NotFound.vue                 # 404 页面
     ├── components/                      # ===== 通用组件层 =====
-    │   └── layout/                      # 布局组件
-    │       ├── MallLayout.vue           # 商城布局（顶部导航 + 分类栏 + 内容区 + 页脚）
-    │       ├── MerchantLayout.vue       # 商家后台布局（侧边栏 + 内容区）
-    │       └── AdminLayout.vue          # 管理员后台布局（侧边栏 + 内容区）
+    │   ├── layout/                      # 布局组件
+    │   │   ├── MallLayout.vue           # 商城布局（顶部导航 + 分类栏 + 内容区 + 页脚）
+    │   │   ├── MerchantLayout.vue       # 商家后台布局（侧边栏 + 内容区）
+    │   │   └── AdminLayout.vue          # 管理员后台布局（侧边栏 + 内容区）
+    │   ├── category/
+    │   │   └── CategoryFlyout.vue       # 三级分类悬浮面板
+    │   └── chart/
+    │       └── BaseChart.vue            # ECharts 图表封装（按需引入）
     ├── utils/                           # ===== 工具函数 =====
     │   ├── token.ts                     # Token 存取（localStorage）
-    │   └── settings.ts                  # 用户偏好设置（localStorage）
+    │   ├── settings.ts                  # 用户偏好设置（localStorage）
+    │   ├── luhn.ts                      # 银行卡号格式化与 Luhn/有效期/CVV 校验
+    │   └── sanitizeHtml.ts              # 商品详情富文本清洗
     ├── styles/                          # ===== 全局样式 =====
     │   ├── variables.css                # CSS 变量系统（设计 Token）
     │   └── global.css                   # 全局基础样式
@@ -519,7 +525,7 @@ export const useUserStore = defineStore('user', () => {
 
 ## 七、即时通讯
 
-> **实现状态**：当前聊天功能通过 Mock 接口模拟（`mock/chat.ts`），用于前端联调。后端 WebSocket 接口完成后，切换至下方 WebSocket 方案。
+> **实现状态**：聊天入口已启用（`CHAT_ENABLED = true`），当前通过 Mock HTTP 接口（`mock/chat.ts`）联调。后端 WebSocket 接口完成后，切换至下方 WebSocket 方案。
 
 ### 7.1 后端 WebSocket 约定
 
@@ -607,7 +613,7 @@ export function useWebSocket(userId: number) {
 
 ## 八、商品搜索（后端接口）
 
-> **实现状态**：搜索已接入后端 `/api/search` 接口（后端内部使用 Elasticsearch，前端不直连 ES）。前端封装见 `api/search.ts`。
+> **实现状态**：搜索页已按本节接口接入（后端内部使用 Elasticsearch，前端不直连 ES），封装见 `api/search.ts`。后端接口未实现时自动降级为 `/api/product/list` 本地过滤，保证游客可用。
 
 ### 8.1 接口清单
 
@@ -931,3 +937,76 @@ server {
 | 发表评论 | POST | `/api/comment` | `{ productId, content, rating, images }` |
 | 申请退款 | POST | `/api/refund` | `{ orderItemId, type, reason, amount }` |
 | WebSocket 连接 | WS | `ws://host/chat/{userId}` | — |
+
+---
+
+## 十五、前端增强能力（当前实现）
+
+以下能力均可在 `npm run dev:mock` 下独立验证，不依赖尚未实现的后端接口。
+
+### 15.1 商家多规格 SKU
+
+- 商品新增/编辑弹窗支持维护多个规格组（规格名 + 逗号分隔的规格值），自动生成笛卡尔积 SKU 组合。
+- 每个 SKU 可单独设置价格与库存；提交时转换为后端 `ProductCreateDTO.skuList`。
+- 编辑商品时根据已有 `specText` 反推规格组，保留原 SKU 价格/库存。
+- 对应文件：`src/views/merchant/ProductManageView.vue`、`mock/product.ts`。
+
+### 15.2 报表图表
+
+- 引入 ECharts 6（按需引入），封装 `src/components/chart/BaseChart.vue`。
+- 管理员销售报表：销售趋势折线图、热销商品柱状图、分类销售饼图、商家销售柱状图。
+- 商家销售统计：销售趋势折线图、热销商品柱状图、分类销售饼图。
+- 图表与明细表格并存；金额统一按元展示。
+
+### 15.3 卡号支付前端校验
+
+- `src/utils/luhn.ts` 提供卡号格式化、Luhn 校验、有效期 MM/YY 校验与 CVV 校验。
+- 收银台输入自动格式化，提交前完成前端预校验并给出具体提示；后端仍做最终校验。
+
+### 15.4 搜索筛选与三级分类
+
+- 搜索结果页新增级联分类、品牌、价格区间筛选，支持重置与分类路径展示。
+- 当前后端搜索接口未实现，筛选基于 `/api/product/list` 已加载商品在前端完成。
+- 顶部导航与首页分类侧边栏支持 hover 浮层，可直接选择二级/三级分类。
+- 对应文件：`src/views/product/SearchResultView.vue`、`src/components/category/CategoryFlyout.vue`。
+
+### 15.5 商品详情富文本与规格参数
+
+- 商品详情标签页渲染清洗后的富文本描述（`src/utils/sanitizeHtml.ts`），移除脚本与事件属性。
+- 规格参数标签页展示品牌、分类、店铺、销量及全部 SKU 价格/库存。
+
+### 15.6 首页商品分页
+
+- “猜你喜欢”区域按页加载（每页 10 条）并支持分页；“热销推荐”按销量排序展示前 10 条。
+
+### 15.7 Mock 调试模式
+
+- `npm run dev` 连接真实后端；`npm run dev:mock` 使用 `mock/` 目录，互不影响。
+- Mock 商品创建/编辑已持久化多 SKU，并自动计算最低/最高价；管理员报表字段与后端 `AdminReportVO` 对齐。
+
+> 说明：聊天、商家退款审核、退货寄回确认、管理员商品操作、真实全文搜索与评论图片仍受后端接口限制，相关入口保持关闭或降级。
+
+
+### 15.8 聊天联调（Mock HTTP）
+
+- 商城顶部消息入口、用户菜单“我的消息”默认开启；未读角标调用 `GET /api/chat/unread-count`。
+- 聊天页支持会话列表、历史消息、发送消息、标记已读；发送走 Mock 的 `POST /api/chat/message`（正式后端为 WebSocket）。
+- 商品详情页店铺卡片新增“联系客服”：登录后调用 `POST /api/chat/conversation` 创建/复用会话并跳转聊天页。
+- Mock 已实现会话创建去重、未读计数汇总与已读清零。
+
+### 15.9 退款审核（商家/管理员）
+
+- 商家后台“退款审核”与管理员后台“退款审核”复用同一页面 `RefundManageView.vue`，根据路由前缀选择数据源。
+- 列表支持按状态筛选，同意/拒绝退款并填写拒绝原因；审核后列表状态立即更新。
+- Mock 扩展接口：`GET /api/merchant/refunds`、`GET /api/admin/refunds`，审核复用 `PUT /api/refund/{id}/review`。
+
+### 15.10 管理员商品操作
+
+- 全平台商品列表支持上架/下架与删除，操作前二次确认。
+- Mock 扩展接口：`PUT /api/admin/products/{id}/status`、`DELETE /api/admin/products/{id}`。
+
+### 15.11 搜索接口接入与降级
+
+- 有关键词时调用 `/api/search`（分类/品牌/价格/排序/分页），建议、历史、热搜分别调用 15.2-15.5 接口。
+- 仅按分类浏览或无关键词筛选时使用 `/api/product/list` 本地过滤；搜索接口不可用时同样自动降级。
+- 分类筛选在 Mock 中按分类子树展开，与首页/顶部分类导航的三级分类行为一致。
