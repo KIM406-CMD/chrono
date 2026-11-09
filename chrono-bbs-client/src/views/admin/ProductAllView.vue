@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
 import { getAdminProducts } from '@/api/admin'
 
 const loading = ref(false)
@@ -22,11 +21,6 @@ const loadProducts = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const handleToggleStatus = (product: any) => {
-  const action = product.status === 1 ? '下架' : '上架'
-  ElMessage.success(`商品「${product.name}」已${action}`)
 }
 
 onMounted(() => { loadProducts() })
@@ -54,15 +48,13 @@ onMounted(() => { loadProducts() })
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100" align="center" fixed="right">
-        <template #default="{ row }">
-          <el-button
-            size="small"
-            :type="row.status === 1 ? 'danger' : 'success'"
-            @click="handleToggleStatus(row)"
-          >
-            {{ row.status === 1 ? '下架' : '上架' }}
-          </el-button>
+      <el-table-column label="操作" width="120" align="center" fixed="right">
+        <template #default>
+          <el-tooltip content="后端暂未提供管理员上下架接口" placement="top">
+            <span>
+              <el-button size="small" disabled>调整状态</el-button>
+            </span>
+          </el-tooltip>
         </template>
       </el-table-column>
     </el-table>
