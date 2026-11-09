@@ -1,6 +1,5 @@
 import service from '@/api'
 import type { PageResult } from '@/types/common'
-import type { MerchantInfo } from '@/api/merchant'
 
 export interface AdminUser {
   id: number
@@ -22,8 +21,20 @@ export const setUserStatus = (id: number, status: number) => {
   return service.put(`/admin/users/${id}/status`, { status })
 }
 
+export interface AdminMerchant {
+  id: number
+  userId: number
+  applicantUsername: string
+  shopName: string
+  contactPhone: string
+  status: number
+  reviewReason: string | null
+  reviewedAt: string | null
+  createdAt: string
+}
+
 export const getMerchants = (params?: { status?: number; page?: number; size?: number }) => {
-  return service.get<any, { code: number; message: string; data: PageResult<MerchantInfo>; timestamp: number }>('/admin/merchants', { params })
+  return service.get<any, { code: number; message: string; data: PageResult<AdminMerchant>; timestamp: number }>('/admin/merchants', { params })
 }
 
 // 兼容旧调用：默认查询待审核商家
