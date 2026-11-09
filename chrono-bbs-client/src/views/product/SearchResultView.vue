@@ -3,8 +3,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Search, Delete } from '@element-plus/icons-vue'
-import { searchProducts, getSearchSuggest, getSearchHistory, clearSearchHistory, getHotSearch } from '@/api/search'
-import type { SearchItem, SearchParams } from '@/api/search'
+import { getProductList, getCategoryTree } from '@/api/product'
+import type { Product, Category } from '@/types/product'
 import { formatPriceByPreference, generalSettings, reloadGeneralSettings } from '@/utils/settings'
 
 const router = useRouter()
@@ -12,30 +12,47 @@ const route = useRoute()
 
 const keyword = ref((route.query.keyword as string) || '')
 const categoryId = ref(route.query.categoryId ? parseInt(route.query.categoryId as string) : 0)
-const products = ref<SearchItem[]>([])
+const products = ref<Product[]>([])
 const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
 const pageSize = 20
 const sortBy = ref<'default' | 'price_asc' | 'price_desc' | 'sales_desc'>('default')
 
-// 搜索建议（自动补全）
+// 本地搜索数据（商品列表接口为公开接口，游客可用）
+const allProducts = ref<Product[]>([])
+const categoryTree = ref<Category[]>([])
+const hotKeywords = ref<string[]>([])
+const historyKeywords = ref<string[]>([])
+const HISTORY_KEY = 'search_history'
+
+// 搜索建议：基于已加载商品名称本地过滤
 const querySuggest = (query: string, cb: (data: { value: string }[]) => void) => {
-  const q = (query || '').trim()
+  const q = (query || '').trim().toLowerCase()
   if (!q) {
     cb([])
     return
   }
-  getSearchSuggest(q)
-    .then((res) => {
-      cb((res.data || []).map((s: string) => ({ value: s })))
-    })
-    .catch(() => cb([]))
+  const names = allProducts.value
+    .map((item) => item.name)
+    .filter((name) => name.toLowerCase().includes(q))
+  cb(Array.from(new Set(names)).slice(0, 8).map((value) => ({ value })))
 }
 
-// 热搜榜 + 搜索历史
-const hotKeywords = ref<string[]>([])
-const historyKeywords = ref<string[]>([])
+const loadHistory = () => {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    historyKeywords.value = raw ? JSON.parse(raw) : []
+  } catch {
+    historyKeywords.value = []
+  }
+}
+
+const saveHistory = (kw: string) => {
+  const next = [kw, ...historyKeywords.value.filter((item) => item !== kw)].slice(0, 10)
+  historyKeywords.value = next
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(next))
+}
 
 const priceYuan = (fen: number) => formatPriceByPreference(fen)
 
@@ -48,41 +65,80 @@ const sorts = [
 
 const hasQuery = () => !!keyword.value.trim() || !!categoryId.value
 
-const loadProducts = async () => {
-  if (!hasQuery()) {
-    products.value = []
-    total.value = 0
-    return
+const collectCategoryIds = (node: Category): number[] => [
+  node.id,
+  ...(node.children || []).flatMap(collectCategoryIds),
+]
+
+const findCategory = (list: Category[], id: number): Category | null => {
+  for (const node of list) {
+    if (node.id === id) return node
+    if (node.children?.length) {
+      const found = findCategory(node.children, id)
+      if (found) return found
+    }
   }
+  return null
+}
+
+const matchesCategory = (product: Product) => {
+  if (!categoryId.value) return true
+  const target = findCategory(categoryTree.value, categoryId.value)
+  if (!target) return false
+  return collectCategoryIds(target).includes(product.categoryId)
+}
+
+const loadCategories = async () => {
+  try {
+    const res = await getCategoryTree()
+    categoryTree.value = res.data || []
+  } catch {
+    categoryTree.value = []
+  }
+}
+
+const loadAllProducts = async () => {
   loading.value = true
   try {
-    const params: SearchParams = {
-      keyword: keyword.value.trim(),
-      page: page.value,
-      size: pageSize,
+    const first = await getProductList({ page: 1, size: 100 })
+    let list: Product[] = first.data.list || []
+    const pages = Math.min(Math.ceil((first.data.total || 0) / 100), 10)
+    for (let p = 2; p <= pages; p++) {
+      const res = await getProductList({ page: p, size: 100 })
+      list = list.concat(res.data.list || [])
     }
-    if (categoryId.value) params.categoryId = categoryId.value
-    const currentSort = sortBy.value
-    if (currentSort !== 'default') params.sort = currentSort
-    const res = await searchProducts(params)
-    products.value = res.data.list || []
-    total.value = res.data.total
+    allProducts.value = list
+    hotKeywords.value = Array.from(
+      new Set([...list].sort((a, b) => b.sales - a.sales).map((item) => item.name)),
+    ).slice(0, 8)
   } catch {
-    ElMessage.error('搜索失败')
+    allProducts.value = []
+    hotKeywords.value = []
   } finally {
     loading.value = false
   }
 }
 
-const loadHotAndHistory = async () => {
-  try {
-    const [hotRes, hisRes] = await Promise.all([getHotSearch(), getSearchHistory()])
-    hotKeywords.value = hotRes.data || []
-    historyKeywords.value = hisRes.data || []
-  } catch {
-    hotKeywords.value = []
-    historyKeywords.value = []
+// 商品列表接口不支持 keyword，前端在已加载商品上做过滤、排序与分页
+const loadProducts = () => {
+  if (!hasQuery()) {
+    products.value = []
+    total.value = 0
+    return
   }
+  const q = keyword.value.trim().toLowerCase()
+  let list = allProducts.value.filter((item) => {
+    const textMatch = !q
+      || item.name.toLowerCase().includes(q)
+      || (item.brand || '').toLowerCase().includes(q)
+    return textMatch && matchesCategory(item)
+  })
+  if (sortBy.value === 'price_asc') list = list.sort((a, b) => a.minPrice - b.minPrice)
+  else if (sortBy.value === 'price_desc') list = list.sort((a, b) => b.minPrice - a.minPrice)
+  else if (sortBy.value === 'sales_desc') list = list.sort((a, b) => b.sales - a.sales)
+  total.value = list.length
+  const start = (page.value - 1) * pageSize
+  products.value = list.slice(start, start + pageSize)
 }
 
 const handleSearch = (kw?: string) => {
@@ -94,9 +150,9 @@ const handleSearch = (kw?: string) => {
   keyword.value = k
   categoryId.value = 0
   page.value = 1
+  saveHistory(k)
   router.replace({ query: { keyword: k } })
   loadProducts()
-  loadHotAndHistory()
 }
 
 const handleSort = (val: string) => {
@@ -105,7 +161,7 @@ const handleSort = (val: string) => {
   loadProducts()
 }
 
-const handleProductClick = (product: SearchItem) => {
+const handleProductClick = (product: Product) => {
   router.push(`/product/${product.id}`)
 }
 
@@ -114,19 +170,16 @@ const handlePageChange = (p: number) => {
   loadProducts()
 }
 
-const handleClearHistory = async () => {
-  try {
-    await clearSearchHistory()
-    historyKeywords.value = []
-    ElMessage.success('已清除搜索历史')
-  } catch {
-    // 错误提示由拦截器统一处理
-  }
+const handleClearHistory = () => {
+  historyKeywords.value = []
+  localStorage.removeItem(HISTORY_KEY)
+  ElMessage.success('已清除搜索历史')
 }
 
-onMounted(() => {
+onMounted(async () => {
   reloadGeneralSettings()
-  loadHotAndHistory()
+  loadHistory()
+  await Promise.all([loadCategories(), loadAllProducts()])
   if (hasQuery()) {
     loadProducts()
   }
@@ -275,6 +328,10 @@ watch(
           </span>
         </div>
       </section>
+
+      <div v-if="!hotKeywords.length && !historyKeywords.length" class="guide-section">
+        <p class="empty-hint">输入关键词开始搜索商品</p>
+      </div>
     </div>
   </div>
 </template>

@@ -60,7 +60,7 @@ const userRoutes: RouteRecordRaw[] = [
         path: 'coupons',
         name: 'CouponCenter',
         component: () => import('@/views/coupon/CouponCenterView.vue'),
-        meta: { title: '领券中心', roles: ['USER', 'MERCHANT', 'ADMIN'] },
+        meta: { title: '领券中心' },
       },
       {
         path: 'search',

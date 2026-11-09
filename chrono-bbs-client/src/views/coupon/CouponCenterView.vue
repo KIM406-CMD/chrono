@@ -90,7 +90,9 @@ const handleClaim = async (coupon: SeckillCoupon) => {
 
 onMounted(() => {
   loadCenter()
-  loadMine()
+  if (userStore.isLoggedIn) {
+    loadMine()
+  }
 })
 </script>
 
@@ -125,7 +127,13 @@ onMounted(() => {
       </el-tab-pane>
 
       <el-tab-pane label="我的优惠券" name="mine">
-        <div v-loading="mineLoading" class="cc-list">
+        <div v-if="!userStore.isLoggedIn" class="cc-empty">
+          <p>登录后查看我的优惠券</p>
+          <el-button type="danger" size="small" @click="router.push({ path: '/login', query: { redirect: '/coupons' } })">
+            去登录
+          </el-button>
+        </div>
+        <div v-else v-loading="mineLoading" class="cc-list">
           <div v-for="item in myCoupons" :key="item.id" class="cc-mine-row">
             <div class="cc-mine-info">
               <p class="cc-name">{{ item.couponName }}</p>

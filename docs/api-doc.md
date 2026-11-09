@@ -1454,6 +1454,8 @@ GET /api/chat/unread-count
 **Swagger 分组**：商品搜索  
 **权限**：公开
 
+> 实现状态：后端搜索模块尚未实现（`SearchController` 为空）。前端搜索结果页当前降级为基于公开接口 `/api/product/list` 的本地过滤，游客可正常使用。
+
 ### 15.1 全文检索
 
 ```

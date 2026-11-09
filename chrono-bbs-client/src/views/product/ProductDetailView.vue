@@ -8,9 +8,11 @@ import { addToCart } from '@/api/cart'
 import { getComments } from '@/api/comment'
 import type { Product, Sku } from '@/types/product'
 import type { CommentItem } from '@/types/comment'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const productId = computed(() => Number(route.params.id))
 const product = ref<Product | null>(null)
@@ -148,7 +150,7 @@ const handleStarFilter = (star: number | '') => {
 
 const switchTab = (tab: 'detail' | 'specs' | 'comments') => {
   activeTab.value = tab
-  if (tab === 'comments' && comments.value.length === 0) {
+  if (tab === 'comments' && userStore.isLoggedIn && comments.value.length === 0) {
     loadComments()
   }
 }
@@ -331,8 +333,12 @@ onMounted(() => {
 
           <template v-else-if="activeTab === 'comments'">
             <div class="comment-section" v-loading="commentLoading">
-              <!-- 评价入口位于订单详情，仅已收货订单可评价 -->
-              <p class="comment-tip">发表评价请前往「我的订单」→ 订单详情</p>
+              <div v-if="!userStore.isLoggedIn" class="comment-tip">
+                登录后查看用户评价
+              </div>
+              <template v-else>
+                <!-- 评价入口位于订单详情，仅已收货订单可评价 -->
+                <p class="comment-tip">发表评价请前往「我的订单」→ 订单详情</p>
 
               <!-- 星级筛选 -->
               <div class="comment-filter">
@@ -385,6 +391,7 @@ onMounted(() => {
                   @current-change="handleCommentPageChange"
                 />
               </div>
+              </template>
             </div>
           </template>
         </div>
