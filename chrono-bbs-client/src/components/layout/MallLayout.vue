@@ -6,6 +6,7 @@ import { Role } from '@/types/common'
 import { getCategoryTree } from '@/api/product'
 import { getCartList } from '@/api/cart'
 import { getConversations } from '@/api/chat'
+import { CHAT_ENABLED } from '@/config/features'
 import type { Category } from '@/types/product'
 
 const router = useRouter()
@@ -78,13 +79,16 @@ const loadCartCount = async () => {
 onMounted(() => {
   loadCategories()
   if (userStore.isLoggedIn) {
-    loadUnreadCount()
+    if (CHAT_ENABLED) loadUnreadCount()
     loadCartCount()
   }
 })
 
 watch(() => route.fullPath, loadCartCount)
-watch(() => userStore.token, loadCartCount)
+watch(() => userStore.token, () => {
+  loadCartCount()
+  if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+})
 
 const handleUserCommand = (command: string) => {
   switch (command) {
@@ -156,7 +160,7 @@ const handleUserCommand = (command: string) => {
           <!-- 已登录 -->
           <template v-if="userStore.isLoggedIn">
             <!-- 消息 -->
-            <el-badge :value="unreadMsgCount" :hidden="unreadMsgCount === 0" class="cart-badge">
+            <el-badge v-if="CHAT_ENABLED" :value="unreadMsgCount" :hidden="unreadMsgCount === 0" class="cart-badge">
               <el-button text class="nav-btn" @click="router.push('/chat')">
                 💬 消息
               </el-button>
@@ -198,7 +202,7 @@ const handleUserCommand = (command: string) => {
                 <el-dropdown-menu>
                   <el-dropdown-item command="orders">📋 我的订单</el-dropdown-item>
                   <el-dropdown-item command="refunds">🧾 退款/售后</el-dropdown-item>
-                    <el-dropdown-item command="chat">💬 我的消息</el-dropdown-item>
+                    <el-dropdown-item v-if="CHAT_ENABLED" command="chat">💬 我的消息</el-dropdown-item>
                     <el-dropdown-item command="address">📍 收货地址</el-dropdown-item>
                   <el-dropdown-item v-if="isUser" command="merchant-apply">🏪 申请入驻</el-dropdown-item>
                   <el-dropdown-item command="settings">⚙ 账户设置</el-dropdown-item>

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRefundList, reviewRefund } from '@/api/refund'
+import { MERCHANT_REFUND_AUDIT_ENABLED } from '@/config/features'
 import type { RefundItem } from '@/api/refund'
 
 const loading = ref(false)
@@ -63,12 +64,12 @@ const typeMap: Record<number, string> = { 1: '退款', 2: '退货' }
 const statusMap: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' }
 
 onMounted(() => {
-  loadRefunds()
+  if (MERCHANT_REFUND_AUDIT_ENABLED) loadRefunds()
 })
 </script>
 
 <template>
-  <div class="rm-page">
+  <div v-if="MERCHANT_REFUND_AUDIT_ENABLED" class="rm-page">
     <h2>退款审核</h2>
 
     <el-table :data="refunds" v-loading="loading" stripe class="rm-table">
@@ -113,9 +114,22 @@ onMounted(() => {
       />
     </div>
   </div>
+
+  <div v-else class="rm-unavailable">
+    <el-empty description="商家退款审核接口待接入，功能暂不可用" />
+  </div>
 </template>
 
 <style scoped>
+.rm-unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  background: #fff;
+  border-radius: 8px;
+}
+
 .rm-page {
   padding: 20px;
 }

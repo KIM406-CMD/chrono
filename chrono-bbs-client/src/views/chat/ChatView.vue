@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import { UserFilled } from '@element-plus/icons-vue'
 import { getConversations, getMessages, sendMessage } from '@/api/chat'
 import { useUserStore } from '@/stores/user'
+import { CHAT_ENABLED } from '@/config/features'
 import type { Conversation, ChatMessage } from '@/api/chat'
 
 const route = useRoute()
@@ -71,6 +72,7 @@ const handleSend = async () => {
 }
 
 onMounted(() => {
+  if (!CHAT_ENABLED) return
   loadConversations()
   const convId = route.params.conversationId
   if (convId) {
@@ -81,7 +83,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="chat-page">
+  <div v-if="CHAT_ENABLED" class="chat-page">
     <aside class="chat-sidebar">
       <div class="sidebar-header">消息列表</div>
       <div class="conv-list">
@@ -144,9 +146,22 @@ onMounted(() => {
       </div>
     </section>
   </div>
+
+  <div v-else class="chat-unavailable">
+    <el-empty description="聊天功能开发中，敬请期待" />
+  </div>
 </template>
 
 <style scoped>
+.chat-unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  background: #fff;
+  border-radius: 8px;
+}
+
 .chat-page {
   display: flex;
   height: calc(100vh - 100px);
