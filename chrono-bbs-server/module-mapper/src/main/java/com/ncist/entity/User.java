@@ -34,7 +34,7 @@ public class User {
     private String avatar;
     /** 角色：0-游客（未登录），1-普通用户，2-商家，3-管理员；与 UserRoleEnum 保持一致。 */
     private Integer role;
-    /** 账号状态：0-正常，1-禁用；禁用后登录态立即失效。 */
+    /** 账号状态：1-正常，0-禁用；禁用后登录态立即失效。 */
     private Integer status;
     /** 注册时间。 */
     private LocalDateTime createdAt;
