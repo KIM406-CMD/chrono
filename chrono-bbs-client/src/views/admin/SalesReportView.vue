@@ -28,6 +28,22 @@ const trendOption = computed(() => {
   }
 })
 
+const orderTrendOption = computed(() => {
+  const rows = report.value?.orderTrend || []
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0 },
+    grid: { left: 50, right: 24, top: 20, bottom: 48 },
+    xAxis: { type: 'category', boundaryGap: false, data: rows.map((row: any) => row.date) },
+    yAxis: { type: 'value' },
+    series: [
+      { name: '下单量', type: 'line', smooth: true, data: rows.map((row: any) => row.createdCount), itemStyle: { color: '#409eff' } },
+      { name: '支付量', type: 'line', smooth: true, data: rows.map((row: any) => row.paidCount), itemStyle: { color: '#e6a23c' } },
+      { name: '完成量', type: 'line', smooth: true, data: rows.map((row: any) => row.completedCount), itemStyle: { color: '#67c23a' } },
+    ],
+  }
+})
+
 const topOption = computed(() => {
   const rows = [...(report.value?.topProducts || [])].slice(0, 5).reverse()
   return {
@@ -123,6 +139,11 @@ onMounted(() => { loadData() })
             <template #default="{ row }">¥{{ priceYuan(row.amount) }}</template>
           </el-table-column>
         </el-table>
+      </div>
+
+      <div class="sr-section">
+        <h3>订单量趋势</h3>
+        <BaseChart :option="orderTrendOption" height="280px" />
       </div>
 
       <div class="sr-section">

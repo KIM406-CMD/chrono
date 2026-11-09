@@ -270,6 +270,15 @@ const mockMethods: MockMethod[] = [
             { date: '2025-01-06', amount: 226000 },
             { date: '2025-01-07', amount: 179567 },
           ],
+          orderTrend: [
+            { date: '2025-01-01', createdCount: 18, paidCount: 15, completedCount: 12 },
+            { date: '2025-01-02', createdCount: 24, paidCount: 21, completedCount: 17 },
+            { date: '2025-01-03', createdCount: 20, paidCount: 18, completedCount: 14 },
+            { date: '2025-01-04', createdCount: 30, paidCount: 26, completedCount: 22 },
+            { date: '2025-01-05', createdCount: 27, paidCount: 24, completedCount: 19 },
+            { date: '2025-01-06', createdCount: 32, paidCount: 29, completedCount: 25 },
+            { date: '2025-01-07', createdCount: 25, paidCount: 22, completedCount: 18 },
+          ],
           orderStatusDistribution: {
             待支付: 20,
             已支付: 30,

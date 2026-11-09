@@ -276,6 +276,15 @@ public class AdminServiceImpl implements AdminService {
                         .amount(toLong(row.get("amount")))
                         .build())
                 .toList();
+        List<AdminReportVO.OrderTrendPoint> orderTrend = orderMapper
+                .selectOrderTrendGlobal(startDate, endDate).stream()
+                .map(row -> AdminReportVO.OrderTrendPoint.builder()
+                        .date(String.valueOf(row.get("date")))
+                        .createdCount(toLong(row.get("createdCount")))
+                        .paidCount(toLong(row.get("paidCount")))
+                        .completedCount(toLong(row.get("completedCount")))
+                        .build())
+                .toList();
         // 订单状态分布：1=pending 2=paid 3=shipped 4=completed 5=cancelled
         Map<String, Long> distribution = new LinkedHashMap<>();
         distribution.put("pending", 0L);
@@ -304,6 +313,7 @@ public class AdminServiceImpl implements AdminService {
                 .salesByCategory(salesByCategory)
                 .salesByMerchant(salesByMerchant)
                 .salesTrend(salesTrend)
+                .orderTrend(orderTrend)
                 .orderStatusDistribution(distribution)
                 .build();
     }

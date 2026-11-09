@@ -104,6 +104,35 @@
         ORDER BY date ASC
     </select>
 
+    <!-- 按日统计下单量、支付量、完成量 -->
+    <select id="selectOrderTrendGlobal" resultType="java.util.Map">
+        SELECT d.stat_date AS date,
+               SUM(d.created_flag) AS createdCount,
+               SUM(d.paid_flag) AS paidCount,
+               SUM(d.completed_flag) AS completedCount
+        FROM (
+            SELECT DATE(o.created_at) AS stat_date, 1 AS created_flag, 0 AS paid_flag, 0 AS completed_flag
+            FROM `order` o
+            WHERE 1 = 1
+            <if test="startDate != null and startDate != ''"> AND DATE(o.created_at) &gt;= #{startDate} </if>
+            <if test="endDate != null and endDate != ''"> AND DATE(o.created_at) &lt;= #{endDate} </if>
+            UNION ALL
+            SELECT DATE(o.paid_at) AS stat_date, 0 AS created_flag, 1 AS paid_flag, 0 AS completed_flag
+            FROM `order` o
+            WHERE o.paid_at IS NOT NULL
+            <if test="startDate != null and startDate != ''"> AND DATE(o.paid_at) &gt;= #{startDate} </if>
+            <if test="endDate != null and endDate != ''"> AND DATE(o.paid_at) &lt;= #{endDate} </if>
+            UNION ALL
+            SELECT DATE(o.completed_at) AS stat_date, 0 AS created_flag, 0 AS paid_flag, 1 AS completed_flag
+            FROM `order` o
+            WHERE o.completed_at IS NOT NULL
+            <if test="startDate != null and startDate != ''"> AND DATE(o.completed_at) &gt;= #{startDate} </if>
+            <if test="endDate != null and endDate != ''"> AND DATE(o.completed_at) &lt;= #{endDate} </if>
+        ) d
+        GROUP BY d.stat_date
+        ORDER BY d.stat_date ASC
+    </select>
+
     <!-- 订单状态分布 -->
     <select id="selectStatusDistribution" resultType="java.util.Map">
         SELECT status, COUNT(*) AS cnt FROM `order` GROUP BY status
