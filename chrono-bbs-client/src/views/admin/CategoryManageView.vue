@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
-import { getCategoryTree } from '@/api/product'
+import { getCategoryTree, getCategoryChildren } from '@/api/product'
 import { uploadImage } from '@/api/upload'
 import { createCategory, updateCategory, deleteCategory } from '@/api/admin'
 import type { Category } from '@/types/product'
@@ -35,6 +35,18 @@ const findCategory = (id: number, list: Category[] = categories.value): Category
   return null
 }
 
+// 查找分类的父级 ID；根分类返回 0，未找到返回 -1
+const findParentId = (id: number, list: Category[] = categories.value, parentId = 0): number => {
+  for (const c of list) {
+    if (c.id === id) return parentId
+    if (c.children?.length) {
+      const found = findParentId(id, c.children, c.id)
+      if (found !== -1) return found
+    }
+  }
+  return -1
+}
+
 // 新增/编辑弹窗
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
@@ -45,6 +57,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   name: '',
   parentId: undefined as number | undefined,
+  sortOrder: 0,
 })
 
 const iconUrl = ref('')
@@ -59,21 +72,33 @@ const openCreate = (parent?: Category) => {
   editingId.value = 0
   form.name = ''
   form.parentId = parent?.id
+  form.sortOrder = 0
   iconUrl.value = ''
   iconFileList.value = []
   formRef.value?.clearValidate()
   dialogVisible.value = true
 }
 
-const openEdit = (cat: Category) => {
+const openEdit = async (cat: Category) => {
   dialogMode.value = 'edit'
   editingId.value = cat.id
   form.name = cat.name
   form.parentId = cat.parentId
+  form.sortOrder = 0
   iconUrl.value = cat.icon || ''
   iconFileList.value = cat.icon ? [{ name: '图标', url: cat.icon }] : []
   formRef.value?.clearValidate()
   dialogVisible.value = true
+  // 分类树接口不返回排序值，按父级子分类列表补齐
+  const parentId = findParentId(cat.id)
+  if (parentId >= 0) {
+    try {
+      const res = await getCategoryChildren(parentId)
+      form.sortOrder = (res.data || []).find((item) => item.id === cat.id)?.sortOrder ?? 0
+    } catch {
+      form.sortOrder = 0
+    }
+  }
 }
 
 const handleIconChange = async (file: UploadUserFile) => {
@@ -136,11 +161,17 @@ const handleSubmit = async () => {
         name: form.name,
         parentId: parent?.id ?? 0,
         level: parent ? parent.level + 1 : 1,
+        sortOrder: form.sortOrder,
         icon: iconUrl.value || undefined,
       })
       ElMessage.success('创建成功')
     } else {
-      await updateCategory(editingId.value, { name: form.name, icon: iconUrl.value || undefined })
+      // 后端约束：编辑仅允许修改名称、排序、图标，父级/层级不可变更
+      await updateCategory(editingId.value, {
+        name: form.name,
+        sortOrder: form.sortOrder,
+        icon: iconUrl.value || undefined,
+      })
       ElMessage.success('更新成功')
     }
     dialogVisible.value = false
@@ -206,6 +237,10 @@ onMounted(() => { loadData() })
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="88px">
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入分类名称" maxlength="20" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="form.sortOrder" :min="0" :max="9999" controls-position="right" />
+          <span class="cm-sort-hint">数字越小越靠前</span>
         </el-form-item>
         <el-form-item label="分类图标">
           <el-upload
@@ -307,5 +342,11 @@ onMounted(() => { loadData() })
 
 .cm-tree-select {
   width: 100%;
+}
+
+.cm-sort-hint {
+  margin-left: 12px;
+  font-size: 12px;
+  color: #999;
 }
 </style>
