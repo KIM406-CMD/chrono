@@ -1017,3 +1017,9 @@ All items below can be verified independently with `npm run dev:mock`, without t
 - Added the `/payments` page showing payment method, masked card number, amount, status and time; Mock provides `GET /api/payment/records`.
 - The admin sales report adds an order-count trend chart (created/paid/completed); `AdminReportVO.orderTrend` and Mock data are synchronized.
 - Search sorting adds "listing time"; category navigation renders `category.icon` when available.
+
+### 15.13 Return Shipping, Admin Editing and Comment Images
+
+- After a return refund is approved, the buyer submits courier and tracking information on the refund page; the merchant/admin confirms receipt to complete the refund.
+- The admin global product list supports editing products and SKU price/stock; Mock provides `PUT /api/admin/products/{id}`.
+- Posting a review supports up to 4 images, which are displayed in the product detail comment list.

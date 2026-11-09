@@ -926,6 +926,7 @@ GET /api/comment/list/{productId}
 | avatar | String | 头像 |
 | orderItemId | Long | 订单明细 ID |
 | content | String | 评论内容 |
+| images | List&lt;String&gt; | 评论图片 URL 列表（最多 4 张） |
 | star | Integer | 星级（1-5） |
 | createdAt | LocalDateTime | 评论时间 |
 | append | CommentVO | 追评（仅一级评论可能返回，结构同本表） |
@@ -947,6 +948,7 @@ POST /api/comment
 | orderItemId | Long | 是 | 订单明细 ID |
 | content | String | 是 | 评论内容 |
 | star | Integer | 是 | 星级（1-5） |
+| images | List&lt;String&gt; | 否 | 评论图片 URL 列表，最多 4 张（先调用 13.1 上传） |
 
 ---
 
@@ -1032,15 +1034,20 @@ GET /api/refund/{id}
 | orderId | Long | 订单 ID |
 | orderItemId | Long | 订单明细 ID |
 | userId | Long | 申请人 ID |
+| merchantId | Long | 商家 ID |
 | productId | Long | 商品 ID |
 | productName | String | 商品名称 |
 | type | Integer | 1=仅退款，2=退货退款 |
 | reason | String | 退款原因 |
 | amount | Integer | 退款金额（分） |
-| status | Integer | 0=待审核，1=已通过，2=已拒绝 |
+| status | Integer | 0=待审核，1=已通过，2=已拒绝，3=待寄回，4=待商家收货，5=退货完成 |
 | reviewerId | Long | 审核人 ID |
 | reviewReason | String | 审核意见 |
 | reviewedAt | LocalDateTime | 审核时间 |
+| returnCompany | String | 退货快递公司 |
+| returnLogisticsNo | String | 退货物流单号 |
+| returnedAt | LocalDateTime | 买家寄回时间 |
+| returnReceivedAt | LocalDateTime | 商家确认收货时间 |
 | createdAt | LocalDateTime | 申请时间 |
 
 ---
@@ -1059,6 +1066,8 @@ PUT /api/refund/{id}/review
 | approved | Integer | 是 | 1=同意，0=拒绝 |
 | reviewReason | String | 否 | 审核意见 |
 
+> 仅退款（type=1）通过后状态变为 1（已通过）且订单标记已退款；退货退款（type=2）通过后状态变为 3（待寄回），订单保持退款中，等待买家填写物流。
+
 ---
 
 ### 10.5 退款列表（商家，Mock 扩展）
@@ -1073,7 +1082,7 @@ GET /api/merchant/refunds
 |------|------|------|------|
 | page | Integer | 否 | 页码，默认 1 |
 | size | Integer | 否 | 每页大小，默认 10 |
-| status | Integer | 否 | 0=待审核，1=已通过，2=已拒绝 |
+| status | Integer | 否 | 0=待审核，1=已通过，2=已拒绝，3=待寄回，4=待商家收货，5=退货完成 |
 
 **返回**：`PageResult<RefundVO>`，字段同 10.3，仅包含当前商家的退款单。
 
@@ -1088,6 +1097,36 @@ GET /api/admin/refunds
 ```
 
 参数与返回同 10.5，范围包含所有商家的退款单。
+
+---
+
+### 10.7 填写退货物流（买家）
+
+> 权限：退款申请人。仅退货类型（type=2）且状态为待寄回（3）时可操作。
+
+```
+PUT /api/refund/{id}/return
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 退款单 ID（路径参数） |
+| returnCompany | String | 是 | 退货快递公司，最长 50 字 |
+| returnLogisticsNo | String | 是 | 退货物流单号，最长 50 字 |
+
+> 提交后状态变为 4（待商家收货），记录 `returnedAt`。
+
+---
+
+### 10.8 确认收到退货（商家/管理员）
+
+> 权限：商家或管理员。仅退货类型且状态为待商家收货（4）时可操作。
+
+```
+PUT /api/refund/{id}/return-received
+```
+
+> 确认后状态变为 5（退货完成），订单标记为已退款，记录 `returnReceivedAt`。
 
 ---
 
@@ -1396,6 +1435,18 @@ DELETE /api/admin/products/{id}
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | id | Long | 是 | 商品 ID（路径参数） |
+
+---
+
+### 12.9 管理员修改商品（Mock 扩展）
+
+> 权限：管理员。正式后端尚未提供该接口，开发阶段由 Mock 实现。
+
+```
+PUT /api/admin/products/{id}
+```
+
+参数同 4.3（`name`、`description`、`images`、`brand`、`categoryId`、`skuList`）；SKU 列表非空时全量替换。
 
 ---
 

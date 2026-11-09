@@ -10,6 +10,9 @@
 ## [Unreleased]
 
 ### Added
+- 退货寄回确认：退款单新增 `merchant_id`、退货快递/物流单号、寄回与收货时间字段及 3/4/5 状态；买家可填写退货物流，商家/管理员可确认收货并完成退款
+- 管理员编辑商品：全平台商品列表新增编辑弹窗，支持修改基础信息与 SKU 价格/库存，Mock 提供 `PUT /api/admin/products/{id}`
+- 评论图片：`comment` 增加 `images` 字段，发表评价支持上传最多 4 张图片，商品详情评论列表展示图片
 - 支付记录页：新增 `/payments` 页面，展示支付方式、脱敏卡号、金额、状态与支付时间，Mock 提供 `GET /api/payment/records`
 - 报表订单量趋势：管理员销售报表新增按日下单量/支付量/完成量折线图，后端 `AdminReportVO` 增加 `orderTrend` 并补充聚合 SQL
 - 分类图标渲染：商城顶部导航与首页分类侧边栏优先展示 `category.icon`，无图标时回退 📦
@@ -108,6 +111,8 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- 新增 `initial/migration-2026-11-09.sql`；已有开发库需执行该增量脚本（评论图片、退款退货字段），全新初始化直接使用 `schema.sql`
+- 退款状态扩展为 0-5，退货退款审核通过后进入“待寄回”，订单保持退款中直至商家确认收货
 - 功能开关 `CHAT_ENABLED` 与 `REFUND_AUDIT_ENABLED` 调整为开启，后端未实现的接口由 `mock/` 暂代
 - 管理员商品列表数据源改为复用 Mock 商品数据，状态/删除操作实时反映到商品列表与搜索
 - Mock 商品接口支持多 SKU 创建/编辑与上架、下架、删除同步更新；管理员销售报表字段改为与后端 `AdminReportVO` 一致，商家统计补充分类与热销数据

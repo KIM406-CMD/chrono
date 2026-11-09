@@ -2218,3 +2218,6 @@ User enters the help center
 - Search: keyword searches use `/api/search`; category-only browsing uses local filtering over the product list.
 - Payment records: a "Payment Records" entry in the user menu shows method, masked card number, amount, status and time.
 - Reports: the admin sales report adds an order-count trend chart; category navigation renders category icons; search supports sorting by listing time.
+- Returns: the refund page supports submitting return tracking; the merchant/admin review page supports confirming receipt.
+- Admin products: the global product list supports editing products and SKUs.
+- Reviews: posting a review supports image upload, and the comment list displays images.
