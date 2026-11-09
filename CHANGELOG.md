@@ -91,6 +91,7 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- 文档：英文 HMI 设计文档原型图对齐与细节完善
 - 后端 module-start 模块：为启动类、配置类与 JWT 拦截器补充简体中文 Javadoc
 - 后端 common 模块：为 public 类、接口、枚举与 public 方法补充简体中文 Javadoc
 - 开发规范：后端 public 类、接口与 public 方法统一要求编写简体中文 Javadoc，并在 AGENTS.md / CLAUDE.md 中补充 `@param`、`@return`、`@throws` 与字段注释要求
