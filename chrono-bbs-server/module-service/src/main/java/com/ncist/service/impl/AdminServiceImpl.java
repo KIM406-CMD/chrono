@@ -1,23 +1,30 @@
 package com.ncist.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ncist.common.context.UserContext;
 import com.ncist.common.enums.AdminErrorCode;
 import com.ncist.common.enums.CategoryErrorCode;
 import com.ncist.common.enums.CommonErrorCode;
 import com.ncist.common.enums.MerchantErrorCode;
+import com.ncist.common.enums.ProductErrorCode;
 import com.ncist.common.enums.UserRoleEnum;
 import com.ncist.common.exception.BusinessException;
 import com.ncist.common.result.PageResult;
 import com.ncist.dto.CategoryUpsertDTO;
 import com.ncist.dto.MerchantReviewDTO;
+import com.ncist.dto.ProductCreateDTO;
+import com.ncist.dto.ProductSkuDTO;
 import com.ncist.entity.Category;
 import com.ncist.entity.Merchant;
 import com.ncist.entity.Product;
+import com.ncist.entity.ProductSku;
 import com.ncist.entity.User;
 import com.ncist.mapper.CategoryMapper;
 import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.ProductMapper;
+import com.ncist.mapper.ProductSkuMapper;
 import com.ncist.mapper.UserMapper;
 import com.ncist.service.AdminService;
 import com.ncist.vo.AdminMerchantVO;
@@ -50,8 +57,12 @@ public class AdminServiceImpl implements AdminService {
     private final CategoryMapper categoryMapper;
     /** 商品数据访问组件。 */
     private final ProductMapper productMapper;
+    /** 商品 SKU 数据访问组件，用于管理员改品时替换 SKU。 */
+    private final ProductSkuMapper productSkuMapper;
     /** 订单数据访问组件，用于订单列表与销售报表。 */
     private final OrderMapper orderMapper;
+    /** JSON 序列化组件，用于商品图片列表与 JSON 字符串互转。 */
+    private final ObjectMapper objectMapper;
 
     /** {@inheritDoc} */
     @Override
@@ -71,6 +82,81 @@ public class AdminServiceImpl implements AdminService {
                         .build())
                 .toList();
         return PageResult.of(total, p, s, list);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>先校验商品存在与分类有效，再动态更新基础信息；
+     * SKU 列表非空时在同一事务中全量替换。</p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateProduct(Long id, ProductCreateDTO dto) {
+        requireAdmin();
+        Product product = productMapper.selectById(id);
+        if (product == null) {
+            throw new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND);
+        }
+        if (dto.getCategoryId() != null && categoryMapper.selectById(dto.getCategoryId()) == null) {
+            throw new BusinessException(CategoryErrorCode.CATEGORY_NOT_FOUND);
+        }
+        if (dto.getSkuList() != null && !dto.getSkuList().isEmpty()) {
+            validateSkus(dto.getSkuList());
+        }
+        productMapper.update(Product.builder()
+                .id(id)
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .images(dto.getImages() == null ? null : toImagesJson(dto.getImages()))
+                .brand(dto.getBrand())
+                .categoryId(dto.getCategoryId())
+                .build());
+        if (dto.getSkuList() != null && !dto.getSkuList().isEmpty()) {
+            productSkuMapper.deleteByProductId(id);
+            List<ProductSku> skus = dto.getSkuList().stream()
+                    .map(sku -> ProductSku.builder()
+                            .productId(id)
+                            .specIds(sku.getSpecIds())
+                            .specText(sku.getSpecText())
+                            .price(sku.getPrice())
+                            .stock(sku.getStock())
+                            .build())
+                    .toList();
+            productSkuMapper.insertBatch(skus);
+        }
+    }
+
+    /**
+     * 校验 SKU 价格与库存。
+     *
+     * @param skus SKU 列表
+     * @throws BusinessException 价格不大于 0 或库存为负时抛出
+     */
+    private void validateSkus(List<ProductSkuDTO> skus) {
+        for (ProductSkuDTO sku : skus) {
+            if (sku.getPrice() == null || sku.getPrice() <= 0
+                    || sku.getStock() == null || sku.getStock() < 0) {
+                throw new BusinessException(CommonErrorCode.BAD_REQUEST);
+            }
+        }
+    }
+
+    /**
+     * 将图片 URL 列表序列化为 JSON 字符串。
+     *
+     * @param images 图片 URL 列表
+     * @return JSON 字符串；列表为空时返回 null
+     */
+    private String toImagesJson(List<String> images) {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(images);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST);
+        }
     }
 
     /**

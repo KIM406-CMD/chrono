@@ -5,6 +5,7 @@ import com.ncist.common.enums.UserRoleEnum;
 import com.ncist.common.exception.BusinessException;
 import com.ncist.common.result.PageResult;
 import com.ncist.dto.RefundCreateDTO;
+import com.ncist.dto.RefundReturnDTO;
 import com.ncist.dto.RefundReviewDTO;
 import com.ncist.entity.Merchant;
 import com.ncist.entity.Order;
@@ -83,10 +84,12 @@ public class RefundServiceImpl implements RefundService {
         if (dto.getAmount() == null || dto.getAmount() <= 0 || dto.getAmount() > orderItem.getSubtotal()) {
             throw new BusinessException(RefundErrorCode.AMOUNT_INVALID);
         }
+        Product product = productMapper.selectById(orderItem.getProductId());
         Refund refund = Refund.builder()
                 .orderId(orderItem.getOrderId())
                 .orderItemId(orderItem.getId())
                 .userId(userId)
+                .merchantId(product == null ? null : product.getMerchantId())
                 .type(dto.getType())
                 .reason(dto.getReason())
                 .amount(dto.getAmount())
@@ -136,26 +139,84 @@ public class RefundServiceImpl implements RefundService {
             throw new BusinessException(RefundErrorCode.REFUND_NOT_FOUND);
         }
         // 1. 权限：管理员直接放行；商家需资质有效且退款商品归属自己
-        if (!UserRoleEnum.ADMIN.getCode().equals(com.ncist.common.context.UserContext.getRole())) {
-            Merchant merchant = merchantMapper.selectByUserId(userId);
-            if (merchant == null || !Integer.valueOf(1).equals(merchant.getStatus())) {
-                throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
-            }
-            Product product = productMapper.selectById(refund.getProductId());
-            if (product == null || !merchant.getId().equals(product.getMerchantId())) {
-                throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
-            }
-        }
+        requireReviewPermission(userId, refund);
         // 2. 审核落库（状态条件更新保证只审一次）
         boolean approved = Integer.valueOf(1).equals(dto.getApproved());
-        if (refundMapper.markReviewed(id, approved ? 1 : 2, userId, dto.getReviewReason()) == 0) {
+        boolean isReturn = Integer.valueOf(2).equals(refund.getType());
+        int targetStatus = approved ? (isReturn ? 3 : 1) : 2;
+        if (refundMapper.markReviewed(id, targetStatus, userId, dto.getReviewReason()) == 0) {
             throw new BusinessException(RefundErrorCode.ALREADY_REVIEWED);
         }
-        // 3. 同步订单状态：通过 → 已退款；拒绝 → 恢复已收货
+        // 3. 同步订单状态：仅退款通过/拒绝时流转；退货通过后等待买家寄回
         if (approved) {
-            orderMapper.markRefunded(refund.getOrderId());
+            if (!isReturn) {
+                orderMapper.markRefunded(refund.getOrderId());
+            }
         } else {
             orderMapper.revertRefunding(refund.getOrderId());
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void submitReturn(Long userId, Long id, RefundReturnDTO dto) {
+        RefundDetail refund = refundMapper.selectDetailById(id);
+        if (refund == null) {
+            throw new BusinessException(RefundErrorCode.REFUND_NOT_FOUND);
+        }
+        if (!refund.getUserId().equals(userId)) {
+            throw new BusinessException(RefundErrorCode.NO_PERMISSION_OPERATE);
+        }
+        if (!Integer.valueOf(2).equals(refund.getType())
+                || !Integer.valueOf(3).equals(refund.getStatus())) {
+            throw new BusinessException(RefundErrorCode.RETURN_STATUS_ILLEGAL);
+        }
+        if (dto.getReturnCompany() == null || dto.getReturnCompany().isBlank()
+                || dto.getReturnLogisticsNo() == null || dto.getReturnLogisticsNo().isBlank()) {
+            throw new BusinessException(RefundErrorCode.RETURN_INFO_INVALID);
+        }
+        if (refundMapper.markReturned(id, userId, dto.getReturnCompany(), dto.getReturnLogisticsNo()) == 0) {
+            throw new BusinessException(RefundErrorCode.RETURN_STATUS_ILLEGAL);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmReturnReceived(Long userId, Long id) {
+        RefundDetail refund = refundMapper.selectDetailById(id);
+        if (refund == null) {
+            throw new BusinessException(RefundErrorCode.REFUND_NOT_FOUND);
+        }
+        requireReviewPermission(userId, refund);
+        if (!Integer.valueOf(4).equals(refund.getStatus())) {
+            throw new BusinessException(RefundErrorCode.RETURN_STATUS_ILLEGAL);
+        }
+        if (refundMapper.markReturnReceived(id) == 0) {
+            throw new BusinessException(RefundErrorCode.RETURN_STATUS_ILLEGAL);
+        }
+        orderMapper.markRefunded(refund.getOrderId());
+    }
+
+    /**
+     * 校验审核/确认收货权限：管理员直接放行；商家需资质有效且商品归属自己。
+     *
+     * @param userId 操作人用户 ID
+     * @param refund 退款单明细
+     * @throws BusinessException 无审核权限时抛出
+     */
+    private void requireReviewPermission(Long userId, RefundDetail refund) {
+        if (UserRoleEnum.ADMIN.getCode().equals(com.ncist.common.context.UserContext.getRole())) {
+            return;
+        }
+        Merchant merchant = merchantMapper.selectByUserId(userId);
+        if (merchant == null || !Integer.valueOf(1).equals(merchant.getStatus())) {
+            throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
+        }
+        Product product = productMapper.selectById(refund.getProductId());
+        if (product == null || !merchant.getId().equals(product.getMerchantId())) {
+            throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
         }
     }
 
@@ -177,9 +238,14 @@ public class RefundServiceImpl implements RefundService {
                 .reason(detail.getReason())
                 .amount(detail.getAmount())
                 .status(detail.getStatus())
+                .merchantId(detail.getMerchantId())
                 .reviewerId(detail.getReviewerId())
                 .reviewReason(detail.getReviewReason())
                 .reviewedAt(detail.getReviewedAt())
+                .returnCompany(detail.getReturnCompany())
+                .returnLogisticsNo(detail.getReturnLogisticsNo())
+                .returnedAt(detail.getReturnedAt())
+                .returnReceivedAt(detail.getReturnReceivedAt())
                 .createdAt(detail.getCreatedAt())
                 .build();
     }

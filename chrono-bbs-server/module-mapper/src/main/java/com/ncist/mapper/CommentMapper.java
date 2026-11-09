@@ -21,7 +21,7 @@ public interface CommentMapper {
 
     /** 评论联查用户信息时的公共列，供一级评论与子评论查询复用。 */
     String DETAIL_COLUMNS = "c.id, c.product_id AS productId, c.user_id AS userId, "
-            + "c.order_item_id AS orderItemId, c.parent_id AS parentId, c.content, "
+            + "c.order_item_id AS orderItemId, c.parent_id AS parentId, c.content, c.images, "
             + "c.star, c.is_append AS isAppend, c.status, c.created_at AS createdAt, "
             + "u.username, u.nickname, u.avatar ";
 
@@ -31,8 +31,8 @@ public interface CommentMapper {
      * @param comment 评论内容；一级评论需带 star，追评/回复通过 parentId 关联
      * @return 受影响行数
      */
-    @Insert("INSERT INTO comment (product_id, user_id, order_item_id, parent_id, content, star, is_append, status) "
-            + "VALUES (#{productId}, #{userId}, #{orderItemId}, #{parentId}, #{content}, #{star}, #{isAppend}, 0)")
+    @Insert("INSERT INTO comment (product_id, user_id, order_item_id, parent_id, content, images, star, is_append, status) "
+            + "VALUES (#{productId}, #{userId}, #{orderItemId}, #{parentId}, #{content}, #{images}, #{star}, #{isAppend}, 0)")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Comment comment);
 
@@ -43,7 +43,7 @@ public interface CommentMapper {
      * @return 评论记录，不存在时返回 null
      */
     @Select("SELECT id, product_id AS productId, user_id AS userId, order_item_id AS orderItemId, "
-            + "parent_id AS parentId, content, star, is_append AS isAppend, status, created_at AS createdAt "
+            + "parent_id AS parentId, content, images, star, is_append AS isAppend, status, created_at AS createdAt "
             + "FROM comment WHERE id = #{id}")
     Comment selectById(Long id);
 

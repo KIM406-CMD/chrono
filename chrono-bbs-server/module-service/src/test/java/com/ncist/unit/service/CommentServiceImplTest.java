@@ -60,6 +60,8 @@ class CommentServiceImplTest {
     private ProductMapper productMapper;
     @Mock
     private MerchantMapper merchantMapper;
+    @Mock
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @InjectMocks
     private CommentServiceImpl commentService;

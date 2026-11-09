@@ -26,13 +26,15 @@ public class Refund {
     private Long orderItemId;
     /** 申请人用户 ID，关联 user 表。 */
     private Long userId;
+    /** 关联 merchant 表主键，用于商家退款列表与权限校验。 */
+    private Long merchantId;
     /** 申请类型：1-退款（仅退款），2-退货（退货退款）。 */
     private Integer type;
     /** 申请原因。 */
     private String reason;
     /** 退款金额，单位：分。 */
     private Integer amount;
-    /** 审核状态：0-待审核，1-已通过，2-已拒绝。 */
+    /** 状态：0-待审核，1-已通过，2-已拒绝，3-待寄回，4-待商家收货，5-退货完成。 */
     private Integer status;
     /** 审核人用户 ID（管理员或商家）。 */
     private Long reviewerId;
@@ -40,6 +42,14 @@ public class Refund {
     private String reviewReason;
     /** 审核时间，未审核时为空。 */
     private LocalDateTime reviewedAt;
+    /** 退货快递公司。 */
+    private String returnCompany;
+    /** 退货物流单号。 */
+    private String returnLogisticsNo;
+    /** 买家寄回时间。 */
+    private LocalDateTime returnedAt;
+    /** 商家确认收到退货时间。 */
+    private LocalDateTime returnReceivedAt;
     /** 申请时间。 */
     private LocalDateTime createdAt;
 }

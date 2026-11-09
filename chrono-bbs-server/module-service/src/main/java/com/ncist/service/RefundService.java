@@ -2,6 +2,7 @@ package com.ncist.service;
 
 import com.ncist.common.result.PageResult;
 import com.ncist.dto.RefundCreateDTO;
+import com.ncist.dto.RefundReturnDTO;
 import com.ncist.dto.RefundReviewDTO;
 import com.ncist.vo.RefundVO;
 
@@ -62,4 +63,27 @@ public interface RefundService {
      * @throws BusinessException 退款单不存在、无审核权限或退款单已被审核时抛出
      */
     void review(Long userId, Long id, RefundReviewDTO dto);
+
+    /**
+     * 买家填写退货物流信息。
+     *
+     * <p>仅退货类型（type=2）且状态为待寄回（3）时可操作，填写后进入待商家收货（4）。</p>
+     *
+     * @param userId 用户 ID，必须为退款申请人
+     * @param id     退款单 ID
+     * @param dto    退货快递公司与物流单号
+     * @throws BusinessException 退款单不存在、无权操作、状态不允许或物流信息不完整时抛出
+     */
+    void submitReturn(Long userId, Long id, RefundReturnDTO dto);
+
+    /**
+     * 商家或管理员确认收到退货。
+     *
+     * <p>仅退货类型且状态为待商家收货（4）时可操作；确认后退款单变为退货完成（5），订单标记为已退款。</p>
+     *
+     * @param userId 操作人用户 ID，必须为管理员或相关商家的用户
+     * @param id     退款单 ID
+     * @throws BusinessException 退款单不存在、无权限或状态不允许时抛出
+     */
+    void confirmReturnReceived(Long userId, Long id);
 }

@@ -2,7 +2,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { reviewRefund } from '@/api/refund'
+import { confirmRefundReturnReceived, reviewRefund } from '@/api/refund'
 import { getMerchantRefunds } from '@/api/merchant'
 import { getAdminRefunds } from '@/api/admin'
 import { REFUND_AUDIT_ENABLED } from '@/config/features'
@@ -77,7 +77,33 @@ const handleReject = async (item: RefundItem) => {
 }
 
 const typeMap: Record<number, string> = { 1: '退款', 2: '退货' }
-const statusMap: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' }
+const statusMap: Record<number, string> = {
+  0: '待审核',
+  1: '已通过',
+  2: '已拒绝',
+  3: '待寄回',
+  4: '待商家收货',
+  5: '退货完成',
+}
+
+const handleConfirmReturn = async (item: RefundItem) => {
+  try {
+    await ElMessageBox.confirm('确认已收到买家退回的商品？确认后将完成退款。', '确认收货', {
+      confirmButtonText: '确认收货',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  try {
+    await confirmRefundReturnReceived(item.id)
+    ElMessage.success('已确认收货，退款完成')
+    loadRefunds()
+  } catch {
+    ElMessage.error('操作失败')
+  }
+}
 
 onMounted(() => {
   if (REFUND_AUDIT_ENABLED) loadRefunds()
@@ -98,6 +124,9 @@ onMounted(() => {
         <el-option label="待审核" :value="0" />
         <el-option label="已通过" :value="1" />
         <el-option label="已拒绝" :value="2" />
+        <el-option label="待寄回" :value="3" />
+        <el-option label="待商家收货" :value="4" />
+        <el-option label="退货完成" :value="5" />
       </el-select>
     </div>
 
@@ -109,13 +138,26 @@ onMounted(() => {
         <template #default="{ row }">{{ typeMap[row.type] }}</template>
       </el-table-column>
       <el-table-column prop="reason" label="原因" min-width="150" show-overflow-tooltip />
+      <el-table-column label="退货物流" min-width="170" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ row.returnLogisticsNo ? `${row.returnCompany || ''} ${row.returnLogisticsNo}` : '—' }}
+        </template>
+      </el-table-column>
       <el-table-column label="金额" width="100" align="right">
         <template #default="{ row }">¥{{ priceYuan(row.amount) }}</template>
       </el-table-column>
       <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
           <el-tag
-            :type="row.status === 0 ? 'warning' : row.status === 1 ? 'success' : 'danger'"
+            :type="
+              row.status === 1 || row.status === 5
+                ? 'success'
+                : row.status === 2
+                  ? 'danger'
+                  : row.status === 4
+                    ? 'info'
+                    : 'warning'
+            "
             size="small"
           >
             {{ statusMap[row.status] }}
@@ -123,13 +165,19 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="申请时间" width="170" />
-      <el-table-column label="操作" width="160" align="center" fixed="right">
+      <el-table-column label="操作" width="180" align="center" fixed="right">
         <template #default="{ row }">
           <template v-if="row.status === 0">
             <el-button size="small" type="success" @click="handleApprove(row)">同意</el-button>
             <el-button size="small" type="danger" @click="handleReject(row)">拒绝</el-button>
           </template>
-          <span v-else class="no-action">--</span>
+          <el-button
+            v-else-if="row.type === 2 && row.status === 4"
+            size="small"
+            type="primary"
+            @click="handleConfirmReturn(row)"
+          >确认收货</el-button>
+          <span v-else class="no-action">{{ row.type === 2 && row.status === 3 ? '待买家寄回' : '--' }}</span>
         </template>
       </el-table-column>
     </el-table>

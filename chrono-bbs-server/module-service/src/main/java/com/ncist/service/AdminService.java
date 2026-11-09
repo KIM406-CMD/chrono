@@ -107,6 +107,18 @@ public interface AdminService {
                                                   Integer status, Integer page, Integer size);
 
     /**
+     * 管理员修改任意商品。
+     *
+     * <p>可更新商品基础信息；SKU 列表非空时全量替换原有 SKU。
+     * 仅管理员可操作，不校验商品归属商家。</p>
+     *
+     * @param id  商品 ID
+     * @param dto 商品更新参数，字段为 null 表示不修改；SKU 列表非空时全量替换
+     * @throws com.ncist.common.exception.BusinessException 商品/分类不存在或 SKU 参数非法时抛出
+     */
+    void updateProduct(Long id, com.ncist.dto.ProductCreateDTO dto);
+
+    /**
      * 分页查询全平台订单。
      *
      * @param orderNo 订单号模糊查询关键字，可为空

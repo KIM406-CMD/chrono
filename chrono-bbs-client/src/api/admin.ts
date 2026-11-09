@@ -95,6 +95,11 @@ export const getAdminRefunds = (params: { page?: number; size?: number; status?:
   )
 }
 
+// 管理员修改商品（Mock 扩展，正式后端未实现）
+export const updateAdminProduct = (id: number, data: import('@/types/product').ProductFormData) => {
+  return service.put(`/admin/products/${id}`, data)
+}
+
 // 管理员商品上下架（Mock 扩展，正式后端未实现）
 export const setAdminProductStatus = (id: number, status: number) => {
   return service.put(`/admin/products/${id}/status`, { status })

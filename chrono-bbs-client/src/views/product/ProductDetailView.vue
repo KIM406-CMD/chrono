@@ -412,6 +412,17 @@ onMounted(() => {
                     <span class="comment-time">{{ item.createdAt }}</span>
                   </div>
                   <p class="comment-text">{{ item.content }}</p>
+                  <div v-if="item.images?.length" class="comment-images">
+                    <el-image
+                      v-for="(img, index) in item.images"
+                      :key="index"
+                      :src="img"
+                      fit="cover"
+                      class="comment-image"
+                      :preview-src-list="item.images"
+                      :initial-index="index"
+                    />
+                  </div>
                   <div v-if="item.append" class="comment-append">
                     <span class="append-label">追评：</span>{{ item.append.content }}
                     <span class="append-time">（{{ item.append.createdAt }}）</span>
@@ -1072,6 +1083,20 @@ onMounted(() => {
   font-size: 12px;
   color: #999;
   margin-left: auto;
+}
+
+.comment-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.comment-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 4px;
+  border: 1px solid #eee;
 }
 
 .comment-text {

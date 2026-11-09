@@ -121,6 +121,119 @@ function generateProducts(count: number) {
 export const allProducts = generateProducts(100)
 
 const mockMethods: MockMethod[] = [
+  // 12.4 管理员 - 全平台商品列表
+  {
+    url: '/api/admin/products',
+    method: 'get',
+    timeout: 300,
+    response: ({ query }) => {
+      const page = parseInt(query.page) || 1
+      const size = parseInt(query.size) || 10
+      const keyword = String(query.keyword || '').trim().toLowerCase()
+      const status = query.status !== undefined && query.status !== '' ? parseInt(query.status) : null
+      const categoryId = query.categoryId ? parseInt(query.categoryId) : null
+      const merchantId = query.merchantId ? parseInt(query.merchantId) : null
+
+      let list = allProducts.map((product) => ({
+        id: product.id,
+        name: product.name,
+        images: product.images,
+        brand: product.brand,
+        categoryId: product.categoryId,
+        merchantId: product.merchantId,
+        merchantName: product.merchantName,
+        minPrice: product.minPrice,
+        sales: product.sales,
+        status: product.status,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+      }))
+
+      if (keyword) {
+        list = list.filter((item) =>
+          item.name.toLowerCase().includes(keyword)
+          || (item.brand || '').toLowerCase().includes(keyword),
+        )
+      }
+      if (status !== null) list = list.filter((item) => item.status === status)
+      if (categoryId !== null) list = list.filter((item) => item.categoryId === categoryId)
+      if (merchantId !== null) list = list.filter((item) => item.merchantId === merchantId)
+
+      return {
+        code: 200,
+        message: 'success',
+        data: {
+          total: list.length,
+          page,
+          size,
+          list: list.slice((page - 1) * size, page * size),
+        },
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 12.9 管理员 - 修改商品
+  {
+    url: '/api/admin/products/:id',
+    method: 'put',
+    timeout: 300,
+    response: ({ query, body }) => {
+      const id = parseInt(query.id)
+      const product = allProducts.find((item) => item.id === id)
+      if (!product) {
+        return { code: 404, message: '商品不存在', data: null, timestamp: Date.now() }
+      }
+      const skuList = (body.skuList || []).map((sku: any, index: number) => ({
+        id: id * 10 + index + 1,
+        productId: id,
+        specIds: sku.specIds || '',
+        specText: sku.specText || `规格${index + 1}`,
+        price: sku.price,
+        stock: sku.stock,
+        status: 1,
+      }))
+      const prices = skuList.map((sku: any) => sku.price)
+      Object.assign(product, {
+        name: body.name ?? product.name,
+        description: body.description ?? product.description,
+        images: body.images ?? product.images,
+        brand: body.brand ?? product.brand,
+        categoryId: body.categoryId ?? product.categoryId,
+        skuList: skuList.length ? skuList : product.skuList,
+        minPrice: prices.length ? Math.min(...prices) : product.minPrice,
+        maxPrice: prices.length ? Math.max(...prices) : product.maxPrice,
+        updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      })
+      return { code: 200, message: '商品更新成功', data: null, timestamp: Date.now() }
+    },
+  },
+  // 12.7 管理员 - 商品上下架
+  {
+    url: '/api/admin/products/:id/status',
+    method: 'put',
+    timeout: 300,
+    response: ({ query, body }) => {
+      const product = allProducts.find((item) => item.id === parseInt(query.id))
+      if (product) product.status = Number(body.status)
+      return {
+        code: 200,
+        message: body.status === 1 ? '上架成功' : '下架成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 12.8 管理员 - 删除商品
+  {
+    url: '/api/admin/products/:id',
+    method: 'delete',
+    timeout: 300,
+    response: ({ query }) => {
+      const index = allProducts.findIndex((item) => item.id === parseInt(query.id))
+      if (index >= 0) allProducts.splice(index, 1)
+      return { code: 200, message: '商品删除成功', data: null, timestamp: Date.now() }
+    },
+  },
   // 4.1 分页查询商品列表
   {
     url: '/api/product/list',

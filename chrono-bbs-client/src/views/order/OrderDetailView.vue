@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type UploadUserFile } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { getOrderDetail, cancelOrder, receiveOrder, deleteOrder } from '@/api/order'
 import { addComment } from '@/api/comment'
 import { applyRefund } from '@/api/refund'
+import { uploadImage } from '@/api/upload'
 import type { Order, OrderItem } from '@/types/order'
 import { OrderStatus } from '@/types/common'
 
@@ -163,12 +164,43 @@ const commentDialogVisible = ref(false)
 const commentSubmitting = ref(false)
 const commentTarget = ref<OrderItem | null>(null)
 const commentForm = reactive({ star: 5, content: '' })
+const commentImages = ref<string[]>([])
+const commentFileList = ref<UploadUserFile[]>([])
 
 const openComment = (item: OrderItem) => {
   commentTarget.value = item
   commentForm.star = 5
   commentForm.content = ''
+  commentImages.value = []
+  commentFileList.value = []
   commentDialogVisible.value = true
+}
+
+const syncCommentImages = () => {
+  commentImages.value = commentFileList.value
+    .map((file) => file.url)
+    .filter((url): url is string => !!url)
+}
+
+const handleCommentImageChange = async (file: UploadUserFile) => {
+  if (!file.raw) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.raw.type)) {
+    ElMessage.warning('仅支持 jpg/jpeg/png/webp 格式')
+    commentFileList.value = commentFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  if (file.raw.size > 2 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 2MB')
+    commentFileList.value = commentFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  try {
+    const res = await uploadImage(file.raw)
+    file.url = res.data.url
+    syncCommentImages()
+  } catch {
+    commentFileList.value = commentFileList.value.filter((item) => item.uid !== file.uid)
+  }
 }
 
 const handleSubmitComment = async () => {
@@ -183,6 +215,7 @@ const handleSubmitComment = async () => {
       orderItemId: commentTarget.value.id,
       content: commentForm.content,
       star: commentForm.star,
+      images: commentImages.value.length ? [...commentImages.value] : undefined,
     })
     ElMessage.success('评价发表成功')
     commentDialogVisible.value = false
@@ -458,6 +491,19 @@ onMounted(() => {
             show-word-limit
             placeholder="请输入您的评价"
           />
+        </el-form-item>
+        <el-form-item label="图片">
+          <el-upload
+            v-model:file-list="commentFileList"
+            list-type="picture-card"
+            :auto-upload="false"
+            :limit="4"
+            :on-change="handleCommentImageChange"
+            :on-remove="syncCommentImages"
+          >
+            <span class="upload-plus">+</span>
+          </el-upload>
+          <span class="upload-hint">最多 4 张，单张 ≤2MB</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -822,5 +868,16 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 0;
+}
+.upload-plus {
+  font-size: 24px;
+  color: #999;
+  line-height: 1;
+}
+
+.upload-hint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #999;
 }
 </style>

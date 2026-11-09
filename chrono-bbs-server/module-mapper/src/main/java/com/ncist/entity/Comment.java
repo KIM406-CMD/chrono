@@ -30,6 +30,8 @@ public class Comment {
     private Long parentId;
     /** 评论内容，最长 1000 字符。 */
     private String content;
+    /** 评论图片 URL 数组（JSON 字符串，最多 4 张）。 */
+    private String images;
     /** 星级评分 1-5，仅一级评论有值；回复为 null。 */
     private Integer star;
     /** 是否追评：0-首次评价，1-追评。 */
