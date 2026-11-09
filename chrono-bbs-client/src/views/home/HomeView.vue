@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
 import { getProductList, getCategoryTree } from '@/api/product'
 import { useUserStore } from '@/stores/user'
@@ -20,8 +21,9 @@ const fetchCategories = async () => {
   try {
     const res = await getCategoryTree()
     categories.value = res.data
-  } catch (error) {
-    // Mock 模式
+  } catch {
+    categories.value = []
+    ElMessage.error('分类加载失败')
   }
 }
 
@@ -31,8 +33,9 @@ const fetchProducts = async () => {
   try {
     const res = await getProductList({ page: 1, size: 20 })
     products.value = res.data.list
-  } catch (error) {
-    // Mock 模式
+  } catch {
+    products.value = []
+    ElMessage.error('商品加载失败')
   } finally {
     loading.value = false
   }
