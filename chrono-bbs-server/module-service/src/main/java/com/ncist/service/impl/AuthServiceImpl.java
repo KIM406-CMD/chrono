@@ -5,6 +5,7 @@ import cn.hutool.captcha.LineCaptcha;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.ncist.common.enums.AuthErrorCode;
+import com.ncist.common.enums.UserRoleEnum;
 import com.ncist.common.exception.BusinessException;
 import com.ncist.common.utils.JwtUtil;
 import com.ncist.dto.ChangePasswordDTO;
@@ -108,7 +109,8 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(registerDTO.getPassword()))
                 .phone(registerDTO.getPhone())
                 .email(registerDTO.getEmail())
-                .role(registerDTO.getRole())
+                // 注册固定为普通用户，商家角色只能由入驻审核通过后升级
+                .role(UserRoleEnum.USER.getCode())
                 .nickname(registerDTO.getUsername())
                 .status(1)
                 .createdAt(LocalDateTime.now())

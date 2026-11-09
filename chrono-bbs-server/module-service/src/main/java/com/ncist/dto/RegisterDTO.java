@@ -3,7 +3,6 @@ package com.ncist.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -46,9 +45,13 @@ public class RegisterDTO {
     @Email(message = "邮箱格式不正确")
     private String email;
 
-    /** 角色，必填：1=普通用户，2=商家。 */
-    @Schema(description = "角色：1=普通用户，2=商家", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "角色不能为空")
+    /**
+     * 角色字段，保留用于兼容旧客户端。
+     *
+     * <p>注册固定创建普通用户（role=1），该字段不再生效；商家角色只能通过
+     * 入驻申请并由管理员审核通过后升级。</p>
+     */
+    @Schema(description = "保留字段，注册固定为普通用户（1）", example = "1", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer role;
 
     /** 图形验证码 UUID，必填，由图形验证码接口下发。 */
