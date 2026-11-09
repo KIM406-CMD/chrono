@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
+import { ElLoading } from 'element-plus'
 import 'element-plus/dist/index.css'
 import '@/styles/variables.css'
 import '@/styles/global.css'
@@ -11,6 +11,7 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-app.use(ElementPlus)
+// 按需引入后 v-loading 指令需手动注册
+app.directive('loading', ElLoading.directive)
 
 app.mount('#app')

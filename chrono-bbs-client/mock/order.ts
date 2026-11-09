@@ -26,7 +26,7 @@ const op5 = getProductInfo(5)
 const op6 = getProductInfo(6)
 
 // 订单数据
-let orders = [
+const orders = [
   {
     id: 1001,
     orderNo: '202501011000001001',

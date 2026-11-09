@@ -270,8 +270,8 @@ const mockMethods: MockMethod[] = [
         const field = String(sortField)
         const order = String(sortOrder || 'asc')
         filtered.sort((a, b) => {
-          let va = a[field as keyof typeof a] ?? 0
-          let vb = b[field as keyof typeof b] ?? 0
+          const va = a[field as keyof typeof a] ?? 0
+          const vb = b[field as keyof typeof b] ?? 0
           if (typeof va === 'string') {
             return order === 'asc' ? va.localeCompare(vb as string) : (vb as string).localeCompare(va as string)
           }

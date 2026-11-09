@@ -26,7 +26,7 @@ const p2 = getProductInfo(2)
 const p3 = getProductInfo(3)
 
 // 购物车数据（模拟数据库存储）
-let cartItems = [
+const cartItems = [
   {
     id: 1,
     userId: 100,
