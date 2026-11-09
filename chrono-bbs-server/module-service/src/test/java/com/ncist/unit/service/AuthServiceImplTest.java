@@ -224,6 +224,19 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("register 即使用户传入商家角色也应固定注册为普通用户")
+    void shouldForceUserRoleOnRegister() {
+        setupRegisterHappyPath();
+        RegisterDTO dto = buildRegisterDTO("testuser", "13800000001", "test@test.com", 2, TEST_UUID, TEST_CODE);
+        authService.register(dto);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(userCaptor.capture());
+        assertEquals(1, userCaptor.getValue().getRole());
+        log.info("注册角色防越权验证通过 -> 请求 role=2，落库 role=1");
+    }
+
+    @Test
     @DisplayName("register 成功应返回 LoginVO（含 token 和 userInfo）")
     void shouldReturnLoginVOWithTokenAndUserInfo() {
         setupRegisterHappyPath();

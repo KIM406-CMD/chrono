@@ -48,13 +48,14 @@ const mockMethods: MockMethod[] = [
     method: 'post',
     timeout: 500,
     response: ({ body }) => {
-      const { username, role } = body
+      const { username } = body
       currentUser = {
         ...currentUser,
         username,
         nickname: username,
         phone: body.phone || '',
-        role: role || 1,
+        // 与后端一致：注册固定为普通用户，商家角色只能通过入驻审核升级
+        role: 1,
       }
       return {
         code: 200,

@@ -340,7 +340,7 @@ CREATE TABLE `conversation`
 (
     `id`                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id`           BIGINT       NOT NULL COMMENT '普通用户ID',
-    `merchant_id`       BIGINT       NOT NULL COMMENT '商家用户ID',
+    `merchant_id`       BIGINT       NOT NULL COMMENT '关联merchant表主键',
     `product_id`        BIGINT       DEFAULT NULL COMMENT '关联的商品ID',
     `last_message`      VARCHAR(500) DEFAULT NULL COMMENT '最后一条消息摘要',
     `last_message_time` DATETIME     DEFAULT NULL COMMENT '最后一条消息时间',

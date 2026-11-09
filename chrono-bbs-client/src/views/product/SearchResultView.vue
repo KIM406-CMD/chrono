@@ -27,7 +27,7 @@ const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
 const pageSize = 20
-const sortBy = ref<'default' | 'price_asc' | 'price_desc' | 'sales_desc'>('default')
+const sortBy = ref<'default' | 'price_asc' | 'price_desc' | 'sales_desc' | 'time_desc'>('default')
 const brandFilter = ref('')
 const minPriceYuan = ref<number | undefined>(undefined)
 const maxPriceYuan = ref<number | undefined>(undefined)
@@ -106,6 +106,7 @@ const sorts = [
   { label: '价格 ↑', value: 'price_asc' as const },
   { label: '价格 ↓', value: 'price_desc' as const },
   { label: '销量', value: 'sales_desc' as const },
+  { label: '上架时间', value: 'time_desc' as const },
 ]
 
 const hasQuery = () =>
@@ -253,6 +254,9 @@ const applyLocalFilter = () => {
   if (sortBy.value === 'price_asc') list = list.sort((a, b) => a.minPrice - b.minPrice)
   else if (sortBy.value === 'price_desc') list = list.sort((a, b) => b.minPrice - a.minPrice)
   else if (sortBy.value === 'sales_desc') list = list.sort((a, b) => b.sales - a.sales)
+  else if (sortBy.value === 'time_desc') {
+    list = list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || b.id - a.id)
+  }
   total.value = list.length
   const start = (page.value - 1) * pageSize
   products.value = list.slice(start, start + pageSize)

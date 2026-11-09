@@ -33,6 +33,8 @@ public class AdminReportVO {
     private List<MerchantSales> salesByMerchant;
     /** 销售趋势（按日期聚合）。 */
     private List<TrendPoint> salesTrend;
+    /** 订单量趋势（按日聚合下单/支付/完成量）。 */
+    private List<OrderTrendPoint> orderTrend;
     /** 订单状态分布：pending/paid/shipped/completed/cancelled */
     private Map<String, Long> orderStatusDistribution;
 
@@ -92,5 +94,23 @@ public class AdminReportVO {
         private String date;
         /** 当日销售额，单位：分。 */
         private Long amount;
+    }
+
+    /**
+     * 订单量趋势数据点。
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class OrderTrendPoint {
+        /** 日期，格式 yyyy-MM-dd。 */
+        private String date;
+        /** 当日下单量。 */
+        private Long createdCount;
+        /** 当日支付量。 */
+        private Long paidCount;
+        /** 当日完成量。 */
+        private Long completedCount;
     }
 }

@@ -2216,3 +2216,5 @@ User enters the help center
 - Refund review: merchant and admin backends reuse one review page with status filtering and approve/reject actions.
 - Admin products: inline on/off-shelf and delete actions in the global product list.
 - Search: keyword searches use `/api/search`; category-only browsing uses local filtering over the product list.
+- Payment records: a "Payment Records" entry in the user menu shows method, masked card number, amount, status and time.
+- Reports: the admin sales report adds an order-count trend chart; category navigation renders category icons; search supports sorting by listing time.

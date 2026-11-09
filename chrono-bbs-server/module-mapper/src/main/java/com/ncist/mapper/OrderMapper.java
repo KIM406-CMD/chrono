@@ -257,6 +257,16 @@ public interface OrderMapper {
                                                       @Param("endDate") String endDate, @Param("groupBy") String groupBy);
 
     /**
+     * 按日统计下单量、支付量、完成量。
+     *
+     * @param startDate 开始日期，格式 yyyy-MM-dd，可为空
+     * @param endDate 结束日期，格式 yyyy-MM-dd，可为空
+     * @return 行列表，包含 date、createdCount、paidCount、completedCount
+     */
+    List<Map<String, Object>> selectOrderTrendGlobal(@Param("startDate") String startDate,
+                                                      @Param("endDate") String endDate);
+
+    /**
      * 统计订单状态分布。
      *
      * @return 行列表，包含 status 与 cnt
