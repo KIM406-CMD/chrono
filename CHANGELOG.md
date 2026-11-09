@@ -111,6 +111,7 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- `docker/docker-compose.yml` 挂载 `initial/migration-2026-11-09.sql` 为 `03-migration.sql`；增量脚本改为幂等（列/索引已存在则跳过），Docker 首次初始化按 schema → data → migration 执行
 - 新增 `initial/migration-2026-11-09.sql`；已有开发库需执行该增量脚本（评论图片、退款退货字段），全新初始化直接使用 `schema.sql`
 - 退款状态扩展为 0-5，退货退款审核通过后进入“待寄回”，订单保持退款中直至商家确认收货
 - 功能开关 `CHAT_ENABLED` 与 `REFUND_AUDIT_ENABLED` 调整为开启，后端未实现的接口由 `mock/` 暂代
