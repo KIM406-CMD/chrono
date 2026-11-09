@@ -33,20 +33,37 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 商品服务实现
+ * 商品服务实现。
+ *
+ * <p>商品与 SKU 分表存储，商品图片以 JSON 数组保存。创建、修改与删除涉及
+ * 商品主表与 SKU 子表的多表写操作，使用 {@code @Transactional} 保证一致性；
+ * 修改时 SKU 采用全量替换策略。</p>
+ *
+ * <p>商品被购物车或订单引用时，数据库外键约束会拒绝删除，实现类将其转换为
+ * “商品已被引用”的业务异常。列表查询会批量获取 SKU 最低价，避免逐商品查询。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
+    /** 商品数据访问组件。 */
     private final ProductMapper productMapper;
+    /** SKU 数据访问组件。 */
     private final ProductSkuMapper productSkuMapper;
+    /** 分类数据访问组件，用于校验分类存在。 */
     private final CategoryMapper categoryMapper;
+    /** 商家数据访问组件，用于校验商家资质与商品归属。 */
     private final MerchantMapper merchantMapper;
+    /** JSON 序列化组件，用于商品图片数组编解码。 */
     private final ObjectMapper objectMapper;
 
-    // 分页查询上架商品
+    /**
+     * {@inheritDoc}
+     *
+     * <p>分页参数兜底：页码至少为 1，每页默认 10 条、上限 100 条；
+     * 批量查询 SKU 最低价后组装列表。</p>
+     */
     @Override
     public PageResult<ProductVO> listProducts(Long categoryId, Integer page, Integer size) {
         // 分页参数兜底：page 至少 1，size 默认 10、上限 100
@@ -76,7 +93,11 @@ public class ProductServiceImpl implements ProductService {
         return PageResult.of(total, p, s, list);
     }
 
-    // 查询商品详情
+    /**
+     * {@inheritDoc}
+     *
+     * <p>仅上架商品对外可见；分类或商家已被删除时对应名称为空，不影响商品详情返回。</p>
+     */
     @Override
     public ProductDetailVO getProductDetail(Long id) {
         Product product = productMapper.selectById(id);
@@ -121,7 +142,11 @@ public class ProductServiceImpl implements ProductService {
                 .build();
     }
 
-    // 商家创建商品
+    /**
+     * {@inheritDoc}
+     *
+     * <p>商品初始状态为下架（0），商品主表与 SKU 子表在同一事务中写入。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createProduct(ProductCreateDTO dto, Long userId) {
@@ -147,7 +172,11 @@ public class ProductServiceImpl implements ProductService {
         return product.getId();
     }
 
-    // 商家修改商品
+    /**
+     * {@inheritDoc}
+     *
+     * <p>SKU 列表非空时先删除原 SKU 再批量插入，主表更新与 SKU 替换在同一事务中完成。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateProduct(Long id, ProductCreateDTO dto, Long userId) {
@@ -178,7 +207,7 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    // 商家上架/下架
+    /** {@inheritDoc} */
     @Override
     public void updateStatus(Long id, Integer status, Long userId) {
         // 状态值仅允许 0-下架 / 1-上架
@@ -191,7 +220,12 @@ public class ProductServiceImpl implements ProductService {
         productMapper.updateStatus(id, status);
     }
 
-    // 商家删除商品
+    /**
+     * {@inheritDoc}
+     *
+     * <p>商品与 SKU 的删除在同一事务中执行；外键约束异常会被转换为
+     * “商品已被引用”的业务异常，从而触发事务回滚。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteProduct(Long id, Long userId) {
@@ -210,7 +244,13 @@ public class ProductServiceImpl implements ProductService {
 
     // ================ 私有校验与组装方法 ================
 
-    // 校验当前用户是审核通过的商家
+    /**
+     * 校验当前用户是审核通过（status=1）的商家。
+     *
+     * @param userId 用户 ID
+     * @return 商家实体
+     * @throws BusinessException 用户非商家或商家审核未通过时抛出
+     */
     private Merchant requireApprovedMerchant(Long userId) {
         Merchant merchant = merchantMapper.selectByUserId(userId);
         if (merchant == null) {
@@ -223,7 +263,14 @@ public class ProductServiceImpl implements ProductService {
         return merchant;
     }
 
-    // 校验商品存在且归属当前商家
+    /**
+     * 校验商品存在且归属指定商家。
+     *
+     * @param productId  商品 ID
+     * @param merchantId 当前商家 ID
+     * @return 商品实体
+     * @throws BusinessException 商品不存在或不属于该商家时抛出
+     */
     private Product requireOwnership(Long productId, Long merchantId) {
         Product product = productMapper.selectById(productId);
         if (product == null) {
@@ -235,14 +282,24 @@ public class ProductServiceImpl implements ProductService {
         return product;
     }
 
-    // 校验分类存在
+    /**
+     * 校验分类存在。
+     *
+     * @param categoryId 分类 ID
+     * @throws BusinessException 分类 ID 为空或分类不存在时抛出
+     */
     private void requireCategory(Long categoryId) {
         if (categoryId == null || categoryMapper.selectById(categoryId) == null) {
             throw new BusinessException(CategoryErrorCode.CATEGORY_NOT_FOUND);
         }
     }
 
-    // 校验 SKU 列表：非空、价格大于 0、库存非负
+    /**
+     * 校验 SKU 列表：非空、价格大于 0、库存非负。
+     *
+     * @param skuList SKU 参数列表
+     * @throws BusinessException 列表为空、价格非法或库存为负时抛出
+     */
     private void validateSkus(List<ProductSkuDTO> skuList) {
         if (skuList == null || skuList.isEmpty()) {
             throw new BusinessException(ProductErrorCode.SKU_LIST_EMPTY);
@@ -257,7 +314,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    // 批量插入 SKU
+    /**
+     * 将 SKU 参数转换为实体并批量插入，规格字段为空时写入空字符串。
+     *
+     * @param productId 商品 ID
+     * @param skuList   SKU 参数列表
+     */
     private void insertSkus(Long productId, List<ProductSkuDTO> skuList) {
         List<ProductSku> skus = skuList.stream()
                 .map(sku -> ProductSku.builder()
@@ -272,7 +334,12 @@ public class ProductServiceImpl implements ProductService {
         productSkuMapper.insertBatch(skus);
     }
 
-    // images JSON 数组序列化
+    /**
+     * 将图片列表序列化为 JSON 数组。
+     *
+     * @param images 图片 URL 列表
+     * @return JSON 数组字符串；列表为空或序列化失败时返回 {@code []}
+     */
     private String toImagesJson(List<String> images) {
         if (images == null || images.isEmpty()) {
             return "[]";
@@ -284,7 +351,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    // images JSON 解析，异常返回空列表
+    /**
+     * 解析商品图片 JSON 数组。
+     *
+     * @param images 图片 JSON 字符串
+     * @return 图片 URL 列表；数据为空或解析失败时返回空列表
+     */
     private List<String> parseImages(String images) {
         if (images == null || images.isBlank()) {
             return Collections.emptyList();
@@ -297,7 +369,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    // 取第一张主图
+    /**
+     * 取商品图片列表中的第一张作为主图。
+     *
+     * @param images 图片 JSON 字符串
+     * @return 首张图片 URL；无图片时返回 null
+     */
     private String firstImage(String images) {
         List<String> list = parseImages(images);
         return list.isEmpty() ? null : list.get(0);

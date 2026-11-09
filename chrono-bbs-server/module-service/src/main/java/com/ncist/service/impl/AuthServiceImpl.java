@@ -31,23 +31,47 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 用户认证服务实现。
+ *
+ * <p>基于 MySQL 中的用户表与 Redis 中的验证码/Token/重置验证码完成认证流程。
+ * 验证码、重置验证码均为一次性使用；登录 Token 以 {@code token:{userId}} 存储，
+ * 与 JWT 有效期保持一致（2 小时），实现服务端可控的单设备登录与强制下线。</p>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    /** 用户数据访问组件。 */
     private final UserMapper userMapper;
+
+    /** Redis 字符串操作模板，用于验证码、Token 与重置验证码。 */
     private final StringRedisTemplate stringRedisTemplate;
+
+    /** 密码编码器，使用 BCrypt 对密码进行加密与校验。 */
     private final PasswordEncoder passwordEncoder;
 
+    /** 图形验证码 Redis key 前缀。 */
     private static final String CAPTCHA_PREFIX = "captcha:";
+    /** 图形验证码有效期（分钟）。 */
     private static final long CAPTCHA_TIMEOUT = 2;
+    /** 登录 Token Redis key 前缀。 */
     private static final String TOKEN_PREFIX = "token:";
+    /** 登录 Token 有效期（小时），与 JWT 有效期一致。 */
     private static final long TOKEN_TIMEOUT = 2;      // 小时，与 JWT 有效期一致
+    /** 重置密码验证码 Redis key 前缀。 */
     private static final String RESET_CODE_PREFIX = "reset:code:";
+    /** 重置密码时验证码与用户 ID 映射的 Redis key 前缀。 */
     private static final String RESET_ACCOUNT_PREFIX = "reset:account:";
+    /** 重置密码验证码有效期（分钟）。 */
     private static final long RESET_TIMEOUT = 5;     // 分钟
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>验证码内容以 uuid 为键写入 Redis，有效期 2 分钟。</p>
+     */
     @Override
     public CaptchaVO getCaptcha() {
         String uuid = createUuid();
@@ -64,6 +88,11 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>验证码校验通过后立即删除，防止重复使用；注册成功后直接生成登录态并写入 Redis。</p>
+     */
     @Override
     public LoginVO register(RegisterDTO registerDTO) {
         validateAndDeleteCaptcha(registerDTO.getCaptchaUuid(), registerDTO.getCaptchaCode());
@@ -90,6 +119,11 @@ public class AuthServiceImpl implements AuthService {
         return buildLoginVO(user);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>登录成功后新 Token 覆盖 Redis 中的旧 Token，旧 Token 随即失效。</p>
+     */
     @Override
     public LoginVO login(LoginDTO loginDTO) {
         validateAndDeleteCaptcha(loginDTO.getCaptchaUuid(), loginDTO.getCaptchaCode());
@@ -108,12 +142,14 @@ public class AuthServiceImpl implements AuthService {
         return buildLoginVO(user);
     }
 
+    /** {@inheritDoc} */
     @Override
     public UserInfoVO getUserInfo(Long userId) {
         User user = requireUser(userId);
         return toUserInfoVO(user);
     }
 
+    /** {@inheritDoc} */
     @Override
     public UserInfoVO updateProfile(Long userId, UpdateProfileDTO dto) {
         requireUser(userId);
@@ -121,6 +157,11 @@ public class AuthServiceImpl implements AuthService {
         return toUserInfoVO(requireUser(userId));
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>密码更新后删除 {@code token:{userId}}，使当前 Token 立即失效。</p>
+     */
     @Override
     public void changePassword(Long userId, ChangePasswordDTO dto) {
         User user = requireUser(userId);
@@ -132,11 +173,18 @@ public class AuthServiceImpl implements AuthService {
         stringRedisTemplate.delete(TOKEN_PREFIX + userId);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void logout(Long userId) {
         stringRedisTemplate.delete(TOKEN_PREFIX + userId);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>重置验证码与用户 ID 映射分别写入两个 Redis key，有效期 5 分钟；
+     * 当前阶段不接入短信/邮件通道，验证码直接记录日志并返回。</p>
+     */
     @Override
     public ForgotCodeVO sendForgotCode(ForgotCodeDTO dto) {
         validateAndDeleteCaptcha(dto.getCaptchaUuid(), dto.getCaptchaCode());
@@ -161,6 +209,12 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>验证码校验通过后立即删除两个 Redis key，确保一次性使用；
+     * 密码更新后删除该用户 Token。</p>
+     */
     @Override
     public void resetPassword(ResetPasswordDTO dto) {
         String codeKey = RESET_CODE_PREFIX + dto.getUuid();
@@ -183,6 +237,13 @@ public class AuthServiceImpl implements AuthService {
 
     // ===== 私有方法 =====
 
+    /**
+     * 校验图形验证码并立即删除，保证验证码一次性使用。
+     *
+     * @param uuid 验证码唯一标识
+     * @param code 用户输入的验证码（忽略大小写）
+     * @throws BusinessException 验证码不存在、已过期或输入错误时抛出
+     */
     private void validateAndDeleteCaptcha(String uuid, String code) {
         String captchaCode = stringRedisTemplate.opsForValue().get(CAPTCHA_PREFIX + uuid);
         if (captchaCode == null || !captchaCode.equalsIgnoreCase(code)) {
@@ -191,6 +252,13 @@ public class AuthServiceImpl implements AuthService {
         stringRedisTemplate.delete(CAPTCHA_PREFIX + uuid);
     }
 
+    /**
+     * 按 ID 查询用户，不存在时抛出业务异常。
+     *
+     * @param userId 用户 ID
+     * @return 用户实体
+     * @throws BusinessException 用户不存在时抛出
+     */
     private User requireUser(Long userId) {
         User user = userMapper.selectById(userId);
         if (user == null) {
@@ -199,6 +267,14 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
+    /**
+     * 生成 JWT 并写入 Redis，组装登录结果。
+     *
+     * <p>Redis 中仅保留该用户最新的 Token，实现单设备登录。</p>
+     *
+     * @param user 已通过认证的用户
+     * @return 登录结果，包含 Token 与用户信息
+     */
     private LoginVO buildLoginVO(User user) {
         String token = JwtUtil.generateToken(Map.of(
                 "userId", user.getId(),
@@ -215,12 +291,24 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    /**
+     * 将用户实体复制为视图对象。
+     *
+     * @param user 用户实体
+     * @return 用户信息视图对象
+     */
     private UserInfoVO toUserInfoVO(User user) {
         UserInfoVO userInfo = new UserInfoVO();
         BeanUtils.copyProperties(user, userInfo);
         return userInfo;
     }
 
+    /**
+     * 对账号进行脱敏展示：手机号保留前 3 位与后 4 位，邮箱保留首字符与域名。
+     *
+     * @param user 用户实体
+     * @return 脱敏后的账号；无手机号与邮箱时返回用户名
+     */
     private String maskAccount(User user) {
         String phone = user.getPhone();
         if (phone != null && !phone.isEmpty()) {
@@ -234,10 +322,20 @@ public class AuthServiceImpl implements AuthService {
         return user.getUsername();
     }
 
+    /**
+     * 生成无短横线的 UUID，用作验证码唯一标识。
+     *
+     * @return 32 位 UUID 字符串
+     */
     public String createUuid() {
         return IdUtil.simpleUUID();
     }
 
+    /**
+     * 创建图形验证码（130x40，4 位字符，40 条干扰线）。
+     *
+     * @return 线性干扰图形验证码
+     */
     public LineCaptcha createLineCaptcha() {
         return CaptchaUtil.createLineCaptcha(130, 40, 4, 40);
     }

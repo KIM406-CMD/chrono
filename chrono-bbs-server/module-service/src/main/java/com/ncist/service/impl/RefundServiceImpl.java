@@ -26,21 +26,39 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * 退款服务实现
+ * 退款服务实现。
+ *
+ * <p>退款申请与审核均使用 {@code @Transactional} 保证退款单与订单状态的一致性。
+ * 审核通过后订单标记为已退款，拒绝后恢复为原订单状态；
+ * 状态条件更新保证同一退款单仅能被审核一次。</p>
+ *
+ * <p>权限规则：管理员可直接审核；商家必须资质有效且退款商品归属自己。
+ * 申请要求订单处于已支付、已发货或已收货状态，且同一订单明细仅能申请一次。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class RefundServiceImpl implements RefundService {
 
-    /** 已支付/已发货/已收货可申请退款 */
+    /** 允许申请退款的订单状态：2-已支付，3-已发货，4-已收货。 */
     private static final List<Integer> REFUNDABLE_STATUS = List.of(2, 3, 4);
 
+    /** 退款数据访问组件。 */
     private final RefundMapper refundMapper;
+    /** 订单数据访问组件，用于状态校验与流转。 */
     private final OrderMapper orderMapper;
+    /** 订单明细数据访问组件，用于校验退款来源与金额。 */
     private final OrderItemMapper orderItemMapper;
+    /** 商品数据访问组件，用于商家审核时校验商品归属。 */
     private final ProductMapper productMapper;
+    /** 商家数据访问组件，用于校验商家审核资质。 */
     private final MerchantMapper merchantMapper;
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>依次校验订单明细属主、订单状态、退款幂等与金额范围；
+     * 申请写入后通过状态条件更新将订单标记为退款中，更新失败不影响申请结果。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long apply(Long userId, RefundCreateDTO dto) {
@@ -80,6 +98,7 @@ public class RefundServiceImpl implements RefundService {
         return refund.getId();
     }
 
+    /** {@inheritDoc} */
     @Override
     public PageResult<RefundVO> myRefunds(Long userId, Integer page, Integer size) {
         int p = page == null || page < 1 ? 1 : page;
@@ -90,6 +109,7 @@ public class RefundServiceImpl implements RefundService {
         return PageResult.of(total, p, s, details.stream().map(this::toVO).toList());
     }
 
+    /** {@inheritDoc} */
     @Override
     public RefundVO detail(Long userId, Long id) {
         RefundDetail detail = refundMapper.selectDetailById(id);
@@ -102,6 +122,12 @@ public class RefundServiceImpl implements RefundService {
         return toVO(detail);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>先做角色/资质/商品归属校验，再通过状态条件更新审核结果；
+     * 通过时订单标记为已退款，拒绝时恢复为原状态，均在同一事务中完成。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void review(Long userId, Long id, RefundReviewDTO dto) {
@@ -133,6 +159,12 @@ public class RefundServiceImpl implements RefundService {
         }
     }
 
+    /**
+     * 将退款联查明细转换为视图对象。
+     *
+     * @param detail 退款联查明细
+     * @return 退款视图对象
+     */
     private RefundVO toVO(RefundDetail detail) {
         return RefundVO.builder()
                 .id(detail.getId())
