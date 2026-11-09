@@ -1,4 +1,5 @@
 import { MockMethod } from 'vite-plugin-mock'
+import { allProducts } from './product'
 
 const mockMethods: MockMethod[] = [
   // 12.1 管理员 - 用户列表
@@ -111,26 +112,40 @@ const mockMethods: MockMethod[] = [
     response: ({ query }) => {
       const page = parseInt(query.page) || 1
       const size = parseInt(query.size) || 10
-      
-      const mockProducts = Array.from({ length: 50 }, (_, i) => ({
-        id: i + 1,
-        name: `商品${i + 1}`,
-        images: [],
-        brand: `品牌${i % 5 + 1}`,
-        categoryId: (i % 8) + 1,
-        merchantId: (i % 5) + 1,
-        merchantName: `店铺${(i % 5) + 1}`,
-        minPrice: (i + 1) * 1000,
-        sales: Math.floor(Math.random() * 1000),
-        status: i % 10 === 0 ? 0 : 1,
-        createdAt: '2025-01-01 10:00:00',
+      const keyword = String(query.keyword || '').trim().toLowerCase()
+      const status = query.status !== undefined && query.status !== '' ? parseInt(query.status) : null
+      const categoryId = query.categoryId ? parseInt(query.categoryId) : null
+      const merchantId = query.merchantId ? parseInt(query.merchantId) : null
+
+      let list = allProducts.map((product) => ({
+        id: product.id,
+        name: product.name,
+        images: product.images,
+        brand: product.brand,
+        categoryId: product.categoryId,
+        merchantId: product.merchantId,
+        merchantName: product.merchantName,
+        minPrice: product.minPrice,
+        sales: product.sales,
+        status: product.status,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
       }))
-      
-      const total = mockProducts.length
+
+      if (keyword) {
+        list = list.filter((item) =>
+          item.name.toLowerCase().includes(keyword)
+          || (item.brand || '').toLowerCase().includes(keyword),
+        )
+      }
+      if (status !== null) list = list.filter((item) => item.status === status)
+      if (categoryId !== null) list = list.filter((item) => item.categoryId === categoryId)
+      if (merchantId !== null) list = list.filter((item) => item.merchantId === merchantId)
+
+      const total = list.length
       const start = (page - 1) * size
       const end = start + size
-      const list = mockProducts.slice(start, end)
-      
+
       return {
         code: 200,
         message: 'success',
@@ -138,8 +153,40 @@ const mockMethods: MockMethod[] = [
           total,
           page,
           size,
-          list,
+          list: list.slice(start, end),
         },
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 12.7 管理员 - 商品上下架（Mock 扩展）
+  {
+    url: '/api/admin/products/:id/status',
+    method: 'put',
+    timeout: 300,
+    response: ({ query, body }) => {
+      const product = allProducts.find((item) => item.id === parseInt(query.id))
+      if (product) product.status = Number(body.status)
+      return {
+        code: 200,
+        message: body.status === 1 ? '上架成功' : '下架成功',
+        data: null,
+        timestamp: Date.now(),
+      }
+    },
+  },
+  // 12.8 管理员 - 删除商品（Mock 扩展）
+  {
+    url: '/api/admin/products/:id',
+    method: 'delete',
+    timeout: 300,
+    response: ({ query }) => {
+      const index = allProducts.findIndex((item) => item.id === parseInt(query.id))
+      if (index >= 0) allProducts.splice(index, 1)
+      return {
+        code: 200,
+        message: '商品删除成功',
+        data: null,
         timestamp: Date.now(),
       }
     },
@@ -193,19 +240,45 @@ const mockMethods: MockMethod[] = [
         data: {
           totalSales: 1234567,
           totalOrders: 150,
-          totalUsers: 80,
-          totalProducts: 50,
-          dailySales: Array.from({ length: 7 }, (_, i) => ({
-            date: `2025-01-${String(i + 1).padStart(2, '0')}`,
-            amount: Math.floor(Math.random() * 100000),
-            orderCount: Math.floor(Math.random() * 20),
-          })),
-          topProducts: Array.from({ length: 5 }, (_, i) => ({
-            id: i + 1,
-            name: `商品${i + 1}`,
-            sales: 100 - i * 10,
-            amount: (100 - i * 10) * 1000,
-          })),
+          avgOrderAmount: 8230,
+          topProducts: [
+            { productId: 1, productName: '华为 智能手机 型号1', salesCount: 320, totalAmount: 320000 },
+            { productId: 2, productName: '小米 智能手机 型号2', salesCount: 260, totalAmount: 260000 },
+            { productId: 3, productName: '苹果 笔记本电脑 型号3', salesCount: 180, totalAmount: 180000 },
+            { productId: 4, productName: '耐克 T恤 型号4', salesCount: 150, totalAmount: 150000 },
+            { productId: 5, productName: '三只松鼠 坚果炒货 型号5', salesCount: 120, totalAmount: 120000 },
+          ],
+          salesByCategory: [
+            { categoryId: 1, categoryName: '食品饮料', totalAmount: 420000 },
+            { categoryId: 2, categoryName: '生鲜果蔬', totalAmount: 310000 },
+            { categoryId: 3, categoryName: '美妆个护', totalAmount: 260000 },
+            { categoryId: 4, categoryName: '数码家电', totalAmount: 180000 },
+            { categoryId: 5, categoryName: '服饰鞋包', totalAmount: 64567 },
+          ],
+          salesByMerchant: [
+            { merchantId: 1, shopName: '官方旗舰店1', totalAmount: 520000 },
+            { merchantId: 2, shopName: '官方旗舰店2', totalAmount: 380000 },
+            { merchantId: 3, shopName: '官方旗舰店3', totalAmount: 234567 },
+            { merchantId: 4, shopName: '官方旗舰店4', totalAmount: 100000 },
+          ],
+          salesTrend: [
+            { date: '2025-01-01', amount: 120000 },
+            { date: '2025-01-02', amount: 168000 },
+            { date: '2025-01-03', amount: 142000 },
+            { date: '2025-01-04', amount: 210000 },
+            { date: '2025-01-05', amount: 189000 },
+            { date: '2025-01-06', amount: 226000 },
+            { date: '2025-01-07', amount: 179567 },
+          ],
+          orderStatusDistribution: {
+            待支付: 20,
+            已支付: 30,
+            已发货: 25,
+            已完成: 60,
+            已取消: 10,
+            退款中: 3,
+            已退款: 2,
+          },
         },
         timestamp: Date.now(),
       }

@@ -1,22 +1,33 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getRefundList, reviewRefund } from '@/api/refund'
-import { MERCHANT_REFUND_AUDIT_ENABLED } from '@/config/features'
+import { reviewRefund } from '@/api/refund'
+import { getMerchantRefunds } from '@/api/merchant'
+import { getAdminRefunds } from '@/api/admin'
+import { REFUND_AUDIT_ENABLED } from '@/config/features'
 import type { RefundItem } from '@/api/refund'
+
+const route = useRoute()
+const isAdmin = computed(() => route.path.startsWith('/admin'))
 
 const loading = ref(false)
 const refunds = ref<RefundItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = 10
+const statusFilter = ref<number | ''>('')
 
 const priceYuan = (fen: number) => (fen / 100).toFixed(2)
 
 const loadRefunds = async () => {
   loading.value = true
   try {
-    const res = await getRefundList({ page: page.value, size })
+    const params: { page: number; size: number; status?: number } = { page: page.value, size }
+    if (statusFilter.value !== '') params.status = statusFilter.value
+    const res = isAdmin.value
+      ? await getAdminRefunds(params)
+      : await getMerchantRefunds(params)
     refunds.value = res.data.list || []
     total.value = res.data.total
   } catch {
@@ -24,6 +35,11 @@ const loadRefunds = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleFilterChange = () => {
+  page.value = 1
+  loadRefunds()
 }
 
 const handleApprove = async (item: RefundItem) => {
@@ -64,17 +80,31 @@ const typeMap: Record<number, string> = { 1: '退款', 2: '退货' }
 const statusMap: Record<number, string> = { 0: '待审核', 1: '已通过', 2: '已拒绝' }
 
 onMounted(() => {
-  if (MERCHANT_REFUND_AUDIT_ENABLED) loadRefunds()
+  if (REFUND_AUDIT_ENABLED) loadRefunds()
 })
 </script>
 
 <template>
-  <div v-if="MERCHANT_REFUND_AUDIT_ENABLED" class="rm-page">
-    <h2>退款审核</h2>
+  <div v-if="REFUND_AUDIT_ENABLED" class="rm-page">
+    <div class="rm-header">
+      <h2>退款审核</h2>
+      <el-select
+        v-model="statusFilter"
+        placeholder="全部状态"
+        clearable
+        style="width: 140px"
+        @change="handleFilterChange"
+      >
+        <el-option label="待审核" :value="0" />
+        <el-option label="已通过" :value="1" />
+        <el-option label="已拒绝" :value="2" />
+      </el-select>
+    </div>
 
     <el-table :data="refunds" v-loading="loading" stripe class="rm-table">
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="orderId" label="订单ID" width="90" />
+      <el-table-column prop="productName" label="商品" min-width="160" show-overflow-tooltip />
       <el-table-column label="类型" width="80" align="center">
         <template #default="{ row }">{{ typeMap[row.type] }}</template>
       </el-table-column>
@@ -134,10 +164,17 @@ onMounted(() => {
   padding: 20px;
 }
 
+.rm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
 .rm-page h2 {
   font-size: 20px;
   font-weight: 700;
-  margin: 0 0 16px;
+  margin: 0;
   color: #333;
 }
 

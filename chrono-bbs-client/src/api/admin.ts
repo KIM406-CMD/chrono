@@ -1,5 +1,6 @@
 import service from '@/api'
 import type { PageResult } from '@/types/common'
+import type { RefundItem } from './refund'
 
 export interface AdminUser {
   id: number
@@ -84,4 +85,22 @@ export const getAdminOrders = (params: { page?: number; size?: number; orderNo?:
 
 export const getAdminSalesReport = (params?: { startDate?: string; endDate?: string; groupBy?: 'day' | 'week' | 'month' }) => {
   return service.get('/admin/report', { params })
+}
+
+// 管理员退款审核列表（Mock 扩展，正式后端未实现）
+export const getAdminRefunds = (params: { page?: number; size?: number; status?: number }) => {
+  return service.get<any, { code: number; message: string; data: PageResult<RefundItem>; timestamp: number }>(
+    '/admin/refunds',
+    { params },
+  )
+}
+
+// 管理员商品上下架（Mock 扩展，正式后端未实现）
+export const setAdminProductStatus = (id: number, status: number) => {
+  return service.put(`/admin/products/${id}/status`, { status })
+}
+
+// 管理员删除商品（Mock 扩展，正式后端未实现）
+export const deleteAdminProduct = (id: number) => {
+  return service.delete(`/admin/products/${id}`)
 }

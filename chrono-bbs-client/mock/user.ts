@@ -1,6 +1,29 @@
 import { MockMethod } from 'vite-plugin-mock'
 import Mock from 'mockjs'
 
+interface MockUser {
+  id: number
+  username: string
+  nickname: string
+  phone: string
+  email?: string
+  avatar?: string
+  role: number
+  status: number
+}
+
+// 当前登录用户，供 /api/user/info 返回；Mock 进程内共享
+let currentUser: MockUser = {
+  id: 100,
+  username: 'user',
+  nickname: '测试用户',
+  phone: '13800138000',
+  email: 'user@example.com',
+  avatar: '',
+  role: 1,
+  status: 1,
+}
+
 const mockMethods: MockMethod[] = [
   // 2.1 获取图形验证码
   {
@@ -26,18 +49,19 @@ const mockMethods: MockMethod[] = [
     timeout: 500,
     response: ({ body }) => {
       const { username, role } = body
+      currentUser = {
+        ...currentUser,
+        username,
+        nickname: username,
+        phone: body.phone || '',
+        role: role || 1,
+      }
       return {
         code: 200,
         message: '注册成功',
         data: {
           token: Mock.Random.guid(),
-          userInfo: {
-            id: 100,
-            username,
-            nickname: username,
-            phone: body.phone || '',
-            role, // 1=普通用户, 2=商家
-          },
+          userInfo: currentUser,
         },
         timestamp: Date.now(),
       }
@@ -57,19 +81,19 @@ const mockMethods: MockMethod[] = [
         user: 1,
       }
       const role = roleMap[username] || 1
-      
+      currentUser = {
+        ...currentUser,
+        username,
+        nickname: username === 'admin' ? '管理员' : username === 'merchant' ? '测试商家' : '测试用户',
+        phone: '138****8000',
+        role,
+      }
       return {
         code: 200,
         message: '登录成功',
         data: {
           token: Mock.Random.guid(),
-          userInfo: {
-            id: 100,
-            username,
-            nickname: username === 'admin' ? '管理员' : username === 'merchant' ? '测试商家' : '测试用户',
-            phone: '138****8000',
-            role, // 1=普通用户, 2=商家, 3=管理员
-          },
+          userInfo: currentUser,
         },
         timestamp: Date.now(),
       }
@@ -84,16 +108,7 @@ const mockMethods: MockMethod[] = [
       return {
         code: 200,
         message: 'success',
-        data: {
-          id: 100,
-          username: 'user',
-          nickname: '测试用户',
-          phone: '13800138000',
-          email: 'user@example.com',
-          avatar: '', // 图片为空
-          role: 1, // 1=普通用户
-          status: 1, // 1=正常
-        },
+        data: currentUser,
         timestamp: Date.now(),
       }
     },
@@ -103,7 +118,8 @@ const mockMethods: MockMethod[] = [
     url: '/api/user/profile',
     method: 'put',
     timeout: 300,
-    response: () => {
+    response: ({ body }) => {
+      currentUser = { ...currentUser, ...body }
       return {
         code: 200,
         message: '修改成功',

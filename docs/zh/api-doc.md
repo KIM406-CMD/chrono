@@ -445,16 +445,16 @@ POST /api/product
 | images | List&lt;String&gt; | 否 | 商品图片 URL 数组（最多 4 张），如 `["https://.../a.jpg"]`。注意：实现为 JSON 数组而非字符串 |
 | brand | String | 否 | 品牌 |
 | categoryId | Long | 是 | 三级分类 ID |
-| skuList | List | 是 | SKU 列表 |
+| skuList | List | 是 | SKU 列表，至少一项；修改时非空则全量替换原有 SKU |
 
 **SKU 项**：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| specIds | String | 是 | 规格 ID 组合，如 `"1,3"` |
-| specText | String | 是 | 规格文本，如 `"红色 / 64GB"` |
-| price | Integer | 是 | 价格（分） |
-| stock | Integer | 是 | 库存数量 |
+| specIds | String | 否 | 规格值 ID 组合，JSON 数组字符串，如 `"[1,3]"`；前端按规格组顺序生成 |
+| specText | String | 是 | 规格展示文本，多级用 `/` 分隔，如 `"红色/64GB"` |
+| price | Integer | 是 | 价格（分），必须大于 0 |
+| stock | Integer | 是 | 库存数量，不能为负 |
 
 ---
 
@@ -1044,6 +1044,36 @@ PUT /api/refund/{id}/review
 
 ---
 
+### 10.5 退款列表（商家，Mock 扩展）
+
+> 权限：商家。正式后端尚未提供商家退款列表接口，开发阶段由 Mock 实现。
+
+```
+GET /api/merchant/refunds
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+| status | Integer | 否 | 0=待审核，1=已通过，2=已拒绝 |
+
+**返回**：`PageResult<RefundVO>`，字段同 10.3，仅包含当前商家的退款单。
+
+---
+
+### 10.6 退款列表（管理员，Mock 扩展）
+
+> 权限：管理员。正式后端尚未提供管理员退款列表接口，开发阶段由 Mock 实现。
+
+```
+GET /api/admin/refunds
+```
+
+参数与返回同 10.5，范围包含所有商家的退款单。
+
+---
+
 ## 11. 商家管理 `/api/merchant`
 
 **Controller**：`MerchantController`  
@@ -1320,6 +1350,35 @@ GET /api/admin/report
 
 ---
 
+### 12.7 管理员商品上下架（Mock 扩展）
+
+> 权限：管理员。正式后端尚未提供该接口，开发阶段由 Mock 实现。
+
+```
+PUT /api/admin/products/{id}/status
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 商品 ID（路径参数） |
+| status | Integer | 是 | 0=下架，1=上架 |
+
+---
+
+### 12.8 管理员删除商品（Mock 扩展）
+
+> 权限：管理员。正式后端尚未提供该接口，开发阶段由 Mock 实现。
+
+```
+DELETE /api/admin/products/{id}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 商品 ID（路径参数） |
+
+---
+
 ## 13. 文件上传 `/api/upload`
 
 **Controller**：`UploadController`  
@@ -1364,6 +1423,8 @@ POST /api/upload/image
 **Controller**：`ChatController`  
 **Swagger 分组**：即时通讯  
 **权限**：需登录
+
+> 实现状态：后端 `ChatController` 尚未实现；开发阶段由 Mock 提供 HTTP 接口，前端聊天入口默认开启（`CHAT_ENABLED = true`）。
 
 ### 14.1 会话列表
 
@@ -1451,13 +1512,31 @@ GET /api/chat/unread-count
 
 ---
 
+### 14.6 发送消息（Mock 扩展）
+
+> 正式后端通过 WebSocket 发送消息（见第 17 节）；开发阶段由 Mock 提供 HTTP 接口，前端聊天页在 `dev:mock` 下使用。
+
+```
+POST /api/chat/message
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| conversationId | Long | 是 | 会话 ID |
+| content | String | 是 | 消息内容 |
+| type | String | 否 | text/image，默认 text |
+
+**返回**：`Result<ChatMessage>`，字段同 14.2。
+
+---
+
 ## 15. 商品搜索 `/api/search`
 
 **Controller**：`SearchController`  
 **Swagger 分组**：商品搜索  
 **权限**：公开
 
-> 实现状态：后端搜索模块尚未实现（`SearchController` 为空）。前端搜索结果页当前降级为基于公开接口 `/api/product/list` 的本地过滤，游客可正常使用。
+> 实现状态：后端搜索模块尚未实现（`SearchController` 为空）。开发阶段由 Mock 提供完整搜索接口；前端搜索页已接入本节接口，接口不可用时自动降级为基于 `/api/product/list` 的本地过滤，游客可正常使用。
 
 ### 15.1 全文检索
 

@@ -113,13 +113,19 @@ chrono-bbs-client/
     │   │   └── HelpView.vue             # Help center
     │   └── NotFound.vue                 # 404 page
     ├── components/                      # ===== Common component layer =====
-    │   └── layout/                      # Layout components
-    │       ├── MallLayout.vue           # Mall layout (top navigation + category bar + content area + footer)
-    │       ├── MerchantLayout.vue       # Merchant backend layout (sidebar + content area)
-    │       └── AdminLayout.vue          # Administrator backend layout (sidebar + content area)
+    │   ├── layout/                      # Layout components
+    │   │   ├── MallLayout.vue           # Mall layout (top navigation + category bar + content area + footer)
+    │   │   ├── MerchantLayout.vue       # Merchant backend layout (sidebar + content area)
+    │   │   └── AdminLayout.vue          # Administrator backend layout (sidebar + content area)
+    │   ├── category/
+    │   │   └── CategoryFlyout.vue       # Three-level category flyout panel
+    │   └── chart/
+    │       └── BaseChart.vue            # ECharts wrapper (on-demand imports)
     ├── utils/                           # ===== Utility functions =====
     │   ├── token.ts                     # Token storage (localStorage)
-    │   └── settings.ts                  # User preference settings (localStorage)
+    │   ├── settings.ts                  # User preference settings (localStorage)
+    │   ├── luhn.ts                      # Card formatting and Luhn/expiry/CVV validation
+    │   └── sanitizeHtml.ts              # Product description HTML sanitizer
     ├── styles/                          # ===== Global styles =====
     │   ├── variables.css                # CSS variable system (design tokens)
     │   └── global.css                   # Global base styles
@@ -517,7 +523,7 @@ export const useUserStore = defineStore('user', () => {
 
 ## 7. Instant Messaging
 
-> **Implementation status**: The chat feature is currently simulated through Mock APIs (`mock/chat.ts`) for frontend joint debugging. After the backend WebSocket API is complete, switch to the WebSocket solution below.
+> **Implementation status**: The chat entry is enabled (`CHAT_ENABLED = true`) and currently uses Mock HTTP APIs (`mock/chat.ts`) for frontend joint debugging. After the backend WebSocket API is complete, switch to the WebSocket solution below.
 
 ### 7.1 Backend WebSocket Contract
 
@@ -605,7 +611,7 @@ export function useWebSocket(userId: number) {
 
 ## 8. Product Search (Backend API)
 
-> **Implementation status**: Search is now integrated with the backend `/api/search` API (Elasticsearch is used internally by the backend; the frontend does not connect to ES directly). For the frontend wrapper, see `api/search.ts`.
+> **Implementation status**: The search page integrates the APIs in this section (Elasticsearch is used internally by the backend; the frontend does not connect to ES directly); see `api/search.ts`. When the backend APIs are unavailable, the page falls back to local filtering over `/api/product/list` so guests can still search.
 
 ### 8.1 API List
 
@@ -929,3 +935,77 @@ server {
 | Post comment | POST | `/api/comment` | `{ productId, content, rating, images }` |
 | Request refund | POST | `/api/refund` | `{ orderItemId, type, reason, amount }` |
 | WebSocket connection | WS | `ws://host/chat/{userId}` | — |
+
+
+---
+
+## 15. Frontend Enhancements (Current Implementation)
+
+All items below can be verified independently with `npm run dev:mock`, without the backend APIs that are not implemented yet.
+
+### 15.1 Multi-SKU Management for Merchants
+
+- The product create/edit dialog supports multiple specification groups (name + comma-separated values) and generates the cartesian product of SKUs.
+- Each SKU has its own price and stock; the payload maps to `ProductCreateDTO.skuList`.
+- When editing, specification groups are reconstructed from the existing `specText`, preserving SKU prices and stock.
+- Files: `src/views/merchant/ProductManageView.vue`, `mock/product.ts`.
+
+### 15.2 Report Charts
+
+- ECharts 6 is imported on demand and wrapped by `src/components/chart/BaseChart.vue`.
+- Admin sales report: line chart for trend, bar charts for top products and merchants, pie chart for categories.
+- Merchant sales stats: line chart for trend, bar chart for top products, pie chart for categories.
+- Charts and detail tables are shown together; amounts are displayed in yuan.
+
+### 15.3 Card Payment Pre-validation
+
+- `src/utils/luhn.ts` provides card formatting, Luhn validation, MM/YY expiry validation and CVV validation.
+- The cashier page formats input automatically and validates before submission; the backend still performs the final check.
+
+### 15.4 Search Filters and Three-level Categories
+
+- Search results support cascading category, brand and price-range filters, with reset and category path display.
+- The backend search API is not implemented yet, so filtering is performed locally over products loaded from `/api/product/list`.
+- The top navigation and home sidebar show hover flyouts for selecting level-2/level-3 categories.
+- Files: `src/views/product/SearchResultView.vue`, `src/components/category/CategoryFlyout.vue`.
+
+### 15.5 Rich Text Description and Specifications
+
+- The product detail tab renders sanitized rich text (`src/utils/sanitizeHtml.ts`), removing scripts and event attributes.
+- The specifications tab shows brand, category, shop, sales and all SKU prices/stocks.
+
+### 15.6 Home Product Pagination
+
+- "Guess You Like" loads 10 items per page with pagination; "Hot Recommendations" shows the top 10 by sales.
+
+### 15.7 Mock Debug Mode
+
+- `npm run dev` uses the real backend; `npm run dev:mock` uses the `mock/` directory. They are independent.
+- Mock product create/edit persists multiple SKUs and recalculates min/max prices; the admin report fields match `AdminReportVO`.
+
+> Note: chat, merchant refund review, return-receipt confirmation, admin product operations, real full-text search and comment images are still blocked by backend APIs, and their entries remain disabled or degraded.
+
+
+### 15.8 Chat Integration (Mock HTTP)
+
+- The mall header message entry and "My Messages" menu item are enabled by default; the unread badge calls `GET /api/chat/unread-count`.
+- The chat page supports conversation list, history, sending messages and marking as read; sending uses the Mock `POST /api/chat/message` endpoint (the production backend uses WebSocket).
+- The product detail shop card adds "Contact Support": after login it calls `POST /api/chat/conversation` to create or reuse a conversation and opens the chat page.
+- Mock implements conversation deduplication, aggregated unread counts and read clearing.
+
+### 15.9 Refund Review (Merchant/Admin)
+
+- The merchant "Refund Review" and admin "Refund Review" pages reuse `RefundManageView.vue` and select the data source by route prefix.
+- The list supports status filtering, approve/reject actions and a rejection reason; rows update immediately after review.
+- Mock extension APIs: `GET /api/merchant/refunds`, `GET /api/admin/refunds`; review reuses `PUT /api/refund/{id}/review`.
+
+### 15.10 Admin Product Operations
+
+- The global product list supports on/off-shelf toggling and deletion with confirmation prompts.
+- Mock extension APIs: `PUT /api/admin/products/{id}/status`, `DELETE /api/admin/products/{id}`.
+
+### 15.11 Search API Integration and Fallback
+
+- When a keyword is present, the page calls `/api/search` (category/brand/price/sort/pagination); suggestions, history and hot keywords use APIs 15.2-15.5.
+- Category-only browsing or filters without a keyword use local filtering over `/api/product/list`; the same fallback applies when search APIs are unavailable.
+- Mock expands category filters to all descendants, matching the three-level navigation behavior.

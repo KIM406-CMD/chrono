@@ -1,5 +1,5 @@
 import { MockMethod } from 'vite-plugin-mock'
-import { allProducts } from './product'
+import { allProducts, collectCategoryIds } from './product'
 
 const HOT_KEYWORDS = ['智能手机', '笔记本电脑', 'T恤', '坚果炒货', '平板电脑', '华为', '小米', '苹果']
 
@@ -83,7 +83,10 @@ const mockMethods: MockMethod[] = [
             (p.brand && p.brand.toLowerCase().includes(kw))),
       )
 
-      if (categoryId) filtered = filtered.filter(p => p.categoryId === categoryId)
+      if (categoryId) {
+        const ids = collectCategoryIds(categoryId)
+        filtered = filtered.filter(p => ids.includes(p.categoryId))
+      }
       if (brand) filtered = filtered.filter(p => p.brand === brand)
       if (minPrice !== null) filtered = filtered.filter(p => p.minPrice >= minPrice)
       if (maxPrice !== null) filtered = filtered.filter(p => p.minPrice <= maxPrice)

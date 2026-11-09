@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getAdminProducts } from '@/api/admin'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getAdminProducts, setAdminProductStatus, deleteAdminProduct } from '@/api/admin'
 
 const loading = ref(false)
 const products = ref<any[]>([])
@@ -41,6 +42,46 @@ const handleReset = () => {
   statusFilter.value = ''
   page.value = 1
   loadProducts()
+}
+
+const handleToggleStatus = async (row: any) => {
+  const nextStatus = row.status === 1 ? 0 : 1
+  const action = nextStatus === 1 ? '上架' : '下架'
+  try {
+    await ElMessageBox.confirm(`确定要${action}商品「${row.name}」吗？`, `${action}商品`, {
+      confirmButtonText: `确认${action}`,
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  try {
+    await setAdminProductStatus(row.id, nextStatus)
+    ElMessage.success(`已${action}商品`)
+    loadProducts()
+  } catch {
+    ElMessage.error('操作失败')
+  }
+}
+
+const handleDelete = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除商品「${row.name}」吗？删除后不可恢复。`, '删除商品', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  try {
+    await deleteAdminProduct(row.id)
+    ElMessage.success('删除成功')
+    loadProducts()
+  } catch {
+    ElMessage.error('删除失败')
+  }
 }
 
 onMounted(() => { loadProducts() })
@@ -84,13 +125,12 @@ onMounted(() => { loadProducts() })
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" align="center" fixed="right">
-        <template #default>
-          <el-tooltip content="后端暂未提供管理员上下架接口" placement="top">
-            <span>
-              <el-button size="small" disabled>调整状态</el-button>
-            </span>
-          </el-tooltip>
+      <el-table-column label="操作" width="180" align="center" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" @click="handleToggleStatus(row)">
+            {{ row.status === 1 ? '下架' : '上架' }}
+          </el-button>
+          <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

@@ -116,24 +116,51 @@ chrono-bbs/
 |------|----------|
 | JDK | 21+ |
 | Node.js | 18+ |
-| Docker Desktop | 最新版 |
 | Maven | 3.8+ |
+| Docker Desktop | 最新版（仅 Docker 模式需要） |
 
-### 1. 启动中间件
+### 1. 一键启动（推荐）
 
-```bash
-cd docker
-docker compose up -d
+Windows（cmd / PowerShell）：
+
+```bat
+script\start-all.bat            :: Docker 中间件（MySQL 3307）
+script\start-all.bat --local    :: 本机中间件（MySQL 3306）
 ```
 
-启动 MySQL、Redis、Elasticsearch。MySQL 首次创建数据卷时会自动执行 `initial/schema.sql` 与 `initial/data.sql`（创建 `chrono_bbs_dev` 库、20 张表并导入初始数据），无需手动导入。
+Bash / Git Bash / macOS / Linux：
 
-> 端口：MySQL `3307`（避免与本机 3306 冲突）、Redis `6379`、Elasticsearch `9200`。
-> 修改初始化脚本后需执行 `docker compose down -v` 删除数据卷再启动，脚本才会重新执行。
+```bash
+./script/start-all.sh           # Docker 中间件（MySQL 3307）
+./script/start-all.sh --local   # 本机中间件（MySQL 3306）
+```
 
-### 2. 初始化数据库（可选，手动方式）
+脚本会依次启动中间件、后端与前端：
 
-若使用本机 MySQL 而非 Docker，执行：
+| 服务 | 地址 |
+|------|------|
+| 前端 | <http://localhost:5173> |
+| 后端 | <http://localhost:8080> |
+| Knife4j 文档 | <http://localhost:8080/doc.html> |
+
+> Windows 会为后端和前端各打开一个新命令行窗口，关闭窗口即停止服务。
+> Bash 下后端在后台运行，日志写入 `logs/backend.log`，`Ctrl+C` 同时停止前后端。
+> 更多参数（`--skip-build`、`--install`、`--volumes`）见 [script/README.md](script/README.md)。
+
+### 2. 分步启动（可选）
+
+| 步骤 | Windows | Bash |
+|------|---------|------|
+| 启动中间件 | `script\start-middleware.bat` | `./script/start-middleware.sh` |
+| 启动后端 | `script\start-backend.bat` | `./script/start-backend.sh` |
+| 启动前端 | `script\start-frontend.bat` | `./script/start-frontend.sh` |
+| 停止中间件 | `script\stop-middleware.bat` | `./script/stop-middleware.sh` |
+
+> 默认使用 Docker 中间件（MySQL 映射到宿主机 `3307`）；追加 `--local` 使用本机已启动的 MySQL / Redis / Elasticsearch（MySQL 按 `application-dev.yml` 使用 `3306`）。
+
+### 3. 本机中间件数据库初始化（可选）
+
+使用 `--local` 且首次运行时，先初始化数据库：
 
 ```bash
 mysql -u root -p < initial/schema.sql
@@ -142,28 +169,10 @@ mysql -u root -p < initial/data.sql
 
 脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`。
 
-### 3. 启动后端
+> Docker 模式首次启动会自动执行上述脚本，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
+> 图片上传依赖阿里云 OSS，可复制 `script/.env.example` 为根目录 `.env` 并填写密钥；未配置时后端仍可启动，仅上传功能不可用。
 
-```bash
-cd chrono-bbs-server
-mvn clean install -DskipTests
-cd module-start
-mvn spring-boot:run
-```
-
-后端运行在 `http://localhost:8080`，Knife4j 文档在 `http://localhost:8080/doc.html`。
-
-### 4. 启动前端
-
-```bash
-cd chrono-bbs-client
-npm install
-npm run dev
-```
-
-前端运行在 `http://localhost:5173`。
-
-### 5. 默认测试账号
+### 4. 默认测试账号
 
 | 角色 | 用户名 | 密码 |
 |------|--------|------|
@@ -171,7 +180,7 @@ npm run dev
 
 > 普通用户可通过前端注册功能自行创建。
 
-### 6. 生产部署（Nginx）
+### 5. 生产部署（Nginx）
 
 ```bash
 cd chrono-bbs-client

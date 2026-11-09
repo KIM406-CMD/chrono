@@ -3,7 +3,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UserFilled } from '@element-plus/icons-vue'
-import { getConversations, getMessages, sendMessage } from '@/api/chat'
+import { getConversations, getMessages, markConversationRead, sendMessage } from '@/api/chat'
 import { useUserStore } from '@/stores/user'
 import { CHAT_ENABLED } from '@/config/features'
 import type { Conversation, ChatMessage } from '@/api/chat'
@@ -36,6 +36,11 @@ const loadMessages = async (convId: number) => {
     const res = await getMessages(convId)
     messages.value = res.data.list || []
     scrollToBottom()
+    markConversationRead(convId)
+      .then(() => window.dispatchEvent(new Event('chat-unread-changed')))
+      .catch(() => undefined)
+    const conv = conversations.value.find((item) => item.id === convId)
+    if (conv) conv.unreadCount = 0
   } catch {
     messages.value = []
   } finally {
@@ -65,19 +70,21 @@ const handleSend = async () => {
   try {
     const res = await sendMessage({ conversationId: conv.id, content: text, type: 'text' })
     messages.value.push(res.data)
+    conv.lastMessage = text
+    conv.lastMessageTime = res.data.createdAt
     scrollToBottom()
   } catch {
     ElMessage.error('发送失败')
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!CHAT_ENABLED) return
-  loadConversations()
-  const convId = route.params.conversationId
+  await loadConversations()
+  const convId = Number(route.params.conversationId)
   if (convId) {
-    activeConv.value = Number(convId)
-    loadMessages(activeConv.value)
+    activeConv.value = convId
+    await loadMessages(convId)
   }
 })
 </script>

@@ -1,3 +1,4 @@
-// 功能开关：后端接口就绪后改为 true 即可恢复入口
-export const CHAT_ENABLED = false
-export const MERCHANT_REFUND_AUDIT_ENABLED = false
+// 功能开关：以下后端接口尚未实现，开发阶段由 mock/ 目录提供模拟数据。
+// 正式后端完成后，将对应开关保持为 true 并切换到 npm run dev 即可。
+export const CHAT_ENABLED = true
+export const REFUND_AUDIT_ENABLED = true

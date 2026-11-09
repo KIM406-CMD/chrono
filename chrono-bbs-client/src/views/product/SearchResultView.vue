@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Search, Delete } from '@element-plus/icons-vue'
 import { getProductList, getCategoryTree } from '@/api/product'
+import {
+  searchProducts,
+  getSearchSuggest,
+  getSearchHistory,
+  clearSearchHistory,
+  getHotSearch,
+  type SearchItem,
+} from '@/api/search'
+import { useUserStore } from '@/stores/user'
 import type { Product, Category } from '@/types/product'
 import { formatPriceByPreference, generalSettings, reloadGeneralSettings } from '@/utils/settings'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const keyword = ref((route.query.keyword as string) || '')
 const categoryId = ref(route.query.categoryId ? parseInt(route.query.categoryId as string) : 0)
@@ -18,6 +28,9 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 20
 const sortBy = ref<'default' | 'price_asc' | 'price_desc' | 'sales_desc'>('default')
+const brandFilter = ref('')
+const minPriceYuan = ref<number | undefined>(undefined)
+const maxPriceYuan = ref<number | undefined>(undefined)
 
 // 本地搜索数据（商品列表接口为公开接口，游客可用）
 const allProducts = ref<Product[]>([])
@@ -26,26 +39,58 @@ const hotKeywords = ref<string[]>([])
 const historyKeywords = ref<string[]>([])
 const HISTORY_KEY = 'search_history'
 
-// 搜索建议：基于已加载商品名称本地过滤
-const querySuggest = (query: string, cb: (data: { value: string }[]) => void) => {
-  const q = (query || '').trim().toLowerCase()
+// 搜索建议：优先调用 /api/search/suggest，失败时回退到本地商品名
+const querySuggest = async (query: string, cb: (data: { value: string }[]) => void) => {
+  const q = (query || '').trim()
   if (!q) {
     cb([])
     return
   }
+  try {
+    const res = await getSearchSuggest(q)
+    cb((res.data || []).slice(0, 8).map((value) => ({ value })))
+    return
+  } catch {
+    // 后端搜索未实现时回退到本地
+  }
+  const lower = q.toLowerCase()
   const names = allProducts.value
     .map((item) => item.name)
-    .filter((name) => name.toLowerCase().includes(q))
+    .filter((name) => name.toLowerCase().includes(lower))
   cb(Array.from(new Set(names)).slice(0, 8).map((value) => ({ value })))
 }
 
-const loadHistory = () => {
+const loadHistory = async () => {
+  if (userStore.isLoggedIn) {
+    try {
+      const res = await getSearchHistory()
+      historyKeywords.value = (res.data || []).slice(0, 20)
+      return
+    } catch {
+      // 回退到本地历史
+    }
+  }
   try {
     const raw = localStorage.getItem(HISTORY_KEY)
     historyKeywords.value = raw ? JSON.parse(raw) : []
   } catch {
     historyKeywords.value = []
   }
+}
+
+const loadHotKeywords = async () => {
+  try {
+    const res = await getHotSearch()
+    if (res.data?.length) {
+      hotKeywords.value = res.data
+      return
+    }
+  } catch {
+    // 回退到本地热词
+  }
+  hotKeywords.value = Array.from(
+    new Set([...allProducts.value].sort((a, b) => b.sales - a.sales).map((item) => item.name)),
+  ).slice(0, 8)
 }
 
 const saveHistory = (kw: string) => {
@@ -63,7 +108,12 @@ const sorts = [
   { label: '销量', value: 'sales_desc' as const },
 ]
 
-const hasQuery = () => !!keyword.value.trim() || !!categoryId.value
+const hasQuery = () =>
+  !!keyword.value.trim()
+  || !!categoryId.value
+  || !!brandFilter.value
+  || minPriceYuan.value != null
+  || maxPriceYuan.value != null
 
 const collectCategoryIds = (node: Category): number[] => [
   node.id,
@@ -79,6 +129,60 @@ const findCategory = (list: Category[], id: number): Category | null => {
     }
   }
   return null
+}
+
+// 分类路径（用于展示“一级 / 二级 / 三级”）
+const findCategoryPath = (list: Category[], id: number, path: string[] = []): string[] => {
+  for (const node of list) {
+    const next = [...path, node.name]
+    if (node.id === id) return next
+    if (node.children?.length) {
+      const found = findCategoryPath(node.children, id, next)
+      if (found.length) return found
+    }
+  }
+  return []
+}
+
+const categoryPath = computed(() =>
+  categoryId.value ? findCategoryPath(categoryTree.value, categoryId.value) : [],
+)
+
+// 品牌选项来自已加载商品与当前搜索结果
+const brandOptions = computed(() =>
+  Array.from(
+    new Set(
+      [...allProducts.value, ...products.value]
+        .map((item) => item.brand)
+        .filter(Boolean),
+    ),
+  ).sort(),
+)
+
+const applyFilters = () => {
+  page.value = 1
+  loadProducts()
+}
+
+const resetFilters = () => {
+  brandFilter.value = ''
+  minPriceYuan.value = undefined
+  maxPriceYuan.value = undefined
+  page.value = 1
+  loadProducts()
+}
+
+// 级联分类切换
+const handleCategoryChange = (val: number | null) => {
+  const id = val ?? 0
+  categoryId.value = id
+  page.value = 1
+  if (id) keyword.value = ''
+  const query: Record<string, string> = {}
+  if (id) query.categoryId = String(id)
+  else if (keyword.value.trim()) query.keyword = keyword.value.trim()
+  router.replace({ query })
+  loadProducts()
 }
 
 const matchesCategory = (product: Product) => {
@@ -108,30 +212,43 @@ const loadAllProducts = async () => {
       list = list.concat(res.data.list || [])
     }
     allProducts.value = list
-    hotKeywords.value = Array.from(
-      new Set([...list].sort((a, b) => b.sales - a.sales).map((item) => item.name)),
-    ).slice(0, 8)
   } catch {
     allProducts.value = []
-    hotKeywords.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 商品列表接口不支持 keyword，前端在已加载商品上做过滤、排序与分页
-const loadProducts = () => {
-  if (!hasQuery()) {
-    products.value = []
-    total.value = 0
-    return
-  }
+// 搜索结果项转换为商品卡片所需的 Product 结构
+const toProduct = (item: SearchItem): Product => ({
+  id: item.id,
+  name: item.name,
+  description: item.description || '',
+  image: item.image,
+  images: [],
+  brand: item.brand || '',
+  categoryId: item.categoryId || 0,
+  categoryName: item.categoryName || '',
+  merchantId: 0,
+  status: 1,
+  sales: item.sales,
+  minPrice: item.minPrice,
+  createdAt: '',
+  updatedAt: '',
+})
+
+// 无关键词（仅分类/筛选）时，基于已加载商品本地过滤
+const applyLocalFilter = () => {
   const q = keyword.value.trim().toLowerCase()
   let list = allProducts.value.filter((item) => {
     const textMatch = !q
       || item.name.toLowerCase().includes(q)
       || (item.brand || '').toLowerCase().includes(q)
-    return textMatch && matchesCategory(item)
+    if (!textMatch || !matchesCategory(item)) return false
+    if (brandFilter.value && item.brand !== brandFilter.value) return false
+    if (minPriceYuan.value != null && item.minPrice < minPriceYuan.value * 100) return false
+    if (maxPriceYuan.value != null && item.minPrice > maxPriceYuan.value * 100) return false
+    return true
   })
   if (sortBy.value === 'price_asc') list = list.sort((a, b) => a.minPrice - b.minPrice)
   else if (sortBy.value === 'price_desc') list = list.sort((a, b) => b.minPrice - a.minPrice)
@@ -139,6 +256,41 @@ const loadProducts = () => {
   total.value = list.length
   const start = (page.value - 1) * pageSize
   products.value = list.slice(start, start + pageSize)
+}
+
+const loadProducts = async () => {
+  if (!hasQuery()) {
+    products.value = []
+    total.value = 0
+    return
+  }
+
+  // 有关键词时走后端搜索接口；失败（如后端未实现）则回退本地过滤
+  const q = keyword.value.trim()
+  if (q) {
+    loading.value = true
+    try {
+      const res = await searchProducts({
+        keyword: q,
+        categoryId: categoryId.value || undefined,
+        brand: brandFilter.value || undefined,
+        minPrice: minPriceYuan.value != null ? Math.round(minPriceYuan.value * 100) : undefined,
+        maxPrice: maxPriceYuan.value != null ? Math.round(maxPriceYuan.value * 100) : undefined,
+        sort: sortBy.value === 'default' ? undefined : sortBy.value,
+        page: page.value,
+        size: pageSize,
+      })
+      products.value = (res.data.list || []).map(toProduct)
+      total.value = res.data.total || 0
+      return
+    } catch {
+      // 回退到本地过滤
+    } finally {
+      loading.value = false
+    }
+  }
+
+  applyLocalFilter()
 }
 
 const handleSearch = (kw?: string) => {
@@ -170,7 +322,14 @@ const handlePageChange = (p: number) => {
   loadProducts()
 }
 
-const handleClearHistory = () => {
+const handleClearHistory = async () => {
+  if (userStore.isLoggedIn) {
+    try {
+      await clearSearchHistory()
+    } catch {
+      // 后端未实现时仅清理本地
+    }
+  }
   historyKeywords.value = []
   localStorage.removeItem(HISTORY_KEY)
   ElMessage.success('已清除搜索历史')
@@ -178,10 +337,10 @@ const handleClearHistory = () => {
 
 onMounted(async () => {
   reloadGeneralSettings()
-  loadHistory()
   await Promise.all([loadCategories(), loadAllProducts()])
+  await Promise.all([loadHistory(), loadHotKeywords()])
   if (hasQuery()) {
-    loadProducts()
+    await loadProducts()
   }
 })
 
@@ -193,7 +352,7 @@ watch(
       keyword.value = k
       categoryId.value = 0
       page.value = 1
-      loadProducts()
+      void loadProducts()
     }
   },
 )
@@ -206,7 +365,7 @@ watch(
       categoryId.value = newId
       keyword.value = ''
       page.value = 1
-      loadProducts()
+      void loadProducts()
     }
   },
 )
@@ -237,8 +396,54 @@ watch(
       </div>
     </div>
 
-    <!-- 有关键词 / 分类：搜索结果 -->
+    <!-- 有关键词 / 分类 / 筛选条件：搜索结果 -->
     <template v-if="hasQuery()">
+      <div class="filter-bar">
+        <el-cascader
+          v-model="categoryId"
+          :options="categoryTree"
+          :props="{ value: 'id', label: 'name', children: 'children', checkStrictly: true, emitPath: false }"
+          clearable
+          placeholder="全部分类"
+          class="filter-category"
+          @change="handleCategoryChange"
+        />
+        <el-select
+          v-model="brandFilter"
+          clearable
+          placeholder="全部品牌"
+          class="filter-brand"
+          @change="applyFilters"
+        >
+          <el-option v-for="brand in brandOptions" :key="brand" :label="brand" :value="brand" />
+        </el-select>
+        <div class="price-range">
+          <el-input-number
+            v-model="minPriceYuan"
+            :min="0"
+            :controls="false"
+            placeholder="最低价"
+            class="price-input"
+          />
+          <span class="price-sep">—</span>
+          <el-input-number
+            v-model="maxPriceYuan"
+            :min="0"
+            :controls="false"
+            placeholder="最高价"
+            class="price-input"
+          />
+          <span class="price-unit">元</span>
+        </div>
+        <el-button type="primary" @click="applyFilters">筛选</el-button>
+        <el-button text @click="resetFilters">重置</el-button>
+      </div>
+
+      <div class="category-path" v-if="categoryPath.length">
+        分类：{{ categoryPath.join(' / ') }}
+        <el-button text size="small" @click="handleCategoryChange(null)">清除分类</el-button>
+      </div>
+
       <div class="search-meta">
         <span class="result-count">共找到 <strong>{{ total }}</strong> 件相关商品</span>
         <div class="sort-bar">
@@ -369,6 +574,48 @@ watch(
   color: #999;
 }
 .search-icon-btn:hover { color: #e2231a; }
+
+/* ========== 筛选栏 ========== */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: #fff;
+  border-radius: 6px;
+}
+
+.filter-category {
+  width: 220px;
+}
+
+.filter-brand {
+  width: 160px;
+}
+
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-input {
+  width: 110px;
+}
+
+.price-sep,
+.price-unit {
+  font-size: 12px;
+  color: #999;
+}
+
+.category-path {
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #666;
+}
 
 /* ========== meta ========== */
 .search-meta {

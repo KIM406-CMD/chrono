@@ -27,8 +27,20 @@ const categoryTree = [
   { id: 16, name: '家居用品', children: [] },
 ]
 
+// 根据分类 ID 查找分类名称
+function findCategoryName(nodes: any[], id: number): string {
+  for (const node of nodes) {
+    if (node.id === id) return node.name
+    if (node.children?.length) {
+      const found = findCategoryName(node.children, id)
+      if (found) return found
+    }
+  }
+  return ''
+}
+
 // 收集分类及其所有子孙分类的 ID
-function collectCategoryIds(rootId: number): number[] {
+export function collectCategoryIds(rootId: number): number[] {
   const ids: number[] = []
   const findAndCollect = (nodes: any[]): boolean => {
     for (const n of nodes) {
@@ -78,7 +90,27 @@ function generateProducts(count: number) {
       status: i % 10 === 0 ? 0 : 1, // 0=下架, 1=上架
       sales: Math.floor(Math.random() * 1000),
       minPrice: basePrice, // 最低价（分）
-      maxPrice: basePrice + 5000, // 最高价（分）
+      maxPrice: basePrice + 1000, // 最高价（分）
+      skuList: [
+        {
+          id: (i + 1) * 10 + 1,
+          productId: i + 1,
+          specIds: '[1]',
+          specText: '默认规格',
+          price: basePrice,
+          stock: 100,
+          status: 1,
+        },
+        {
+          id: (i + 1) * 10 + 2,
+          productId: i + 1,
+          specIds: '[2]',
+          specText: '规格2',
+          price: basePrice + 1000,
+          stock: 50,
+          status: 1,
+        },
+      ],
       createdAt: '2025-01-01 10:00:00',
       updatedAt: '2025-01-01 10:00:00',
     })
@@ -172,33 +204,25 @@ const mockMethods: MockMethod[] = [
             images: [], // 图片为空
             brand: product.brand,
             categoryId: product.categoryId,
+            categoryName: product.categoryName,
             merchantId: product.merchantId,
-            merchantName: product.merchantName,
+            shopName: product.merchantName,
             status: product.status,
             sales: product.sales,
+            minPrice: product.minPrice,
+            maxPrice: product.maxPrice,
             createdAt: product.createdAt,
             updatedAt: product.updatedAt,
-            // SKU 列表
-            skus: [
-              {
-                id: productId * 10 + 1,
-                productId: product.id,
-                specIds: '[1]',
-                specText: '默认规格',
-                price: product.minPrice,
-                stock: 100,
-                status: 1,
-              },
-              {
-                id: productId * 10 + 2,
-                productId: product.id,
-                specIds: '[2]',
-                specText: '规格2',
-                price: product.minPrice + 1000,
-                stock: 50,
-                status: 1,
-              },
-            ],
+            // SKU 列表（字段与后端 ProductSkuVO 保持一致）
+            skuList: (product.skuList || []).map((sku) => ({
+              id: sku.id,
+              productId: product.id,
+              specIds: sku.specIds,
+              specText: sku.specText,
+              price: sku.price,
+              stock: sku.stock,
+              status: sku.status,
+            })),
             // 规格列表
             specs: [
               {
@@ -229,22 +253,35 @@ const mockMethods: MockMethod[] = [
     method: 'post',
     timeout: 500,
     response: ({ body }) => {
+      const id = allProducts.length + 1
+      const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+      const skuList = (body.skuList || []).map((sku: any, index: number) => ({
+        id: id * 10 + index + 1,
+        productId: id,
+        specIds: sku.specIds || '',
+        specText: sku.specText || `规格${index + 1}`,
+        price: sku.price,
+        stock: sku.stock,
+        status: 1,
+      }))
+      const prices = skuList.map((sku: any) => sku.price)
       const newProduct = {
-        id: allProducts.length + 1,
+        id,
         name: body.name,
         description: body.description || '',
         images: body.images || [],
         brand: body.brand || '',
         categoryId: body.categoryId,
-        categoryName: '',
+        categoryName: findCategoryName(categoryTree, body.categoryId),
         merchantId: 1,
         merchantName: '测试店铺',
         status: 0,
         sales: 0,
-        minPrice: 0,
-        maxPrice: 0,
-        createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        minPrice: prices.length ? Math.min(...prices) : 0,
+        maxPrice: prices.length ? Math.max(...prices) : 0,
+        skuList,
+        createdAt: now,
+        updatedAt: now,
       }
       allProducts.push(newProduct)
       return {
@@ -260,7 +297,37 @@ const mockMethods: MockMethod[] = [
     url: '/api/product/:id',
     method: 'put',
     timeout: 300,
-    response: () => {
+    response: ({ query, body }) => {
+      const id = parseInt(query.id)
+      const product = allProducts.find((item) => item.id === id)
+      if (!product) {
+        return { code: 404, message: '商品不存在', data: null, timestamp: Date.now() }
+      }
+
+      const skuList = (body.skuList || []).map((sku: any, index: number) => ({
+        id: id * 10 + index + 1,
+        productId: id,
+        specIds: sku.specIds || '',
+        specText: sku.specText || `规格${index + 1}`,
+        price: sku.price,
+        stock: sku.stock,
+        status: 1,
+      }))
+      const prices = skuList.map((sku: any) => sku.price)
+
+      Object.assign(product, {
+        name: body.name,
+        description: body.description || '',
+        images: body.images || [],
+        brand: body.brand || '',
+        categoryId: body.categoryId,
+        categoryName: findCategoryName(categoryTree, body.categoryId),
+        skuList,
+        minPrice: prices.length ? Math.min(...prices) : 0,
+        maxPrice: prices.length ? Math.max(...prices) : 0,
+        updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      })
+
       return {
         code: 200,
         message: '商品更新成功',
@@ -274,7 +341,9 @@ const mockMethods: MockMethod[] = [
     url: '/api/product/:id/status',
     method: 'put',
     timeout: 300,
-    response: ({ body }) => {
+    response: ({ query, body }) => {
+      const product = allProducts.find((item) => item.id === parseInt(query.id))
+      if (product) product.status = body.status
       return {
         code: 200,
         message: body.status === 1 ? '上架成功' : '下架成功',
@@ -288,7 +357,9 @@ const mockMethods: MockMethod[] = [
     url: '/api/product/:id',
     method: 'delete',
     timeout: 300,
-    response: () => {
+    response: ({ query }) => {
+      const index = allProducts.findIndex((item) => item.id === parseInt(query.id))
+      if (index >= 0) allProducts.splice(index, 1)
       return {
         code: 200,
         message: '商品删除成功',
