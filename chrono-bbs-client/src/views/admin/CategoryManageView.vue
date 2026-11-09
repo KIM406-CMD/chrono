@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { getCategoryTree } from '@/api/product'
+import { uploadImage } from '@/api/upload'
 import { createCategory, updateCategory, deleteCategory } from '@/api/admin'
 import type { Category } from '@/types/product'
 
@@ -46,6 +47,9 @@ const form = reactive({
   parentId: undefined as number | undefined,
 })
 
+const iconUrl = ref('')
+const iconFileList = ref<UploadUserFile[]>([])
+
 const formRules: FormRules = {
   name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
 }
@@ -55,6 +59,8 @@ const openCreate = (parent?: Category) => {
   editingId.value = 0
   form.name = ''
   form.parentId = parent?.id
+  iconUrl.value = ''
+  iconFileList.value = []
   formRef.value?.clearValidate()
   dialogVisible.value = true
 }
@@ -64,8 +70,35 @@ const openEdit = (cat: Category) => {
   editingId.value = cat.id
   form.name = cat.name
   form.parentId = cat.parentId
+  iconUrl.value = cat.icon || ''
+  iconFileList.value = cat.icon ? [{ name: '图标', url: cat.icon }] : []
   formRef.value?.clearValidate()
   dialogVisible.value = true
+}
+
+const handleIconChange = async (file: UploadUserFile) => {
+  if (!file.raw) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.raw.type)) {
+    ElMessage.warning('仅支持 jpg/jpeg/png/webp 格式')
+    iconFileList.value = iconFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  if (file.raw.size > 2 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 2MB')
+    iconFileList.value = iconFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  try {
+    const res = await uploadImage(file.raw)
+    file.url = res.data.url
+    iconUrl.value = res.data.url
+  } catch {
+    iconFileList.value = iconFileList.value.filter((item) => item.uid !== file.uid)
+  }
+}
+
+const handleIconRemove = () => {
+  iconUrl.value = ''
 }
 
 const handleDelete = async (cat: Category) => {
@@ -103,10 +136,11 @@ const handleSubmit = async () => {
         name: form.name,
         parentId: parent?.id ?? 0,
         level: parent ? parent.level + 1 : 1,
+        icon: iconUrl.value || undefined,
       })
       ElMessage.success('创建成功')
     } else {
-      await updateCategory(editingId.value, { name: form.name })
+      await updateCategory(editingId.value, { name: form.name, icon: iconUrl.value || undefined })
       ElMessage.success('更新成功')
     }
     dialogVisible.value = false
@@ -137,6 +171,7 @@ onMounted(() => { loadData() })
       >
         <template #default="{ data }">
           <div class="cat-node">
+            <img v-if="data.icon" :src="data.icon" class="cat-icon" alt="" />
             <span class="cat-name">{{ data.name }}</span>
             <el-tag size="small" type="info" effect="plain">{{ levelText(data.level) }}</el-tag>
             <div class="cat-actions">
@@ -171,6 +206,18 @@ onMounted(() => { loadData() })
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="88px">
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入分类名称" maxlength="20" />
+        </el-form-item>
+        <el-form-item label="分类图标">
+          <el-upload
+            v-model:file-list="iconFileList"
+            list-type="picture-card"
+            :auto-upload="false"
+            :limit="1"
+            :on-change="handleIconChange"
+            :on-remove="handleIconRemove"
+          >
+            <el-icon><Plus /></el-icon>
+          </el-upload>
         </el-form-item>
         <el-form-item v-if="dialogMode === 'create'" label="父级分类">
           <el-tree-select
@@ -230,6 +277,14 @@ onMounted(() => { loadData() })
 .cat-name {
   font-size: 14px;
   color: #333;
+}
+
+.cat-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .cat-actions {

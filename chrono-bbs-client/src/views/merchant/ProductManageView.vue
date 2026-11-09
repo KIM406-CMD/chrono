@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { getMerchantProducts } from '@/api/merchant'
+import { uploadImage } from '@/api/upload'
 import {
   getProductDetail,
   createProduct,
@@ -76,6 +77,9 @@ const form = reactive({
   stock: 100,
 })
 
+const imageUrls = ref<string[]>([])
+const imageFileList = ref<UploadUserFile[]>([])
+
 const formRules: FormRules = {
   name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
@@ -88,7 +92,38 @@ const resetForm = () => {
   form.description = ''
   form.price = 0
   form.stock = 100
+  imageUrls.value = []
+  imageFileList.value = []
   formRef.value?.clearValidate()
+}
+
+const syncImageUrls = () => {
+  imageUrls.value = imageFileList.value.map((file) => file.url).filter((url): url is string => !!url)
+}
+
+const handleImageChange = async (file: UploadUserFile) => {
+  if (!file.raw) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.raw.type)) {
+    ElMessage.warning('仅支持 jpg/jpeg/png/webp 格式')
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  if (file.raw.size > 2 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 2MB')
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  try {
+    const res = await uploadImage(file.raw)
+    file.url = res.data.url
+    syncImageUrls()
+  } catch {
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+  }
+}
+
+const handleImageRemove = () => {
+  syncImageUrls()
 }
 
 const openCreate = () => {
@@ -113,8 +148,12 @@ const openEdit = async (product: Product) => {
     const firstSku = detail.skuList?.[0]
     form.price = firstSku ? firstSku.price / 100 : 0
     form.stock = firstSku ? firstSku.stock : 100
+    imageUrls.value = [...(detail.images || [])]
+    imageFileList.value = imageUrls.value.map((url) => ({ name: '商品图', url }))
   } catch {
     form.name = product.name
+    imageUrls.value = []
+    imageFileList.value = []
   }
   dialogVisible.value = true
 }
@@ -122,6 +161,7 @@ const openEdit = async (product: Product) => {
 const buildPayload = (): ProductFormData => ({
   name: form.name,
   description: form.description || undefined,
+  images: imageUrls.value.length ? [...imageUrls.value] : undefined,
   brand: form.brand || undefined,
   categoryId: form.categoryId as number,
   skuList: [
@@ -291,6 +331,19 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="商品描述">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="选填" maxlength="200" />
+        </el-form-item>
+        <el-form-item label="商品图片">
+          <el-upload
+            v-model:file-list="imageFileList"
+            list-type="picture-card"
+            :auto-upload="false"
+            :limit="4"
+            :on-change="handleImageChange"
+            :on-remove="handleImageRemove"
+          >
+            <el-icon><Plus /></el-icon>
+          </el-upload>
+          <span class="pm-unit">最多 4 张，单张 ≤2MB</span>
         </el-form-item>
       </el-form>
       <template #footer>

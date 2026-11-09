@@ -77,8 +77,8 @@ const handleUserCommand = (command: string) => {
       case 'address':
       router.push('/address')
       break
-    case 'profile':
-      router.push('/profile')
+    case 'merchant-apply':
+      router.push('/merchant/apply')
       break
     case 'settings':
       router.push('/settings')
@@ -177,7 +177,7 @@ const handleUserCommand = (command: string) => {
                   <el-dropdown-item command="refunds">🧾 退款/售后</el-dropdown-item>
                     <el-dropdown-item command="chat">💬 我的消息</el-dropdown-item>
                     <el-dropdown-item command="address">📍 收货地址</el-dropdown-item>
-                  <el-dropdown-item command="profile">👤 个人信息</el-dropdown-item>
+                  <el-dropdown-item v-if="isUser" command="merchant-apply">🏪 申请入驻</el-dropdown-item>
                   <el-dropdown-item command="settings">⚙ 账户设置</el-dropdown-item>
                   <el-dropdown-item
                     v-if="isMerchant"

@@ -10,6 +10,7 @@
 ## [Unreleased]
 
 ### Added
+- 商家商品表单接入图片上传（最多 4 张、单张 ≤2MB，随创建/编辑提交 `images`）；分类管理支持图标上传与树节点展示；USER 菜单新增商家入驻入口并移至商城布局；`/profile` 重定向账户设置
 - 前端项目骨架：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router
 - Mock 数据层：基于 vite-plugin-mock，覆盖用户、商品、分类、购物车、订单、支付、地址、商家、管理员、退款、聊天、上传 12 个模块
 - API 封装层：`src/api/` 下 11 个接口模块，统一 Axios 实例（baseURL=/api，超时 15s，Bearer Token 拦截器）

@@ -99,6 +99,12 @@ const userRoutes: RouteRecordRaw[] = [
         meta: { title: '支付', roles: ['USER', 'MERCHANT', 'ADMIN'] },
       },
       {
+        path: 'merchant/apply',
+        name: 'MerchantApply',
+        component: () => import('@/views/merchant/MerchantApplyView.vue'),
+        meta: { title: '商家入驻', roles: ['USER', 'MERCHANT'] },
+      },
+      {
         path: 'refunds',
         name: 'RefundList',
         component: () => import('@/views/refund/RefundListView.vue'),
@@ -107,8 +113,7 @@ const userRoutes: RouteRecordRaw[] = [
       {
         path: 'profile',
         name: 'Profile',
-        component: () => import('@/views/user/ProfileView.vue'),
-        meta: { title: '个人信息', roles: ['USER', 'MERCHANT', 'ADMIN'] },
+        redirect: '/settings',
       },
       {
         path: 'settings',
@@ -145,12 +150,6 @@ const merchantRoutes: RouteRecordRaw[] = [
     component: () => import('@/components/layout/MerchantLayout.vue'),
     meta: { layout: 'merchant', roles: ['MERCHANT'] },
     children: [
-      {
-        path: 'apply',
-        name: 'MerchantApply',
-        component: () => import('@/views/merchant/MerchantApplyView.vue'),
-        meta: { title: '商家入驻', roles: ['USER', 'MERCHANT'] },
-      },
       {
         path: 'products',
         name: 'ProductManage',

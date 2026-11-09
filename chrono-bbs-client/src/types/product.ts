@@ -6,6 +6,7 @@ export interface Category {
   name: string
   level: number
   parentId?: number
+  icon?: string
   children?: Category[]
 }
 
