@@ -2,6 +2,9 @@ package com.ncist.common.enums;
 
 import lombok.Getter;
 
+/**
+ * 商家模块错误码。
+ */
 @Getter
 public enum MerchantErrorCode implements ErrorCode {
 

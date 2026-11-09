@@ -2,6 +2,9 @@ package com.ncist.common.enums;
 
 import lombok.Getter;
 
+/**
+ * 认证与账号模块错误码。
+ */
 @Getter
 public enum AuthErrorCode implements ErrorCode {
 

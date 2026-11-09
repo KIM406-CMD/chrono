@@ -2,6 +2,9 @@ package com.ncist.common.enums;
 
 import lombok.Getter;
 
+/**
+ * 管理后台模块错误码。
+ */
 @Getter
 public enum AdminErrorCode implements ErrorCode {
 

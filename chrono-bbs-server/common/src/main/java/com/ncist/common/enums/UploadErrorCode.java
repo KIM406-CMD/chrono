@@ -2,6 +2,9 @@ package com.ncist.common.enums;
 
 import lombok.Getter;
 
+/**
+ * 文件上传模块错误码。
+ */
 @Getter
 public enum UploadErrorCode implements ErrorCode {
 
