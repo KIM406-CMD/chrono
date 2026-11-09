@@ -90,6 +90,7 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- 移除商品详情页无实际行为的收藏/分享占位按钮，避免点击无反馈
 - 站点标题与语言本地化为中文；首页分类/商品加载失败时增加错误提示；移除未使用的个人信息占位页
 - 全局异常处理：新增 HttpMessageNotReadableException 处理器，JSON 请求体格式错误（类型不匹配如 cartItemIds 传标量、语法错误）由 500「服务器内部错误」改为 400「请求体格式错误」
 - 接口文档（api-doc.md）与购物车/地址实际实现对齐：购物车列表响应补充前端命名兼容字段（skuSpecText/skuPrice/skuStock）、选中接口补充批量 cartItemIds+布尔与缺省视为全部的兼容说明、新增 5.7 清空购物车（前端扩展）、地址模块补充上限 20 条/首地址自动默认/设默认清除原默认/默认地址排序等行为说明；错误码说明章节（现为第 18 章）替换为按模块 ErrorCode 枚举整理的真实 HTTP 语义错误码

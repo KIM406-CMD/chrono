@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, ArrowRight, Plus, Minus, Shop, Share, Star, ShoppingCart } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Plus, Minus, Shop, ShoppingCart } from '@element-plus/icons-vue'
 import { getProductDetail } from '@/api/product'
 import { addToCart } from '@/api/cart'
 import { getComments } from '@/api/comment'
@@ -270,12 +270,6 @@ onMounted(() => {
             </button>
             <button class="action-btn buy-btn" @click="handleBuyNow">
               <span>立即购买</span>
-            </button>
-            <button class="action-btn icon-btn" title="收藏">
-              <Star />
-            </button>
-            <button class="action-btn icon-btn" title="分享">
-              <Share />
             </button>
           </div>
 
