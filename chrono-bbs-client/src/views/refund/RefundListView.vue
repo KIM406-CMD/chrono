@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { getRefundList, getRefundDetail } from '@/api/refund'
+import { getRefundList, getRefundDetail, submitRefundReturn } from '@/api/refund'
 import type { RefundItem } from '@/api/refund'
 
 const router = useRouter()
@@ -18,10 +19,47 @@ const detailLoading = ref(false)
 const detail = ref<RefundItem | null>(null)
 
 const typeMap: Record<number, string> = { 1: '仅退款', 2: '退货退款' }
-const statusMap: Record<number, { text: string; type: 'warning' | 'success' | 'danger' }> = {
+const statusMap: Record<number, { text: string; type: 'warning' | 'success' | 'danger' | 'info' }> = {
   0: { text: '待审核', type: 'warning' },
   1: { text: '已通过', type: 'success' },
   2: { text: '已拒绝', type: 'danger' },
+  3: { text: '待寄回', type: 'warning' },
+  4: { text: '待商家收货', type: 'info' },
+  5: { text: '退货完成', type: 'success' },
+}
+
+const returnVisible = ref(false)
+const returnSubmitting = ref(false)
+const returnTarget = ref<RefundItem | null>(null)
+const returnForm = reactive({ returnCompany: '', returnLogisticsNo: '' })
+
+const openReturn = (row: RefundItem) => {
+  returnTarget.value = row
+  returnForm.returnCompany = ''
+  returnForm.returnLogisticsNo = ''
+  returnVisible.value = true
+}
+
+const handleSubmitReturn = async () => {
+  if (!returnTarget.value) return
+  if (!returnForm.returnCompany.trim() || !returnForm.returnLogisticsNo.trim()) {
+    ElMessage.warning('请填写快递公司与物流单号')
+    return
+  }
+  returnSubmitting.value = true
+  try {
+    await submitRefundReturn(returnTarget.value.id, {
+      returnCompany: returnForm.returnCompany.trim(),
+      returnLogisticsNo: returnForm.returnLogisticsNo.trim(),
+    })
+    ElMessage.success('退货物流已提交')
+    returnVisible.value = false
+    loadRefunds()
+  } catch {
+    ElMessage.error('提交失败')
+  } finally {
+    returnSubmitting.value = false
+  }
 }
 
 const priceYuan = (fen: number) => (fen / 100).toFixed(2)
@@ -86,9 +124,15 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="申请时间" width="170" />
-      <el-table-column label="操作" width="90" align="center" fixed="right">
+      <el-table-column label="操作" width="180" align="center" fixed="right">
         <template #default="{ row }">
           <el-button size="small" text type="primary" @click="openDetail(row)">详情</el-button>
+          <el-button
+            v-if="row.type === 2 && row.status === 3"
+            size="small"
+            type="warning"
+            @click="openReturn(row)"
+          >填写退货物流</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -119,11 +163,31 @@ onMounted(() => {
           <el-descriptions-item label="退款原因">{{ detail.reason }}</el-descriptions-item>
           <el-descriptions-item label="审核意见">{{ detail.reviewReason || '—' }}</el-descriptions-item>
           <el-descriptions-item label="审核时间">{{ detail.reviewedAt || '—' }}</el-descriptions-item>
+          <el-descriptions-item v-if="detail.returnCompany || detail.returnLogisticsNo" label="退货物流">
+            {{ detail.returnCompany || '—' }} {{ detail.returnLogisticsNo || '' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detail.returnedAt" label="寄回时间">{{ detail.returnedAt }}</el-descriptions-item>
+          <el-descriptions-item v-if="detail.returnReceivedAt" label="商家收货时间">{{ detail.returnReceivedAt }}</el-descriptions-item>
           <el-descriptions-item label="申请时间">{{ detail.createdAt }}</el-descriptions-item>
         </el-descriptions>
       </div>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="returnVisible" title="填写退货物流" width="420px">
+      <el-form label-width="90px">
+        <el-form-item label="快递公司">
+          <el-input v-model="returnForm.returnCompany" maxlength="50" placeholder="如：顺丰速运" />
+        </el-form-item>
+        <el-form-item label="物流单号">
+          <el-input v-model="returnForm.returnLogisticsNo" maxlength="50" placeholder="请输入物流单号" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="returnVisible = false">取消</el-button>
+        <el-button type="primary" :loading="returnSubmitting" @click="handleSubmitReturn">提交</el-button>
       </template>
     </el-dialog>
   </div>

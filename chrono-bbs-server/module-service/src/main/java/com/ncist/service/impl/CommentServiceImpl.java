@@ -1,6 +1,10 @@
 package com.ncist.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ncist.common.enums.CommentErrorCode;
+import com.ncist.common.enums.CommonErrorCode;
 import com.ncist.common.enums.UserRoleEnum;
 import com.ncist.common.context.UserContext;
 import com.ncist.common.exception.BusinessException;
@@ -56,6 +60,8 @@ public class CommentServiceImpl implements CommentService {
     private final ProductMapper productMapper;
     /** 商家数据访问组件，用于校验商家资质。 */
     private final MerchantMapper merchantMapper;
+    /** JSON 序列化组件，用于评论图片列表与 JSON 字符串互转。 */
+    private final ObjectMapper objectMapper;
 
     /** {@inheritDoc} */
     @Override
@@ -105,6 +111,7 @@ public class CommentServiceImpl implements CommentService {
                 .userId(userId)
                 .orderItemId(orderItem.getId())
                 .content(dto.getContent())
+                .images(toImagesJson(dto.getImages()))
                 .star(dto.getStar())
                 .isAppend(0)
                 .build();
@@ -247,6 +254,7 @@ public class CommentServiceImpl implements CommentService {
                 .avatar(comment.getAvatar())
                 .orderItemId(comment.getOrderItemId())
                 .content(comment.getContent())
+                .images(parseImages(comment.getImages()))
                 .star(comment.getStar())
                 .createdAt(comment.getCreatedAt());
         if (children != null && !children.isEmpty()) {
@@ -274,8 +282,43 @@ public class CommentServiceImpl implements CommentService {
                 .avatar(child.getAvatar())
                 .orderItemId(child.getOrderItemId())
                 .content(child.getContent())
+                .images(parseImages(child.getImages()))
                 .star(child.getStar())
                 .createdAt(child.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * 将图片 URL 列表序列化为 JSON 字符串。
+     *
+     * @param images 图片 URL 列表，可为空
+     * @return JSON 字符串；列表为空时返回 null
+     */
+    private String toImagesJson(List<String> images) {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(images);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * 将评论图片 JSON 字符串解析为列表。
+     *
+     * @param images JSON 字符串，可为空
+     * @return 图片 URL 列表；解析失败时返回空列表
+     */
+    private List<String> parseImages(String images) {
+        if (images == null || images.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(images, new TypeReference<List<String>>() { });
+        } catch (JsonProcessingException e) {
+            return List.of();
+        }
     }
 }

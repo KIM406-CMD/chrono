@@ -23,6 +23,8 @@ public class CommentVO {
     private String avatar;
     private Long orderItemId;
     private String content;
+    /** 评论图片 URL 列表。 */
+    private List<String> images;
     /** 星级评分，取值 1-5；追评、商家回复等非一级评论可能为空。 */
     private Integer star;
     private LocalDateTime createdAt;

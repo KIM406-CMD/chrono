@@ -195,13 +195,18 @@
 | order_id | BIGINT FK | 关联 order 表 |
 | order_item_id | BIGINT FK | 关联 order_item（支持部分退款） |
 | user_id | BIGINT FK | 申请人 |
+| merchant_id | BIGINT | 关联 merchant 表主键，用于商家退款列表 |
 | type | TINYINT | 1-退款, 2-退货 |
 | reason | VARCHAR(500) | 申请原因 |
 | amount | INT | 退款金额（分） |
-| status | TINYINT | 0-待审核, 1-已通过, 2-已拒绝 |
+| status | TINYINT | 0-待审核, 1-已通过, 2-已拒绝, 3-待寄回, 4-待商家收货, 5-退货完成 |
 | reviewer_id | BIGINT | 审核人（管理员或商家） |
 | review_reason | VARCHAR(500) | 审核意见 |
 | reviewed_at | DATETIME | 审核时间 |
+| return_company | VARCHAR(50) | 退货快递公司 |
+| return_logistics_no | VARCHAR(50) | 退货物流单号 |
+| returned_at | DATETIME | 买家寄回时间 |
+| return_received_at | DATETIME | 商家确认收货时间 |
 | created_at | DATETIME | 申请时间 |
 
 ---
@@ -237,6 +242,7 @@
 | order_item_id | BIGINT | 关联 order_item（购买后评价时有值，可追溯来源） |
 | parent_id | BIGINT | 父评论 ID，NULL 表示一级评论，非 NULL 表示回复 |
 | content | VARCHAR(1000) | 评论内容 |
+| images | VARCHAR(2000) | 评论图片 URL 数组（JSON，最多 4 张） |
 | star | TINYINT | 星级评分（1-5），仅一级评论有值，回复为 NULL |
 | is_append | TINYINT | 0-首次评价, 1-追评 |
 | status | TINYINT | 0-正常, 1-已删除（管理员/商家删除） |

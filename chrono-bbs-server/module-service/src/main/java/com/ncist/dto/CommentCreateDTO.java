@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 发表评论入参（api-doc 9.2）。
  *
@@ -33,4 +35,8 @@ public class CommentCreateDTO {
     @Min(value = 1, message = "星级取值 1-5")
     @Max(value = 5, message = "星级取值 1-5")
     private Integer star;
+
+    /** 评论图片 URL 列表，可选，最多 4 张。 */
+    @Size(max = 4, message = "评论图片最多 4 张")
+    private List<String> images;
 }

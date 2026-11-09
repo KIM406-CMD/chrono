@@ -25,8 +25,18 @@ public class RefundVO {
     private String reason;
     /** 退款金额，单位：分。 */
     private Integer amount;
-    /** 退款状态：0=待审核，1=已通过，2=已拒绝。 */
+    /** 状态：0=待审核，1=已通过，2=已拒绝，3=待寄回，4=待商家收货，5=退货完成。 */
     private Integer status;
+    /** 关联商家 ID。 */
+    private Long merchantId;
+    /** 退货快递公司。 */
+    private String returnCompany;
+    /** 退货物流单号。 */
+    private String returnLogisticsNo;
+    /** 买家寄回时间。 */
+    private LocalDateTime returnedAt;
+    /** 商家确认收货时间。 */
+    private LocalDateTime returnReceivedAt;
     /** 审核人 ID，未审核时为空。 */
     private Long reviewerId;
     /** 审核意见，未审核时为空。 */

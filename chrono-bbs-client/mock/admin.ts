@@ -1,5 +1,4 @@
 import { MockMethod } from 'vite-plugin-mock'
-import { allProducts } from './product'
 
 const mockMethods: MockMethod[] = [
   // 12.1 管理员 - 用户列表
@@ -99,93 +98,6 @@ const mockMethods: MockMethod[] = [
       return {
         code: 200,
         message: '审核成功',
-        data: null,
-        timestamp: Date.now(),
-      }
-    },
-  },
-  // 12.5 管理员 - 全平台商品列表
-  {
-    url: '/api/admin/products',
-    method: 'get',
-    timeout: 300,
-    response: ({ query }) => {
-      const page = parseInt(query.page) || 1
-      const size = parseInt(query.size) || 10
-      const keyword = String(query.keyword || '').trim().toLowerCase()
-      const status = query.status !== undefined && query.status !== '' ? parseInt(query.status) : null
-      const categoryId = query.categoryId ? parseInt(query.categoryId) : null
-      const merchantId = query.merchantId ? parseInt(query.merchantId) : null
-
-      let list = allProducts.map((product) => ({
-        id: product.id,
-        name: product.name,
-        images: product.images,
-        brand: product.brand,
-        categoryId: product.categoryId,
-        merchantId: product.merchantId,
-        merchantName: product.merchantName,
-        minPrice: product.minPrice,
-        sales: product.sales,
-        status: product.status,
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-      }))
-
-      if (keyword) {
-        list = list.filter((item) =>
-          item.name.toLowerCase().includes(keyword)
-          || (item.brand || '').toLowerCase().includes(keyword),
-        )
-      }
-      if (status !== null) list = list.filter((item) => item.status === status)
-      if (categoryId !== null) list = list.filter((item) => item.categoryId === categoryId)
-      if (merchantId !== null) list = list.filter((item) => item.merchantId === merchantId)
-
-      const total = list.length
-      const start = (page - 1) * size
-      const end = start + size
-
-      return {
-        code: 200,
-        message: 'success',
-        data: {
-          total,
-          page,
-          size,
-          list: list.slice(start, end),
-        },
-        timestamp: Date.now(),
-      }
-    },
-  },
-  // 12.7 管理员 - 商品上下架（Mock 扩展）
-  {
-    url: '/api/admin/products/:id/status',
-    method: 'put',
-    timeout: 300,
-    response: ({ query, body }) => {
-      const product = allProducts.find((item) => item.id === parseInt(query.id))
-      if (product) product.status = Number(body.status)
-      return {
-        code: 200,
-        message: body.status === 1 ? '上架成功' : '下架成功',
-        data: null,
-        timestamp: Date.now(),
-      }
-    },
-  },
-  // 12.8 管理员 - 删除商品（Mock 扩展）
-  {
-    url: '/api/admin/products/:id',
-    method: 'delete',
-    timeout: 300,
-    response: ({ query }) => {
-      const index = allProducts.findIndex((item) => item.id === parseInt(query.id))
-      if (index >= 0) allProducts.splice(index, 1)
-      return {
-        code: 200,
-        message: '商品删除成功',
         data: null,
         timestamp: Date.now(),
       }

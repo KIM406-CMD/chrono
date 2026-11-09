@@ -4,6 +4,7 @@ import com.ncist.common.context.UserContext;
 import com.ncist.common.result.PageResult;
 import com.ncist.common.result.Result;
 import com.ncist.dto.RefundCreateDTO;
+import com.ncist.dto.RefundReturnDTO;
 import com.ncist.dto.RefundReviewDTO;
 import com.ncist.service.RefundService;
 import com.ncist.vo.RefundVO;
@@ -97,6 +98,39 @@ public class RefundController {
     @PutMapping("/{id}/review")
     public Result<Void> review(@PathVariable Long id, @Valid @RequestBody RefundReviewDTO dto) {
         refundService.review(UserContext.getUserId(), id, dto);
+        return Result.success();
+    }
+
+    /**
+     * 买家填写退货物流信息。
+     *
+     * <p>仅退货退款审核通过（待寄回）后可操作，填写后进入待商家收货状态。</p>
+     *
+     * @param id  退款单 ID
+     * @param dto 退货快递公司与物流单号
+     * @return 无业务数据的成功响应
+     */
+    @Operation(summary = "填写退货物流（买家）")
+    @Parameter(name = "id", description = "退款单 ID", example = "1")
+    @PutMapping("/{id}/return")
+    public Result<Void> submitReturn(@PathVariable Long id, @Valid @RequestBody RefundReturnDTO dto) {
+        refundService.submitReturn(UserContext.getUserId(), id, dto);
+        return Result.success();
+    }
+
+    /**
+     * 商家或管理员确认收到退货。
+     *
+     * <p>确认后退款单变为退货完成，订单标记为已退款。</p>
+     *
+     * @param id 退款单 ID
+     * @return 无业务数据的成功响应
+     */
+    @Operation(summary = "确认收到退货（商家或管理员）")
+    @Parameter(name = "id", description = "退款单 ID", example = "1")
+    @PutMapping("/{id}/return-received")
+    public Result<Void> confirmReturnReceived(@PathVariable Long id) {
+        refundService.confirmReturnReceived(UserContext.getUserId(), id);
         return Result.success();
     }
 }

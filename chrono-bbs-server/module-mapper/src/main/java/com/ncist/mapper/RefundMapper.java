@@ -22,8 +22,10 @@ public interface RefundMapper {
 
     /** 退款联查商品信息时的公共列。 */
     String DETAIL_COLUMNS = "r.id, r.order_id AS orderId, r.order_item_id AS orderItemId, r.user_id AS userId, "
-            + "r.type, r.reason, r.amount, r.status, r.reviewer_id AS reviewerId, "
-            + "r.review_reason AS reviewReason, r.reviewed_at AS reviewedAt, r.created_at AS createdAt, "
+            + "r.merchant_id AS merchantId, r.type, r.reason, r.amount, r.status, r.reviewer_id AS reviewerId, "
+            + "r.review_reason AS reviewReason, r.reviewed_at AS reviewedAt, "
+            + "r.return_company AS returnCompany, r.return_logistics_no AS returnLogisticsNo, "
+            + "r.returned_at AS returnedAt, r.return_received_at AS returnReceivedAt, r.created_at AS createdAt, "
             + "oi.product_id AS productId, p.name AS productName ";
 
     /**
@@ -32,8 +34,8 @@ public interface RefundMapper {
      * @param refund 申请信息，orderId/orderItemId/userId/type/amount 必填
      * @return 受影响行数
      */
-    @Insert("INSERT INTO refund (order_id, order_item_id, user_id, type, reason, amount, status) "
-            + "VALUES (#{orderId}, #{orderItemId}, #{userId}, #{type}, #{reason}, #{amount}, 0)")
+    @Insert("INSERT INTO refund (order_id, order_item_id, user_id, merchant_id, type, reason, amount, status) "
+            + "VALUES (#{orderId}, #{orderItemId}, #{userId}, #{merchantId}, #{type}, #{reason}, #{amount}, 0)")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Refund refund);
 
@@ -99,4 +101,29 @@ public interface RefundMapper {
             + "WHERE id = #{id} AND status = 0")
     int markReviewed(@Param("id") Long id, @Param("status") Integer status,
                      @Param("reviewerId") Long reviewerId, @Param("reviewReason") String reviewReason);
+
+    /**
+     * 买家填写退货物流信息，状态由待寄回（3）变为待商家收货（4）。
+     *
+     * @param id 退款单 ID
+     * @param userId 申请人用户 ID
+     * @param returnCompany 退货快递公司
+     * @param returnLogisticsNo 退货物流单号
+     * @return 受影响行数，0 表示状态不允许或不属于当前用户
+     */
+    @Update("UPDATE refund SET return_company = #{returnCompany}, "
+            + "return_logistics_no = #{returnLogisticsNo}, returned_at = NOW(), status = 4 "
+            + "WHERE id = #{id} AND user_id = #{userId} AND type = 2 AND status = 3")
+    int markReturned(@Param("id") Long id, @Param("userId") Long userId,
+                     @Param("returnCompany") String returnCompany,
+                     @Param("returnLogisticsNo") String returnLogisticsNo);
+
+    /**
+     * 商家确认收到退货，状态由待商家收货（4）变为退货完成（5）。
+     *
+     * @param id 退款单 ID
+     * @return 受影响行数，0 表示状态不允许
+     */
+    @Update("UPDATE refund SET status = 5, return_received_at = NOW() WHERE id = #{id} AND status = 4")
+    int markReturnReceived(@Param("id") Long id);
 }

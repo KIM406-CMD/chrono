@@ -4,6 +4,7 @@ import com.ncist.common.result.PageResult;
 import com.ncist.common.result.Result;
 import com.ncist.dto.CategoryUpsertDTO;
 import com.ncist.dto.MerchantReviewDTO;
+import com.ncist.dto.ProductCreateDTO;
 import com.ncist.service.AdminService;
 import com.ncist.vo.AdminMerchantVO;
 import com.ncist.vo.AdminReportVO;
@@ -173,6 +174,23 @@ public class AdminController {
             @RequestParam(required = false, defaultValue = "1") Integer page,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
         return Result.success(adminService.listProducts(keyword, categoryId, merchantId, status, page, size));
+    }
+
+    /**
+     * 管理员修改任意商品。
+     *
+     * <p>可更新基础信息；SKU 列表非空时全量替换，不校验商品归属商家。</p>
+     *
+     * @param id  商品 ID
+     * @param dto 商品更新参数
+     * @return 无业务数据的成功响应
+     */
+    @Operation(summary = "管理员修改商品（Mock 扩展）")
+    @Parameter(name = "id", description = "商品 ID", example = "1")
+    @PutMapping("/products/{id}")
+    public Result<Void> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductCreateDTO dto) {
+        adminService.updateProduct(id, dto);
+        return Result.success();
     }
 
     /**

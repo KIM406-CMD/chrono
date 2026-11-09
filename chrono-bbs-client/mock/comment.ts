@@ -1,17 +1,21 @@
 import { MockMethod } from 'vite-plugin-mock'
 
+// 本次 Mock 会话中用户新发表的评论（含图片）
+const createdComments: any[] = []
+
 const mockMethods: MockMethod[] = [
   // 9.1 商品评论列表
   {
     url: '/api/comment/list/:productId',
     method: 'get',
     timeout: 300,
-    response: ({ query }) => {
+    response: ({ query, url }) => {
       const page = parseInt(query.page) || 1
       const size = parseInt(query.size) || 10
-      const productId = parseInt(query.productId)
+      const pathMatch = /\/api\/comment\/list\/(\d+)/.exec(url || '')
+      const productId = pathMatch ? parseInt(pathMatch[1]) : (parseInt(query.productId) || 0)
       
-      const mockComments = Array.from({ length: 20 }, (_, i) => ({
+      const generated = Array.from({ length: 20 }, (_, i) => ({
         id: i + 1,
         productId,
         userId: (i % 10) + 1,
@@ -23,7 +27,11 @@ const mockMethods: MockMethod[] = [
         images: [],
         createdAt: '2025-01-01 10:00:00',
       }))
-      
+      const mockComments = [
+        ...createdComments.filter((item) => item.productId === productId),
+        ...generated,
+      ]
+
       const total = mockComments.length
       const start = (page - 1) * size
       const end = start + size
@@ -47,11 +55,24 @@ const mockMethods: MockMethod[] = [
     url: '/api/comment',
     method: 'post',
     timeout: 300,
-    response: () => {
+    response: ({ body }) => {
+      const comment = {
+        id: 1000 + createdComments.length,
+        productId: Number(body.productId),
+        userId: 100,
+        username: 'user',
+        nickname: '我',
+        avatar: '',
+        content: body.content,
+        star: body.star,
+        images: body.images || [],
+        createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      }
+      createdComments.unshift(comment)
       return {
         code: 200,
         message: '评论发表成功',
-        data: null,
+        data: comment.id,
         timestamp: Date.now(),
       }
     },

@@ -194,13 +194,18 @@
 | order_id | BIGINT FK | References the order table |
 | order_item_id | BIGINT FK | References `order_item` (supports partial refunds) |
 | user_id | BIGINT FK | Applicant |
+| merchant_id | BIGINT | References the merchant table primary key, used by the merchant refund list |
 | type | TINYINT | 1-Refund, 2-Return |
 | reason | VARCHAR(500) | Request reason |
 | amount | INT | Refund amount (cents) |
-| status | TINYINT | 0-Pending Review, 1-Approved, 2-Rejected |
+| status | TINYINT | 0-Pending Review, 1-Approved, 2-Rejected, 3-Awaiting Return, 4-Awaiting Merchant Receipt, 5-Return Completed |
 | reviewer_id | BIGINT | Reviewer (administrator or merchant) |
 | review_reason | VARCHAR(500) | Review comments |
 | reviewed_at | DATETIME | Review time |
+| return_company | VARCHAR(50) | Return courier company |
+| return_logistics_no | VARCHAR(50) | Return tracking number |
+| returned_at | DATETIME | Time the buyer shipped the return |
+| return_received_at | DATETIME | Time the merchant confirmed receipt |
 | created_at | DATETIME | Request time |
 
 ---
@@ -236,6 +241,7 @@
 | order_item_id | BIGINT | References `order_item` (has a value when reviewing after purchase; traceable source) |
 | parent_id | BIGINT | Parent comment ID; NULL means a first-level comment, non-NULL means a reply |
 | content | VARCHAR(1000) | Comment content |
+| images | VARCHAR(2000) | Comment image URL array (JSON, up to 4 images) |
 | star | TINYINT | Star rating (1-5); only first-level comments have a value, replies are NULL |
 | is_append | TINYINT | 0-First comment, 1-Follow-up comment |
 | status | TINYINT | 0-Normal, 1-Deleted (deleted by administrator/merchant) |

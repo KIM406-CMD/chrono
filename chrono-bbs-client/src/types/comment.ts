@@ -7,6 +7,7 @@ export interface CommentItem {
   avatar: string
   orderItemId: number
   content: string
+  images?: string[]
   star: number
   createdAt: string
   // 追评（仅一级评论可能有）
@@ -20,6 +21,7 @@ export interface AddCommentRequest {
   orderItemId: number
   content: string
   star: number
+  images?: string[]
 }
 
 export interface AppendCommentRequest {

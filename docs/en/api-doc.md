@@ -925,6 +925,7 @@ GET /api/comment/list/{productId}
 | avatar | String | Avatar |
 | orderItemId | Long | Order item ID |
 | content | String | Comment content |
+| images | List&lt;String&gt; | Comment image URL list (up to 4) |
 | star | Integer | Star rating (1-5) |
 | createdAt | LocalDateTime | Comment time |
 | append | CommentVO | Follow-up review (returned only for top-level comments; same structure as this table) |
@@ -945,6 +946,7 @@ POST /api/comment
 | productId | Long | Yes | Product ID |
 | orderItemId | Long | Yes | Order item ID |
 | content | String | Yes | Comment content |
+| images | List&lt;String&gt; | No | Comment image URL list, up to 4 (upload via 13.1 first) |
 | star | Integer | Yes | Star rating (1-5) |
 
 ---
@@ -1031,15 +1033,20 @@ GET /api/refund/{id}
 | orderId | Long | Order ID |
 | orderItemId | Long | Order item ID |
 | userId | Long | Applicant ID |
+| merchantId | Long | Merchant ID |
 | productId | Long | Product ID |
 | productName | String | Product name |
 | type | Integer | 1=Refund only, 2=Return and refund |
 | reason | String | Refund reason |
 | amount | Integer | Refund amount (cents) |
-| status | Integer | 0=Pending Review, 1=Approved, 2=Rejected |
+| status | Integer | 0=Pending Review, 1=Approved, 2=Rejected, 3=Awaiting Return, 4=Awaiting Merchant Receipt, 5=Return Completed |
 | reviewerId | Long | Reviewer ID |
 | reviewReason | String | Review comment |
 | reviewedAt | LocalDateTime | Review time |
+| returnCompany | String | Return courier company |
+| returnLogisticsNo | String | Return tracking number |
+| returnedAt | LocalDateTime | Time the buyer shipped the return |
+| returnReceivedAt | LocalDateTime | Time the merchant confirmed receipt |
 | createdAt | LocalDateTime | Request time |
 
 ---
@@ -1058,6 +1065,8 @@ PUT /api/refund/{id}/review
 | approved | Integer | Yes | 1=Approve, 0=Reject |
 | reviewReason | String | No | Review comment |
 
+> For refund-only (type=1), approval sets status to 1 and marks the order refunded. For return and refund (type=2), approval sets status to 3 (awaiting return) and the order remains refunding until the buyer submits tracking.
+
 ---
 
 ### 10.5 Refund List (Merchant, Mock Extension)
@@ -1072,7 +1081,7 @@ GET /api/merchant/refunds
 |------|------|------|------|
 | page | Integer | No | Page number, default 1 |
 | size | Integer | No | Page size, default 10 |
-| status | Integer | No | 0=pending, 1=approved, 2=rejected |
+| status | Integer | No | 0=pending, 1=approved, 2=rejected, 3=awaiting return, 4=awaiting merchant receipt, 5=return completed |
 
 **Return**: `PageResult<RefundVO>`, fields as in 10.3, scoped to the current merchant.
 
@@ -1087,6 +1096,36 @@ GET /api/admin/refunds
 ```
 
 Parameters and response are the same as 10.5, covering refunds from all merchants.
+
+---
+
+### 10.7 Submit Return Tracking (Buyer)
+
+> Permission: refund applicant. Only for return-and-refund (type=2) in status 3 (awaiting return).
+
+```
+PUT /api/refund/{id}/return
+```
+
+| Parameter | Type | Required | Description |
+|------|------|------|------|
+| id | Long | Yes | Refund record ID (path parameter) |
+| returnCompany | String | Yes | Return courier company, max 50 chars |
+| returnLogisticsNo | String | Yes | Return tracking number, max 50 chars |
+
+> After submission the status becomes 4 (awaiting merchant receipt) and `returnedAt` is recorded.
+
+---
+
+### 10.8 Confirm Return Receipt (Merchant/Admin)
+
+> Permission: merchant or administrator. Only for return-and-refund in status 4.
+
+```
+PUT /api/refund/{id}/return-received
+```
+
+> The status becomes 5 (return completed), the order is marked refunded, and `returnReceivedAt` is recorded.
 
 ---
 
@@ -1395,6 +1434,18 @@ DELETE /api/admin/products/{id}
 | Parameter | Type | Required | Description |
 |------|------|------|------|
 | id | Long | Yes | Product ID (path parameter) |
+
+---
+
+### 12.9 Admin Update Product (Mock Extension)
+
+> Permission: administrator. The backend does not provide this API yet; it is provided by Mock during development.
+
+```
+PUT /api/admin/products/{id}
+```
+
+Parameters are the same as 4.3 (`name`, `description`, `images`, `brand`, `categoryId`, `skuList`); a non-empty SKU list replaces all SKUs.
 
 ---
 

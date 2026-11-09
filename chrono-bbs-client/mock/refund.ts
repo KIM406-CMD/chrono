@@ -23,6 +23,10 @@ export const mockRefunds: any[] = [
     reviewerId: null,
     reviewReason: null,
     reviewedAt: null,
+    returnCompany: null,
+    returnLogisticsNo: null,
+    returnedAt: null,
+    returnReceivedAt: null,
     createdAt: '2025-01-01 10:00:00',
   },
   {
@@ -40,6 +44,10 @@ export const mockRefunds: any[] = [
     reviewerId: null,
     reviewReason: null,
     reviewedAt: null,
+    returnCompany: null,
+    returnLogisticsNo: null,
+    returnedAt: null,
+    returnReceivedAt: null,
     createdAt: '2025-01-02 09:00:00',
   },
   {
@@ -57,6 +65,10 @@ export const mockRefunds: any[] = [
     reviewerId: 1,
     reviewReason: '审核通过',
     reviewedAt: '2025-01-03 11:00:00',
+    returnCompany: null,
+    returnLogisticsNo: null,
+    returnedAt: null,
+    returnReceivedAt: null,
     createdAt: '2025-01-03 09:00:00',
   },
   {
@@ -74,6 +86,10 @@ export const mockRefunds: any[] = [
     reviewerId: 1,
     reviewReason: '商品已拆封使用，不符合退款条件',
     reviewedAt: '2025-01-04 11:00:00',
+    returnCompany: null,
+    returnLogisticsNo: null,
+    returnedAt: null,
+    returnReceivedAt: null,
     createdAt: '2025-01-04 09:00:00',
   },
 ]
@@ -200,9 +216,10 @@ const mockMethods: MockMethod[] = [
     response: ({ query, body }) => {
       const refund = mockRefunds.find((item) => item.id === parseInt(query.id))
       if (refund) {
-        refund.status = Number(body.approved) === 1 ? 1 : 2
+        const approved = Number(body.approved) === 1
+        refund.status = approved ? (refund.type === 2 ? 3 : 1) : 2
         refund.reviewerId = 1
-        refund.reviewReason = body.reviewReason || (refund.status === 1 ? '审核通过' : '审核拒绝')
+        refund.reviewReason = body.reviewReason || (approved ? '审核通过' : '审核拒绝')
         refund.reviewedAt = nowText()
       }
       return {
@@ -211,6 +228,38 @@ const mockMethods: MockMethod[] = [
         data: null,
         timestamp: Date.now(),
       }
+    },
+  },
+  // 10.7 买家填写退货物流
+  {
+    url: '/api/refund/:id/return',
+    method: 'put',
+    timeout: 300,
+    response: ({ query, body }) => {
+      const refund = mockRefunds.find((item) => item.id === parseInt(query.id))
+      if (!refund || refund.type !== 2 || refund.status !== 3) {
+        return { code: 400, message: '当前状态不可填写退货物流', data: null, timestamp: Date.now() }
+      }
+      refund.returnCompany = body.returnCompany
+      refund.returnLogisticsNo = body.returnLogisticsNo
+      refund.returnedAt = nowText()
+      refund.status = 4
+      return { code: 200, message: '退货物流已提交', data: null, timestamp: Date.now() }
+    },
+  },
+  // 10.8 商家/管理员确认收到退货
+  {
+    url: '/api/refund/:id/return-received',
+    method: 'put',
+    timeout: 300,
+    response: ({ query }) => {
+      const refund = mockRefunds.find((item) => item.id === parseInt(query.id))
+      if (!refund || refund.status !== 4) {
+        return { code: 400, message: '当前状态不可确认收货', data: null, timestamp: Date.now() }
+      }
+      refund.status = 5
+      refund.returnReceivedAt = nowText()
+      return { code: 200, message: '已确认收到退货', data: null, timestamp: Date.now() }
     },
   },
 ]
