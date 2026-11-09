@@ -76,7 +76,7 @@ Closes #42
 ## 5. 参考文档
 
 - Git 提交规范：`docs/git-commit-convention.md`
-- 产品需求：`docs/prd.md`、`docs/requirements-analysis.md`
+- 产品需求：`docs/requirements-analysis.md`
 - 数据库设计：`docs/db-design.md`
 - 服务端设计：`docs/server-design.md`
 - 客户端设计：`docs/client-design.md`

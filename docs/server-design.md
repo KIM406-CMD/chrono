@@ -452,6 +452,7 @@ public class OrderServiceImpl implements OrderService {
 | `cleanSearchHistory` | 每天凌晨 3:00 | 删除 `searched_at < 30天前` 的历史记录 |
 | `syncStockFromRedis` | 每 5 分钟 | 读取 Redis 库存，批量同步 MySQL `product_sku.stock`（兜底保障） |
 | `cleanChatMessages` | 每天凌晨 4:00 | 删除 `message.created_at < 30天前` 的历史消息 |
+| `refreshSeckillStatus` | 每 30 秒 | 刷新秒杀券状态（未开始→进行中→已结束），并批量过期未使用的用户券 |
 
 ```java
 @Configuration
@@ -472,6 +473,9 @@ public class ScheduleConfig {
 
     @Scheduled(cron = "0 0 4 * * ?")
     public void cleanChatMessages() { ... }
+
+    @Scheduled(fixedDelay = 30_000)
+    public void refreshSeckillStatus() { ... }
 }
 ```
 
@@ -817,4 +821,60 @@ erDiagram
 
     CONVERSATION ||--o{ MESSAGE : "消息"
 ```
+
+---
+
+## 十六、秒杀券模块
+
+### 16.1 设计目标
+
+- **不超卖**：券的 `remain_count` 在并发领取下不能为负。
+- **不超领**：同一用户领取数量不能超过 `per_user_limit`。
+- **高可用**：Redis 故障时仍可通过数据库原子扣减完成领券。
+- **最终一致**：Redis 预扣减与 MySQL 落库之间通过补偿保证一致。
+
+### 16.2 抢领流程
+
+```mermaid
+flowchart TD
+    A["POST /api/seckill/claim/{couponId}"] --> B["校验券存在 + status=1 + 时间窗内"]
+    B --> C["Redis 懒加载 remain / claimed 键"]
+    C --> D["DECR seckill:remain:{couponId}"]
+    D -->|结果 < 0| E["INCR 回补 → 已抢光"]
+    D -->|结果 >= 0| F["INCR seckill:claimed:{couponId}:{userId}"]
+    F -->|超过 per_user_limit| G["DECR 回退 + INCR 回补库存 → 已领取"]
+    F -->|未超过| H["插入 user_coupon（status=0）"]
+    H --> I["MySQL remain_count - 1"]
+    I --> J["返回 SeckillClaimVO"]
+    H -->|落库异常| K["事务回滚 + 补偿 Redis"]
+    C -->|Redis 异常| L["降级数据库原子扣减"]
 ```
+
+### 16.3 Redis 键与降级策略
+
+| Key | 内容 | 过期时间 |
+|------|------|----------|
+| `seckill:remain:{couponId}` | 券剩余库存 | 活动结束 + 24h（不足 1h 按 1h） |
+| `seckill:claimed:{couponId}:{userId}` | 用户已领数量 | 同上 |
+
+- **Redis 正常**：`DECR` 库存 → `INCR` 用户领取计数 → 写 `user_coupon` → 扣减 MySQL `remain_count`。
+- **Redis 不可用**：降级为 `UPDATE seckill_coupon SET remain_count = remain_count - 1 WHERE id = ? AND remain_count > 0`，再查 `user_coupon` 校验限领。
+- **MySQL 异常**：事务回滚后补偿 Redis（库存加回、领取计数减回），补偿失败仅记录日志，由后续对账兜底。
+
+### 16.4 下单抵扣
+
+`POST /api/seckill/calculate` 接收 `totalAmount` 与可选的 `userCouponId`：
+
+1. 未选券：原价即实付。
+2. 校验用户券存在、归属当前用户、状态为未使用、活动未过期。
+3. 校验订单金额满足 `min_amount`。
+4. 满减券优惠 = `min(discount_value, totalAmount)`；折扣券优惠 = `totalAmount - totalAmount × discount_value / 100`。
+5. 返回 `originalAmount` / `discountAmount` / `finalAmount` / `couponName`，创建订单时写入 `userCouponId` 并核销。
+
+### 16.5 定时任务与后台管理
+
+- `SeckillStatusScheduler` 每 30 秒刷新券状态：未开始→进行中、进行中→已结束，并批量将未使用的过期券置为已过期。
+- 管理员接口：创建、编辑、删除券；编辑总量时按增量同步 `remain_count` 与 Redis 库存键。
+- 用户接口：券列表/详情（游客可查看）、抢领、我的优惠券（登录用户）。
+
+> 表结构见 [db-design.md](./db-design.md) 第十章，接口契约见 [api-doc.md](./api-doc.md) 第 16 章。

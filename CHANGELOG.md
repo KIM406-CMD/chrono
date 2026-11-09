@@ -82,6 +82,10 @@
 - 新增错误码：MerchantErrorCode（7 个 4041-4047）、AdminErrorCode（6 个 4051-4056）、UploadErrorCode（4 个 4061-4064）
 - application.yaml：新增 spring.servlet.multipart 限制（单文件 2MB / 请求 10MB）
 - module-service 新增依赖：aliyun-sdk-oss 3.17.4、thumbnailator 0.4.20
+- 文档：`db-design.md` 补齐 `seckill_coupon`/`user_coupon` 两张表及索引、Redis 键设计；`detailed-design.md` 新增秒杀券模块（14.1-14.4）并按实际实现更新接口清单与数据库表；`server-design.md` 新增秒杀券模块设计（Redis 预扣减、降级补偿、定时任务）
+- 文档：`hmi-design.md` 补充商家评论管理页、管理员商家审核全状态筛选与审核意见、优惠券详情弹窗；`client-design.md` 补充 `/merchant/comments` 路由与游客领券中心说明
+- 文档：`requirements-analysis.md` 合并原 PRD 的项目概述、原始题目描述与核心业务规则（分类/商品属性/购物车/模拟支付），作为唯一需求文档
+- Docker：`docker-compose.yml` 增加编排说明并改为挂载 `docker/sql` 目录自动初始化；`initial/schema.sql`、`initial/data.sql` 与 `docker/sql` 统一为 `chrono_bbs_dev` 库
 
 ### Changed
 - 全局异常处理：新增 HttpMessageNotReadableException 处理器，JSON 请求体格式错误（类型不匹配如 cartItemIds 传标量、语法错误）由 500「服务器内部错误」改为 400「请求体格式错误」
@@ -107,6 +111,13 @@
 - 前端开发配置：vite.config.ts 新增 /api 代理到后端 8080，关闭 Mock 切换到真实后端联调
 - hmi-design.md：补全商家后台（订单/退款/统计/入驻）、管理员后台（7 页）、领券中心、账户设置、帮助中心及订单详情页
 - api-doc.md：6.2 创建订单参数表新增 `userCouponId`（可选），与前端契约对齐
+- README.md / CLAUDE.md：数据库表数量由 14 更新为 20；README 补充 Docker 自动初始化与 3307 端口说明；CLAUDE.md 测试说明由 H2 更正为 `chrono_bbs_test` MySQL + 本地 Redis
+- api-doc.md：文末更新日期改为 2026-11-09，版本标记为 v0.2.0-dev（Unreleased）
+- test-specification.md：集成测试数据库地址由 `chrono_bbs` 更正为 `chrono_bbs_test`，与 `application-test.yml` 一致
+
+### Removed
+- 文档：移除 `chrono-bbs-server/docs/` 下与根 `docs/` 重复的 10 份 Markdown 与 2 份 Word 副本，统一以根 `docs/` 为准
+- 文档：删除 `docs/prd.md`，其独有内容已合并至 `requirements-analysis.md`，并同步清理 README、AGENTS.md、db-design.md 中的引用
 
 ### Fixed
 - 后台全平台商品上下架按钮改为禁用并提示“后端暂未提供管理员上下架接口”，移除仅弹成功提示的伪操作
@@ -135,6 +146,7 @@
 - 修复 Knife4j 文档页（doc.html）接口列表为空的问题：knife4j 4.5.0 传递的 springdoc 2.2.0 与 Spring Boot 3.4.5 二进制不兼容（`ControllerAdviceBean(Object)` 构造器被 Spring 6.2 移除，/v3/api-docs 抛 NoSuchMethodError），升级 springdoc 2.8.9 后 17 个接口全部可见
 - 修复 data.sql 管理员初始数据两处错误：role=1 应为 3（管理员），原 BCrypt 哈希与注释密码 admin123 不匹配导致 admin 无法登录，重新生成正确哈希
 - 修正 api-doc/UML 秒杀券模块标注：待实现→已实现、权限仅管理员→商家/管理员、错误码 7001-7006 → HTTP 状态码（与后端 SeckillController 实际实现对齐）
+- 修正 `initial/schema.sql` 中用户 `role`/`status` 注释与默认值：角色改为 1-普通用户/2-商家/3-管理员，状态改为 1-正常/0-禁用，与 `UserRoleEnum` 及后端注册逻辑一致
 
 ---
 

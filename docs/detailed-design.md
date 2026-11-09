@@ -1018,28 +1018,106 @@ flowchart TD
 
 ---
 
-## 十四、接口清单
+## 十四、秒杀券模块
 
-| 模块 | 路径前缀 | 接口数 | 权限 |
-|------|----------|--------|------|
-| 用户认证 | `/api/user` | 10 | 公开/登录 |
-| 商品 | `/api/product` | 6 | 公开/商家/管理员 |
-| 分类 | `/api/category` | 4 | 公开/管理员 |
-| 购物车 | `/api/cart` | 5 | 登录用户 |
-| 订单 | `/api/order` | 6 | 登录用户 |
-| 支付 | `/api/payment` | 3 | 登录用户 |
-| 收货地址 | `/api/address` | 5 | 登录用户 |
-| 评论 | `/api/comment` | 4 | 登录用户/商家 |
-| 退款 | `/api/refund` | 3 | 登录用户/商家/管理员 |
-| 商家 | `/api/merchant` | 4 | 商家 |
-| 管理员 | `/api/admin` | 6 | 管理员 |
-| 即时通讯 | `/api/chat` | 2 | 登录用户/商家 |
-| 搜索 | `/api/search` | 3 | 公开/登录用户 |
-| **合计** | | **61** | |
+### 14.1 券列表与详情 — `GET /api/seckill/list`、`GET /api/seckill/detail/{id}`
+
+```mermaid
+flowchart TD
+    A["领券中心 / 首页券入口"] --> B["GET /api/seckill/list<br/>{ status?, page, size }"]
+    B --> C["校验 status ∈ {0,1}，分页参数兜底"]
+    C --> D["查询 seckill_coupon 分页 + 总数"]
+    D --> E["组装 SeckillCouponVO<br/>{ 名称, 优惠类型/值, 门槛, 剩余量, 限领, 时间, 状态 }"]
+    E --> F["返回 PageResult"]
+
+    A --> G["点击券卡片"]
+    G --> H["GET /api/seckill/detail/{id}"]
+    H --> I{"券是否存在"}
+    I -->|否| J["404 券不存在"]
+    I -->|是| K["返回券详情"]
+```
+
+### 14.2 抢领券 — `POST /api/seckill/claim/{couponId}`
+
+```mermaid
+flowchart TD
+    A["登录用户点击领取"] --> B["校验券存在 + 活动进行中"]
+    B --> C["Redis 懒加载 seckill:remain:{couponId}"]
+    C --> D["DECR 剩余库存"]
+    D --> E{"结果 < 0 ?"}
+    E -->|是| F["回补库存 → 已抢光"]
+    E -->|否| G["INCR seckill:claimed:{couponId}:{userId}"]
+    G --> H{"超过每人限领 ?"}
+    H -->|是| I["回补库存/计数 → 已领取"]
+    H -->|否| J["插入 user_coupon（status=0）"]
+    J --> K["MySQL remain_count - 1"]
+    K --> L["返回 SeckillClaimVO"]
+    J -->|异常| M["事务回滚 + Redis 补偿"]
+    C -->|Redis 不可用| N["降级：数据库原子扣减<br/>UPDATE ... WHERE remain_count > 0"]
+    N --> O["数据库校验限领数量"]
+```
+
+**关键设计：**
+
+- Redis 先扣库存、再记领取计数，避免高并发下超卖与超领。
+- Redis 故障时降级为数据库原子扣减（`remain_count > 0` 条件更新），保证可用性。
+- 数据库写入失败时补偿 Redis（回补库存、回退计数），保证最终一致。
+
+### 14.3 下单抵扣 — `POST /api/seckill/calculate`
+
+```mermaid
+flowchart TD
+    A["结算页选择优惠券"] --> B["POST /api/seckill/calculate<br/>{ totalAmount, userCouponId }"]
+    B --> C{"userCouponId 为空"}
+    C -->|是| D["原价即实付"]
+    C -->|否| E["校验用户券存在/归属当前用户/未使用"]
+    E --> F["校验券未过期"]
+    F --> G["校验满足最低消费门槛"]
+    G --> H["计算优惠：满减券取面额；折扣券按折扣值计算"]
+    H --> I["返回 { originalAmount, discountAmount, finalAmount, couponName }"]
+```
+
+### 14.4 后台管理与状态刷新
+
+| 接口 | 权限 | 说明 |
+|------|------|------|
+| `POST /api/seckill/create` | 管理员 | 创建券，`remain_count` 初始化为 `total_count` |
+| `PUT /api/seckill/update/{id}` | 管理员 | 修改券信息；总量变化时同步剩余库存与 Redis 键 |
+| `DELETE /api/seckill/{id}` | 管理员 | 删除券 |
+| `GET /api/seckill/my-coupons` | 登录用户 | 我的优惠券，按未使用/已使用/已过期筛选 |
+
+`SeckillStatusScheduler` 每 30 秒刷新一次：
+
+- 未开始 → 进行中：`start_time <= now 且 status = 0`
+- 进行中 → 已结束：`end_time < now 且 status = 1`
+- 未使用的用户券随活动结束批量置为已过期
 
 ---
 
-## 十五、缓存策略
+## 十五、接口清单
+
+| 模块 | 路径前缀 | 接口数 | 权限 |
+|------|----------|--------|------|
+| 用户认证 | `/api/user` | 9 | 公开/登录 |
+| 商品 | `/api/product` | 6 | 公开/商家/管理员 |
+| 分类 | `/api/category` | 2 | 公开/管理员 |
+| 购物车 | `/api/cart` | 7 | 登录用户/商家 |
+| 订单 | `/api/order` | 7 | 登录用户/商家/管理员 |
+| 支付 | `/api/payment` | 3 | 登录用户/商家 |
+| 收货地址 | `/api/address` | 6 | 登录用户/商家 |
+| 评论 | `/api/comment` | 4 | 游客查看/登录用户/商家/管理员 |
+| 退款 | `/api/refund` | 4 | 登录用户/商家/管理员 |
+| 商家 | `/api/merchant` | 6 | 注册用户入驻/商家 |
+| 管理员 | `/api/admin` | 10 | 管理员 |
+| 文件上传 | `/api/upload` | 1 | 登录用户/商家/管理员 |
+| 即时通讯 | `/api/chat` | 5 | 登录用户/商家 |
+| 搜索 | `/api/search` | 5 | 公开/登录用户 |
+| 秒杀券 | `/api/seckill` | 8 | 公开查看/登录抢领/管理员 |
+| **合计** | | **83** | |
+
+---
+
+## 十六、缓存策略
 
 | 缓存 Key | 类型 | 过期 | 用途 |
 |----------|------|------|------|
@@ -1054,40 +1132,46 @@ flowchart TD
 
 ---
 
-## 十六、数据库表与职责
+## 十七、数据库表与职责
 
 | 表名 | 对应模块 | 说明 |
 |------|----------|------|
 | `user` | 认证 | 用户基本信息、密码哈希、角色、状态 |
 | `merchant` | 商家 | 店铺信息、营业执照、审核状态 |
+| `category` | 分类 | 分类树、层级、排序 |
+| `spec_template` | 商品 | 规格模板（颜色/尺码等） |
+| `spec_value` | 商品 | 规格值（红色/XL 等） |
 | `product` | 商品 | 商品基本信息、上下架状态 |
 | `product_sku` | 商品 | 规格、价格、库存 |
-| `category` | 分类 | 分类树、层级、排序 |
 | `cart_item` | 购物车 | 用户购物车项、选中状态 |
 | `order` | 订单 | 订单主表、状态流转、地址快照 |
 | `order_item` | 订单 | 订单明细、快照价格数量 |
 | `payment` | 支付 | 支付记录、支付方式 |
-| `address` | 地址 | 收货地址 |
-| `comment` | 评论 | 初评/追评/回复 |
 | `refund` | 退款 | 退款申请、审核 |
+| `address` | 收货地址 | 收货地址 |
+| `comment` | 评论 | 初评/追评/回复 |
+| `search_history` | 搜索 | 用户搜索历史 |
 | `conversation` | 即时通讯 | 会话列表 |
 | `message` | 即时通讯 | 消息记录 |
-| `search_history` | 搜索 | 用户搜索历史 |
+| `seckill_coupon` | 秒杀券 | 券定义、总量/剩余量、活动时间窗 |
+| `user_coupon` | 秒杀券 | 用户领券记录、使用状态 |
+| `operation_log` | 管理后台 | AOP 操作日志 |
 
 ---
 
-## 十七、事务与锁设计
+## 十八、事务与锁设计
 
 | 场景 | 策略 | 说明 |
 |------|------|------|
 | 下单 | 分布式锁 + 数据库事务 | Redis 锁防并发，事务保证订单+扣库存原子性 |
 | 库存扣减 | 行级锁 `WHERE stock >= ?` | 防止超卖 |
+| 抢领秒杀券 | Redis 原子扣减 + 数据库事务 | Redis `DECR`/`INCR` 防超卖超领，MySQL 写入失败时补偿 Redis |
 | 支付 | 幂等校验 | 查支付表防重复扣款 |
 | 退款审核 | 乐观锁（状态机） | 只有"待审核"状态可审核 |
 
 ---
 
-## 十八、部署架构
+## 十九、部署架构
 
 ```mermaid
 graph TB
@@ -1127,7 +1211,7 @@ graph TB
 
 ---
 
-## 十九、前端设计参考
+## 二十、前端设计参考
 
 ### 页面路由结构
 

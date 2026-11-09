@@ -144,7 +144,7 @@
 | user_id | BIGINT FK | 关联 user 表 |
 | address_snapshot | VARCHAR(500) | 收货地址快照（JSON：姓名、电话、省市区、详细地址） |
 | total_amount | INT | 实付金额（单位：分） |
-| status | TINYINT | 状态码（见 PRD 3.5.2 节） |
+| status | TINYINT | 状态码（见 requirements-analysis.md 3.5 节） |
 | remark | VARCHAR(500) | 订单备注（下单时买家填写，可空） |
 | cancel_reason | VARCHAR(500) | 取消原因 |
 | paid_at | DATETIME | 支付时间 |
@@ -295,7 +295,47 @@
 
 ---
 
-## 十、操作日志
+## 十、秒杀券与用户券
+
+### `seckill_coupon` 秒杀券表
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT PK | 主键 |
+| name | VARCHAR(100) | 券名称 |
+| description | VARCHAR(500) | 券描述 |
+| discount_type | TINYINT | 优惠类型：1-满减券，2-折扣券 |
+| discount_value | INT | 优惠值：满减券为减免金额（分），折扣券为折扣值（如 85 表示 8.5 折） |
+| min_amount | INT | 最低消费金额（分），0 表示无门槛 |
+| total_count | INT | 发放总量 |
+| remain_count | INT | 剩余数量 |
+| start_time | DATETIME | 活动开始时间 |
+| end_time | DATETIME | 活动结束时间 |
+| per_user_limit | INT DEFAULT 1 | 每人限领数量 |
+| status | TINYINT | 状态：0-未开始，1-进行中，2-已结束 |
+| created_at | DATETIME | 创建时间 |
+| updated_at | DATETIME | 更新时间 |
+
+> **说明**：`remain_count` 为数据库最终库存，抢领时先在 Redis 原子扣减，再同步扣减该字段；Redis 不可用时降级为 `UPDATE ... SET remain_count = remain_count - 1 WHERE remain_count > 0` 原子扣减。状态由定时任务每 30 秒按时间窗刷新。
+
+### `user_coupon` 用户券表
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT PK | 主键 |
+| user_id | BIGINT FK | 关联 user 表 |
+| coupon_id | BIGINT FK | 关联 seckill_coupon 表 |
+| status | TINYINT | 状态：0-未使用，1-已使用，2-已过期 |
+| used_order_id | BIGINT | 使用该券的订单 ID，未使用时为空 |
+| claim_time | DATETIME | 领取时间 |
+| used_time | DATETIME | 使用时间 |
+| created_at | DATETIME | 创建时间 |
+
+> **说明**：`(user_id, coupon_id)` 组合索引支持限领校验和"我的优惠券"查询；券活动结束且未使用时，由定时任务批量置为"已过期"。
+
+---
+
+## 十一、操作日志
 
 ### `operation_log` 操作日志表
 
@@ -324,11 +364,11 @@
 
 ---
 
-## 十一、MySQL 索引设计
+## 十二、MySQL 索引设计
 
 > 目的：加速高频查询、避免全表扫描，提升 SQL 执行效率。
 
-### 9.1 user 用户表
+### 12.1 user 用户表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -337,27 +377,27 @@
 | `idx_email` | INDEX | email | 邮箱登录查询 |
 | `idx_role` | INDEX | role | 管理员按角色筛选用户 |
 
-### 9.2 merchant 商家表
+### 12.2 merchant 商家表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
 | `idx_user_id` | INDEX | user_id | 通过用户查商家信息 |
 | `idx_status` | INDEX | status | 管理员筛选待审核商家 |
 
-### 9.3 category 分类表
+### 12.3 category 分类表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
 | `idx_parent_id` | INDEX | parent_id | 查询子分类 |
 | `idx_level` | INDEX | level | 按层级筛选 |
 
-### 9.4 spec_template / spec_value 规格表
+### 12.4 spec_template / spec_value 规格表
 
 | 表 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|------|
 | spec_value | `idx_template_id` | INDEX | template_id | 查某个规格模板下的所有值 |
 
-### 9.5 product 商品表
+### 12.5 product 商品表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -370,21 +410,21 @@
 | `idx_brand` | INDEX | brand | 按品牌筛选 |
 | `ft_product` | **FULLTEXT** | (name, description, brand) | MySQL 全文检索兜底（ES 不可用时） |
 
-### 9.6 product_sku SKU 表
+### 12.6 product_sku SKU 表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
 | `idx_product_id` | INDEX | product_id | 查询某商品所有 SKU |
 | `idx_status` | INDEX | status | 筛选启用的 SKU |
 
-### 9.7 cart_item 购物车表
+### 12.7 cart_item 购物车表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
 | `uk_user_sku` | **UNIQUE** | (user_id, sku_id) | 防止重复添加，同一用户同一 SKU 唯一 |
 | `idx_user_id` | INDEX | user_id | 查询用户购物车列表 |
 
-### 9.8 order 订单表
+### 12.8 order 订单表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -394,7 +434,7 @@
 | `idx_user_status` | **COMPOSITE** | (user_id, status) | **高频**：用户按状态查订单（如"我的待支付订单"） |
 | `idx_created_at` | INDEX | created_at | 按时间排序/筛选 |
 
-### 9.9 order_item 订单明细表
+### 12.9 order_item 订单明细表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -402,13 +442,13 @@
 | `idx_product_id` | INDEX | product_id | 反向查某商品被哪些订单购买 |
 | `idx_sku_id` | INDEX | sku_id | 按 SKU 统计销量 |
 
-### 9.10 payment 支付记录表
+### 12.10 payment 支付记录表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
 | `idx_order_id` | INDEX | order_id | 查某订单的支付记录 |
 
-### 9.11 refund 退款/退货表
+### 12.11 refund 退款/退货表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -417,13 +457,13 @@
 | `idx_user_id` | INDEX | user_id | 用户查自己的退款记录 |
 | `idx_status` | INDEX | status | 管理员/商家筛选待审核退款 |
 
-### 9.12 address 收货地址表
+### 12.12 address 收货地址表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
 | `idx_user_id` | INDEX | user_id | 查用户的所有地址 |
 
-### 9.13 comment 评论表
+### 12.13 comment 评论表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -433,14 +473,14 @@
 | `idx_parent_id` | INDEX | parent_id | 查某条评论的回复列表 |
 | `idx_order_item_id` | INDEX | order_item_id | 判断是否已评价过 |
 
-### 9.14 search_history 搜索历史表
+### 12.14 search_history 搜索历史表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
 | `idx_user_id` | INDEX | user_id | 查用户的搜索历史 |
 | `idx_searched_at` | INDEX | searched_at | 按时间排序，定期清理旧记录 |
 
-### 9.15 conversation 会话表
+### 12.15 conversation 会话表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -449,7 +489,7 @@
 | `idx_merchant_id` | INDEX | merchant_id | 查某商家的所有会话列表 |
 | `idx_updated_at` | INDEX | updated_at | 按最后消息时间排序 |
 
-### 9.16 message 消息表
+### 12.16 message 消息表
 
 | 索引名 | 类型 | 字段 | 用途 |
 |------|------|------|------|
@@ -457,21 +497,40 @@
 | `idx_conversation_read` | **COMPOSITE** | (conversation_id, is_read) | 查某会话的未读消息 |
 | `idx_created_at` | INDEX | created_at | 按时间排序 + 定时清理 30 天前消息 |
 
-### 9.17 索引设计总结
+### 12.17 seckill_coupon 秒杀券表
+
+| 索引名 | 类型 | 字段 | 用途 |
+|------|------|------|------|
+| `idx_status` | INDEX | status | 按状态筛选可抢券 |
+| `idx_start_time` | INDEX | start_time | 定时任务扫描待开始活动 |
+| `idx_end_time` | INDEX | end_time | 定时任务扫描待结束活动 |
+| `idx_status_time` | **COMPOSITE** | (status, start_time, end_time) | **高频**：活动状态刷新与进行中券列表 |
+
+### 12.18 user_coupon 用户券表
+
+| 索引名 | 类型 | 字段 | 用途 |
+|------|------|------|------|
+| `idx_user_id` | INDEX | user_id | 查用户的券列表 |
+| `idx_coupon_id` | INDEX | coupon_id | 统计某张券的领取量 |
+| `idx_user_coupon` | **COMPOSITE** | (user_id, coupon_id) | 限领校验、用户是否已领 |
+| `idx_user_status` | **COMPOSITE** | (user_id, status) | **高频**：我的优惠券按状态筛选 |
+| `idx_status` | INDEX | status | 定时任务批量处理过期券 |
+
+### 12.19 索引设计总结
 
 | 类型 | 数量 | 说明 |
 |------|------|------|
-| UNIQUE 索引 | 4 | username、user+sku、order_no、user+merchant |
-| 普通 INDEX | 26 | 高频查询字段 |
-| COMPOSITE 索引 | 5 | 多条件组合高频查询，利用覆盖索引减少回表 |
+| UNIQUE 索引 | 4 | username、order_no、user+sku、user+merchant |
+| 普通 INDEX（单列） | 48 | 高频查询字段 |
+| COMPOSITE 索引 | 8 | 多条件组合高频查询，利用覆盖索引减少回表 |
 | FULLTEXT 索引 | 1 | MySQL 全文检索兜底 |
-| **合计** | **36** | |
+| **合计** | **61** | |
 
 > **注意**：复合索引遵循**最左前缀原则**，`WHERE` 条件中必须包含复合索引的第一列才能命中。例如 `idx_category_status(category_id, status)` 支持「只查 category_id」和「同时查 category_id + status」，但不支持「只查 status」。
 
 ---
 
-## 十二、Redis 缓存设计
+## 十三、Redis 缓存设计
 
 | 缓存 Key 示例 | 内容 | 数据结构 | 过期策略 |
 |------|------|------|------|
@@ -484,10 +543,12 @@
 | `product:{id}:sales` | 商品累计销量 | Hash | 下单时自增，定时同步 MySQL |
 | `product:{id}:comments` | 评论统计（总数 + 平均星级） | Hash | 评论变更时更新 |
 | `sku:{id}` | 热门 SKU 缓存 | String（JSON） | 设置过期时间，变更时失效 |
+| `seckill:remain:{couponId}` | 秒杀券剩余库存 | String | 活动结束 + 24h 过期 |
+| `seckill:claimed:{couponId}:{userId}` | 用户已领券数量 | String | 活动结束 + 24h 过期 |
 
 ---
 
-## 十三、搜索引擎（Elasticsearch）
+## 十四、搜索引擎（Elasticsearch）
 
 | 索引 | 同步字段 | 说明 |
 |------|------|------|

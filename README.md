@@ -82,8 +82,7 @@ chrono-bbs/
 ├── chrono-bbs-client/                # 前端（Vue 3 + Vite + TS + Element Plus）
 │
 ├── docs/                             # 📄 文档目录
-│   ├── prd.md                        # 产品需求文档
-│   ├── requirements-analysis.md      # 需求分析
+│   ├── requirements-analysis.md      # 需求分析（含业务背景与核心规则）
 │   ├── feasibility-analysis.md       # 可行性分析
 │   ├── server-design.md              # 服务端概要设计
 │   ├── client-design.md              # 客户端概要设计
@@ -130,19 +129,24 @@ chrono-bbs/
 
 ```bash
 cd docker
-docker-compose up -d
+docker compose up -d
 ```
 
-启动 MySQL、Redis、Elasticsearch。
+启动 MySQL、Redis、Elasticsearch。MySQL 首次创建数据卷时会自动执行 `docker/sql/01-schema.sql` 与 `02-data.sql`（创建 `chrono_bbs_dev` 库、20 张表并导入初始数据），无需手动导入。
 
-### 2. 初始化数据库
+> 端口：MySQL `3307`（避免与本机 3306 冲突）、Redis `6379`、Elasticsearch `9200`。
+> 修改初始化脚本后需执行 `docker compose down -v` 删除数据卷再启动，脚本才会重新执行。
+
+### 2. 初始化数据库（可选，手动方式）
+
+若使用本机 MySQL 而非 Docker，执行：
 
 ```bash
-# 执行建表语句
 mysql -u root -p < initial/schema.sql
-# 导入初始数据
 mysql -u root -p < initial/data.sql
 ```
+
+两个脚本与 `docker/sql/` 内容一致，均创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`。
 
 ### 3. 启动后端
 
@@ -179,8 +183,7 @@ npm run dev
 
 | 文档 | 内容 |
 |------|------|
-| [prd.md](./docs/prd.md) | 产品需求文档 — 业务背景、角色权限、核心业务规则 |
-| [requirements-analysis.md](./docs/requirements-analysis.md) | 需求分析 — 48 项功能需求（F-01~F-48）+ 优先级 + 业务流程 + 数据需求 |
+| [requirements-analysis.md](./docs/requirements-analysis.md) | 需求分析 — 业务背景、核心业务规则、48 项功能需求（F-01~F-48）、优先级、业务流程与数据需求 |
 | [feasibility-analysis.md](./docs/feasibility-analysis.md) | 可行性分析 — 技术/进度/经济/运行四维度 |
 | [server-design.md](./docs/server-design.md) | 服务端概要设计 — Maven 模块 / 认证 / 异常体系 |
 | [client-design.md](./docs/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
@@ -199,7 +202,7 @@ npm run dev
 |----|------|------|
 | [uml-usecase.puml](./uml/uml-usecase.puml) | PlantUML | 用例图 — 游客/用户/商家/管理员 4 角色 |
 | [uml-component.puml](./uml/uml-component.puml) | PlantUML | 组件图 — Maven 模块 + 外部依赖 |
-| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 14 张表关联关系 |
+| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 20 张表关联关系 |
 | [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | 时序图 — 注册登录 / 购物下单 / 支付 / WebSocket |
 | [uml-activity.puml](./uml/uml-activity.puml) | PlantUML | 活动图 — 订单状态流转 / 商家入驻 / 退款退货 |
 

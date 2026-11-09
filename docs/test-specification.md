@@ -89,7 +89,7 @@ class AuthControllerE2ETest {
 
 ## 3. 集成测试数据库方案
 
-使用**真实 MySQL + Redis**，与开发环境共用同一套基础设施。
+使用**真实 MySQL + Redis**：MySQL 使用独立的 `chrono_bbs_test` 库，Redis 与开发环境共用同一实例。
 
 ### 3.1 测试配置文件
 
@@ -98,7 +98,7 @@ class AuthControllerE2ETest {
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/chrono_bbs?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/chrono_bbs_test?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: chrono
     password: chrono123
     driver-class-name: com.mysql.cj.jdbc.Driver
