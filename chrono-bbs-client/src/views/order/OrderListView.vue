@@ -21,6 +21,8 @@ const tabs = [
   { label: '待发货', value: OrderStatus.PAID },
   { label: '待收货', value: OrderStatus.SHIPPED },
   { label: '已完成', value: OrderStatus.COMPLETED },
+  { label: '退款中', value: OrderStatus.REFUNDING },
+  { label: '已退款', value: OrderStatus.REFUNDED },
   { label: '已取消', value: OrderStatus.CANCELLED },
 ]
 
@@ -31,6 +33,8 @@ const statusLabel = (status: OrderStatus) => {
     case OrderStatus.SHIPPED: return '待收货'
     case OrderStatus.COMPLETED: return '已完成'
     case OrderStatus.CANCELLED: return '已取消'
+    case OrderStatus.REFUNDING: return '退款中'
+    case OrderStatus.REFUNDED: return '已退款'
     default: return '未知'
   }
 }
@@ -42,6 +46,8 @@ const statusClass = (status: OrderStatus) => {
     case OrderStatus.SHIPPED: return 's-shipped'
     case OrderStatus.COMPLETED: return 's-done'
     case OrderStatus.CANCELLED: return 's-cancel'
+    case OrderStatus.REFUNDING: return 's-refunding'
+    case OrderStatus.REFUNDED: return 's-refunded'
     default: return ''
   }
 }
@@ -333,6 +339,8 @@ onMounted(() => {
 .s-shipped { color: #67c23a; }
 .s-done { color: #999; }
 .s-cancel { color: #c0c4cc; }
+.s-refunding { color: #e6a23c; }
+.s-refunded { color: #909399; }
 
 .order-body {
   display: flex;

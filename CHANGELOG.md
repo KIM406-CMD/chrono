@@ -104,6 +104,7 @@
 - api-doc.md：6.2 创建订单参数表新增 `userCouponId`（可选），与前端契约对齐
 
 ### Fixed
+- 订单详情新增退款申请（已支付/已发货/已完成订单按明细提交，金额不超过小计），订单状态补充退款中/已退款展示；新增「退款/售后」页面与导航入口，api-doc 10.1-10.3 同步 `RefundVO` 字段
 - 评论展示适配后端嵌套结构（`append`/`replies`），商品详情移除必然失败的评论表单，评价入口改到订单详情（仅已完成订单、按订单明细提交）；api-doc 9.1 同步 `CommentVO` 字段
 - 商家销售统计与管理员销售报表按后端 VO 字段重写（`orderCount`/`salesTrend`/`productName`/`salesCount`/`totalAmount`、`avgOrderAmount`、`salesByCategory`/`salesByMerchant`），修复指标空白与 NaN；商家审核改用 `applicantUsername`，商家订单商品列改用 `items` 首项，api-doc 11.4/12.2 同步返回字段
 - 首页商品卡片改用商品列表接口的 `image` 字段展示首图，`maxPrice` 缺失时隐藏原价；商家/后台商品列表价格与店铺名缺失时显示占位，修复 NaN 与空白列；api-doc 11.3/12.4 同步实际返回字段

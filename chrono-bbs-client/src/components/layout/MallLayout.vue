@@ -68,6 +68,9 @@ const handleUserCommand = (command: string) => {
     case 'orders':
         router.push('/orders')
         break
+    case 'refunds':
+      router.push('/refunds')
+      break
       case 'chat':
         router.push('/chat')
         break
@@ -171,6 +174,7 @@ const handleUserCommand = (command: string) => {
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="orders">📋 我的订单</el-dropdown-item>
+                  <el-dropdown-item command="refunds">🧾 退款/售后</el-dropdown-item>
                     <el-dropdown-item command="chat">💬 我的消息</el-dropdown-item>
                     <el-dropdown-item command="address">📍 收货地址</el-dropdown-item>
                   <el-dropdown-item command="profile">👤 个人信息</el-dropdown-item>

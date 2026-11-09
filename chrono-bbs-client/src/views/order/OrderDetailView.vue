@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { getOrderDetail, cancelOrder, receiveOrder, deleteOrder } from '@/api/order'
 import { addComment } from '@/api/comment'
+import { applyRefund } from '@/api/refund'
 import type { Order, OrderItem } from '@/types/order'
 import { OrderStatus } from '@/types/common'
 
@@ -51,11 +52,17 @@ const steps = computed(() => {
       pending: s === OrderStatus.SHIPPED,
     },
     {
-      title: s === OrderStatus.CANCELLED ? '订单已取消' : '已完成',
+      title: s === OrderStatus.CANCELLED
+        ? '订单已取消'
+        : s === OrderStatus.REFUNDING
+          ? '退款中'
+          : s === OrderStatus.REFUNDED
+            ? '已退款'
+            : '已完成',
       desc: s === OrderStatus.CANCELLED
         ? (order.value.cancelReason || '')
         : (order.value.completedAt || ''),
-      done: s === OrderStatus.COMPLETED,
+      done: s === OrderStatus.COMPLETED || s === OrderStatus.REFUNDED,
       canceled: s === OrderStatus.CANCELLED,
     },
   ]
@@ -69,6 +76,8 @@ const statusLabel = computed(() => {
     case OrderStatus.SHIPPED: return '待收货'
     case OrderStatus.COMPLETED: return '已完成'
     case OrderStatus.CANCELLED: return '已取消'
+    case OrderStatus.REFUNDING: return '退款中'
+    case OrderStatus.REFUNDED: return '已退款'
     default: return ''
   }
 })
@@ -184,6 +193,52 @@ const handleSubmitComment = async () => {
   }
 }
 
+// 退款申请（已支付/已发货/已完成订单可申请）
+const refundDialogVisible = ref(false)
+const refundSubmitting = ref(false)
+const refundTarget = ref<OrderItem | null>(null)
+const refundForm = reactive({ type: 1, reason: '', amountYuan: 0 })
+
+const canApplyRefund = (status: OrderStatus) =>
+  status === OrderStatus.PAID || status === OrderStatus.SHIPPED || status === OrderStatus.COMPLETED
+
+const openRefund = (item: OrderItem) => {
+  refundTarget.value = item
+  refundForm.type = 1
+  refundForm.reason = ''
+  refundForm.amountYuan = item.subtotal / 100
+  refundDialogVisible.value = true
+}
+
+const handleSubmitRefund = async () => {
+  if (!refundTarget.value) return
+  if (!refundForm.reason.trim()) {
+    ElMessage.warning('请输入退款原因')
+    return
+  }
+  const amount = Math.round(refundForm.amountYuan * 100)
+  if (amount <= 0 || amount > refundTarget.value.subtotal) {
+    ElMessage.warning('退款金额需大于 0 且不超过商品小计')
+    return
+  }
+  refundSubmitting.value = true
+  try {
+    await applyRefund({
+      orderItemId: refundTarget.value.id,
+      type: refundForm.type,
+      reason: refundForm.reason.trim(),
+      amount,
+    })
+    ElMessage.success('退款申请已提交')
+    refundDialogVisible.value = false
+    loadOrder()
+  } catch {
+    // 错误提示由拦截器统一处理
+  } finally {
+    refundSubmitting.value = false
+  }
+}
+
 onMounted(() => {
   loadOrder()
 })
@@ -219,6 +274,12 @@ onMounted(() => {
         </div>
         <div v-else-if="order.status === OrderStatus.CANCELLED" class="status-hint status-cancel">
           订单已取消
+        </div>
+        <div v-else-if="order.status === OrderStatus.REFUNDING" class="status-hint">
+          退款申请处理中，请等待商家审核
+        </div>
+        <div v-else-if="order.status === OrderStatus.REFUNDED" class="status-hint status-cancel">
+          退款已完成
         </div>
       </div>
 
@@ -286,8 +347,21 @@ onMounted(() => {
             <div class="od-item-sub">
               ¥{{ priceYuan(item.subtotal) }}
             </div>
-            <div class="od-item-actions" v-if="order.status === OrderStatus.COMPLETED">
-              <el-button size="small" plain type="primary" @click="openComment(item)">评价</el-button>
+            <div class="od-item-actions">
+              <el-button
+                v-if="order.status === OrderStatus.COMPLETED"
+                size="small"
+                plain
+                type="primary"
+                @click="openComment(item)"
+              >评价</el-button>
+              <el-button
+                v-if="canApplyRefund(order.status)"
+                size="small"
+                plain
+                type="warning"
+                @click="openRefund(item)"
+              >退款</el-button>
             </div>
           </div>
         </div>
@@ -341,7 +415,14 @@ onMounted(() => {
       </div>
 
       <!-- 操作按钮 -->
-      <div class="od-actions" v-if="order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED">
+      <div
+        class="od-actions"
+        v-if="
+          order.status === OrderStatus.PENDING_PAYMENT ||
+          order.status === OrderStatus.PAID ||
+          order.status === OrderStatus.SHIPPED
+        "
+      >
         <template v-if="order.status === OrderStatus.PENDING_PAYMENT">
           <el-button @click="handleCancel" :loading="canceling">取消订单</el-button>
           <el-button type="danger" @click="handlePay">立即付款</el-button>
@@ -350,7 +431,10 @@ onMounted(() => {
           <el-button type="primary" @click="handleReceive">确认收货</el-button>
         </template>
       </div>
-      <div class="od-actions" v-else>
+      <div
+        class="od-actions"
+        v-else-if="order.status === OrderStatus.COMPLETED || order.status === OrderStatus.CANCELLED"
+      >
         <el-button type="danger" text @click="handleDelete">删除订单</el-button>
       </div>
     </template>
@@ -379,6 +463,42 @@ onMounted(() => {
       <template #footer>
         <el-button @click="commentDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="commentSubmitting" @click="handleSubmitComment">提交评价</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="refundDialogVisible" title="申请退款" width="480px">
+      <p class="comment-product">{{ refundTarget?.productName }}</p>
+      <el-form label-width="80px">
+        <el-form-item label="类型">
+          <el-radio-group v-model="refundForm.type">
+            <el-radio :value="1">仅退款</el-radio>
+            <el-radio :value="2">退货退款</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="退款金额">
+          <el-input-number
+            v-model="refundForm.amountYuan"
+            :min="0.01"
+            :max="(refundTarget?.subtotal || 0) / 100"
+            :precision="2"
+            :step="1"
+          />
+          <span class="refund-unit">元</span>
+        </el-form-item>
+        <el-form-item label="退款原因">
+          <el-input
+            v-model="refundForm.reason"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入退款原因"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="refundDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="refundSubmitting" @click="handleSubmitRefund">提交申请</el-button>
       </template>
     </el-dialog>
   </div>
@@ -415,6 +535,12 @@ onMounted(() => {
   margin: 0 0 12px;
   font-size: 14px;
   color: #666;
+}
+
+.refund-unit {
+  margin-left: 8px;
+  font-size: 13px;
+  color: #999;
 }
 
 /* ========== 状态栏 ========== */

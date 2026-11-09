@@ -99,6 +99,12 @@ const userRoutes: RouteRecordRaw[] = [
         meta: { title: '支付', roles: ['USER', 'MERCHANT', 'ADMIN'] },
       },
       {
+        path: 'refunds',
+        name: 'RefundList',
+        component: () => import('@/views/refund/RefundListView.vue'),
+        meta: { title: '退款/售后', roles: ['USER', 'MERCHANT', 'ADMIN'] },
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/user/ProfileView.vue'),

@@ -950,6 +950,8 @@ POST /api/refund
 | reason | String | 是 | 退款原因 |
 | amount | Integer | 是 | 退款金额（分） |
 
+**返回**：`Result<Long>`，退款单 ID。
+
 ---
 
 ### 10.2 退款列表（我的）
@@ -963,6 +965,8 @@ GET /api/refund/my
 | page | Integer | 否 | 页码 |
 | size | Integer | 否 | 每页大小 |
 
+**返回**：`PageResult<RefundVO>`。
+
 ---
 
 ### 10.3 退款详情
@@ -970,6 +974,25 @@ GET /api/refund/my
 ```
 GET /api/refund/{id}
 ```
+
+**返回**：`RefundVO`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 退款单 ID |
+| orderId | Long | 订单 ID |
+| orderItemId | Long | 订单明细 ID |
+| userId | Long | 申请人 ID |
+| productId | Long | 商品 ID |
+| productName | String | 商品名称 |
+| type | Integer | 1=仅退款，2=退货退款 |
+| reason | String | 退款原因 |
+| amount | Integer | 退款金额（分） |
+| status | Integer | 0=待审核，1=已通过，2=已拒绝 |
+| reviewerId | Long | 审核人 ID |
+| reviewReason | String | 审核意见 |
+| reviewedAt | LocalDateTime | 审核时间 |
+| createdAt | LocalDateTime | 申请时间 |
 
 ---
 
