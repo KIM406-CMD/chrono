@@ -1,5 +1,6 @@
 import service from '@/api'
 import type { PageResult } from '@/types/common'
+import type { RefundItem } from './refund'
 
 export interface MerchantInfo {
   id: number
@@ -24,6 +25,14 @@ export const getMerchantInfo = () => {
 
 export const updateMerchantInfo = (data: { shopName?: string; contactPhone?: string }) => {
   return service.put('/merchant/info', data)
+}
+
+// 商家退款审核列表（Mock 扩展，正式后端未实现）
+export const getMerchantRefunds = (params: { page?: number; size?: number; status?: number }) => {
+  return service.get<any, { code: number; message: string; data: PageResult<RefundItem>; timestamp: number }>(
+    '/merchant/refunds',
+    { params },
+  )
 }
 
 // 11.3 商家商品列表

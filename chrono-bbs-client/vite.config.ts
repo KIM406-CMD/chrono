@@ -3,12 +3,13 @@ import vue from '@vitejs/plugin-vue'
 import { viteMockServe } from 'vite-plugin-mock'
 import { fileURLToPath, URL } from 'node:url'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     viteMockServe({
       mockPath: 'mock',
-      enable: false,
+      // 仅 `vite --mode mock`（npm run dev:mock）时启用，普通 dev 仍走后端代理
+      enable: mode === 'mock',
       ignore: /^\/_/,
     }),
   ],
@@ -26,4 +27,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

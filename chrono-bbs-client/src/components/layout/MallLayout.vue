@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { Role } from '@/types/common'
 import { getCategoryTree } from '@/api/product'
 import { getCartList } from '@/api/cart'
-import { getConversations } from '@/api/chat'
+import { getUnreadCount } from '@/api/chat'
 import { CHAT_ENABLED } from '@/config/features'
+import CategoryFlyout from '@/components/category/CategoryFlyout.vue'
 import type { Category } from '@/types/product'
 
 const router = useRouter()
@@ -43,7 +44,11 @@ const activeCategoryId = computed(() => {
   return Number.isFinite(id) && id > 0 ? id : 0
 })
 
+// 当前悬浮的一级分类，保证同一时间只展开一个浮层
+const hoveredCategoryId = ref(0)
+
 const onCategoryClick = (cat: Category) => {
+  hoveredCategoryId.value = 0
   router.push({ path: '/search', query: { categoryId: String(cat.id) } })
 }
 
@@ -51,9 +56,9 @@ const onCategoryClick = (cat: Category) => {
 const unreadMsgCount = ref(0)
 
 const loadUnreadCount = () => {
-  getConversations()
+  getUnreadCount()
     .then((res) => {
-      unreadMsgCount.value = (res.data || []).reduce((sum: number, c: { unreadCount: number }) => sum + c.unreadCount, 0)
+      unreadMsgCount.value = res.data?.count || 0
     })
     .catch(() => {
       unreadMsgCount.value = 0
@@ -76,15 +81,27 @@ const loadCartCount = async () => {
   }
 }
 
+const onUnreadChanged = () => {
+  if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+}
+
 onMounted(() => {
   loadCategories()
+  window.addEventListener('chat-unread-changed', onUnreadChanged)
   if (userStore.isLoggedIn) {
     if (CHAT_ENABLED) loadUnreadCount()
     loadCartCount()
   }
 })
 
-watch(() => route.fullPath, loadCartCount)
+onBeforeUnmount(() => {
+  window.removeEventListener('chat-unread-changed', onUnreadChanged)
+})
+
+watch(() => route.fullPath, () => {
+  loadCartCount()
+  if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+})
 watch(() => userStore.token, () => {
   loadCartCount()
   if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
@@ -245,15 +262,27 @@ const handleUserCommand = (command: string) => {
           :class="{ active: activeCategoryId === 0 }"
           @click="router.push('/home')"
         >全部商品</span>
-        <span
+        <div
           v-for="cat in categories"
           :key="cat.id"
-          class="category-item"
-          :class="{ active: activeCategoryId === cat.id }"
-          @click="onCategoryClick(cat)"
+          class="category-wrap"
+          @mouseenter="hoveredCategoryId = cat.id"
+          @mouseleave="hoveredCategoryId = 0"
         >
-          {{ cat.name }}
-        </span>
+          <span
+            class="category-item"
+            :class="{ active: activeCategoryId === cat.id }"
+            @click="onCategoryClick(cat)"
+          >
+            {{ cat.name }}
+          </span>
+          <CategoryFlyout
+            v-if="hoveredCategoryId === cat.id"
+            :category="cat"
+            placement="bottom"
+            @select="onCategoryClick"
+          />
+        </div>
       </div>
     </nav>
 
@@ -433,10 +462,14 @@ const handleUserCommand = (command: string) => {
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 0 24px;
+}
+
+.category-wrap {
+  position: relative;
   height: 40px;
-  gap: 24px;
-  overflow-x: auto;
 }
 
 .category-item {
@@ -453,7 +486,8 @@ const handleUserCommand = (command: string) => {
 }
 
 .category-item:hover,
-.category-item.active {
+.category-item.active,
+.category-wrap:hover > .category-item {
   color: #e2231a;
   border-bottom-color: #e2231a;
 }

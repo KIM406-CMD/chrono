@@ -6,6 +6,7 @@ import { ArrowRight } from '@element-plus/icons-vue'
 import { getProductList, getCategoryTree } from '@/api/product'
 import { useUserStore } from '@/stores/user'
 import { formatPriceByPreference, generalSettings, reloadGeneralSettings } from '@/utils/settings'
+import CategoryFlyout from '@/components/category/CategoryFlyout.vue'
 import type { Product, Category } from '@/types/product'
 
 const router = useRouter()
@@ -13,6 +14,67 @@ const userStore = useUserStore()
 const loading = ref(false)
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
+
+// 热销推荐：按销量取前 10
+const hotProducts = computed(() => [...products.value].sort((a, b) => b.sales - a.sales).slice(0, 10))
+
+// 猜你喜欢：分页展示
+const likeProducts = ref<Product[]>([])
+const likeTotal = ref(0)
+const likePage = ref(1)
+const likeSize = 10
+
+interface Announcement {
+  /** 公告类型标签 */
+  type: '活动' | '通知'
+  /** 公告标题 */
+  title: string
+  /** 公告详情 */
+  content: string
+  /** 详情弹窗中的跳转路径 */
+  action?: string
+  /** 跳转按钮文案 */
+  actionLabel?: string
+}
+
+const announcements: Announcement[] = [
+  {
+    type: '活动',
+    title: '新人注册立享优惠',
+    content: '新用户注册后可前往领券中心领取新人专享券，满 50 元减 10 元。数量有限，先到先得。',
+    action: '/coupons',
+    actionLabel: '去领券',
+  },
+  {
+    type: '通知',
+    title: '春节不打烊公告',
+    content: '春节期间商城正常营业，订单照常处理。受物流运力影响，部分地区配送可能延迟，敬请谅解。',
+  },
+  {
+    type: '活动',
+    title: '满减活动进行中',
+    content: '领券中心正在发放多款满减券与折扣券，登录后即可领取，下单结算时自动抵扣。',
+    action: '/coupons',
+    actionLabel: '去领券',
+  },
+]
+
+const announcementVisible = ref(false)
+const activeAnnouncement = ref<Announcement | null>(null)
+
+// 打开公告详情
+const openAnnouncement = (item: Announcement) => {
+  activeAnnouncement.value = item
+  announcementVisible.value = true
+}
+
+// 跳转公告关联页面
+const handleAnnouncementAction = () => {
+  const target = activeAnnouncement.value?.action
+  if (!target) return
+  announcementVisible.value = false
+  router.push(target)
+}
 
 const displayName = computed(() => userStore.userInfo?.nickname || userStore.userInfo?.username || '用户')
 
@@ -46,9 +108,29 @@ const goToProduct = (id: number) => {
   router.push(`/product/${id}`)
 }
 
+// 当前悬浮的一级分类，保证同一时间只展开一个浮层
+const hoveredCategoryId = ref(0)
+
 // 按分类查看商品
 const goToCategory = (id: number) => {
+  hoveredCategoryId.value = 0
   router.push({ path: '/search', query: { categoryId: String(id) } })
+}
+
+// 分类浮层点击（二级/三级）
+const goToCategoryNode = (cat: Category) => goToCategory(cat.id)
+
+// 猜你喜欢分页
+const fetchLikeProducts = async (page = likePage.value) => {
+  likePage.value = page
+  try {
+    const res = await getProductList({ page, size: likeSize })
+    likeProducts.value = res.data.list || []
+    likeTotal.value = res.data.total || 0
+  } catch {
+    likeProducts.value = []
+    likeTotal.value = 0
+  }
 }
 
 // 价格格式化（分转元，遵循通用设置）
@@ -60,6 +142,7 @@ onMounted(() => {
   reloadGeneralSettings()
   fetchCategories()
   fetchProducts()
+  fetchLikeProducts(1)
 })
 </script>
 
@@ -77,11 +160,19 @@ onMounted(() => {
                   v-for="cat in categories.slice(0, 8)"
                   :key="cat.id"
                   class="category-item"
+                  @mouseenter="hoveredCategoryId = cat.id"
+                  @mouseleave="hoveredCategoryId = 0"
                   @click="goToCategory(cat.id)"
                 >
                   <span class="cat-icon">📦</span>
                   <span class="cat-name">{{ cat.name }}</span>
                   <ArrowRight class="cat-arrow" />
+                  <CategoryFlyout
+                    v-if="hoveredCategoryId === cat.id"
+                    :category="cat"
+                    placement="right"
+                    @select="goToCategoryNode"
+                  />
                 </li>
               </ul>
             </div>
@@ -116,17 +207,14 @@ onMounted(() => {
             <div class="news-card">
               <h4 class="news-title">商城公告</h4>
               <ul class="news-list">
-                <li class="news-item">
-                  <span class="news-tag">活动</span>
-                  <span class="news-text">新人注册立享优惠</span>
-                </li>
-                <li class="news-item">
-                  <span class="news-tag">通知</span>
-                  <span class="news-text">春节不打烊公告</span>
-                </li>
-                <li class="news-item">
-                  <span class="news-tag">活动</span>
-                  <span class="news-text">满减活动进行中</span>
+                <li
+                  v-for="item in announcements"
+                  :key="item.title"
+                  class="news-item"
+                  @click="openAnnouncement(item)"
+                >
+                  <span class="news-tag">{{ item.type }}</span>
+                  <span class="news-text">{{ item.title }}</span>
                 </li>
               </ul>
             </div>
@@ -147,7 +235,7 @@ onMounted(() => {
           
           <div v-loading="loading" class="product-grid" :class="{ compact: generalSettings.compactList }">
             <div
-              v-for="product in products.slice(0, 10)"
+              v-for="product in hotProducts"
               :key="product.id"
               class="product-card"
               @click="goToProduct(product.id)"
@@ -188,7 +276,7 @@ onMounted(() => {
           
           <div v-loading="loading" class="product-grid" :class="{ compact: generalSettings.compactList }">
             <div
-              v-for="product in products.slice(10, 20)"
+              v-for="product in likeProducts"
               :key="product.id"
               class="product-card"
               @click="goToProduct(product.id)"
@@ -215,9 +303,37 @@ onMounted(() => {
               </div>
             </div>
           </div>
+          <div class="home-pagination" v-if="likeTotal > likeSize">
+            <el-pagination
+              v-model:current-page="likePage"
+              :total="likeTotal"
+              :page-size="likeSize"
+              layout="prev, pager, next"
+              @current-change="fetchLikeProducts"
+            />
+          </div>
         </section>
       </div>
     </main>
+
+    <!-- 公告详情 -->
+    <el-dialog
+      v-model="announcementVisible"
+      :title="activeAnnouncement?.title || '商城公告'"
+      width="420px"
+    >
+      <p class="announcement-content">{{ activeAnnouncement?.content }}</p>
+      <template #footer>
+        <el-button
+          v-if="activeAnnouncement?.action"
+          type="primary"
+          @click="handleAnnouncementAction"
+        >
+          {{ activeAnnouncement.actionLabel }}
+        </el-button>
+        <el-button @click="announcementVisible = false">知道了</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -376,7 +492,8 @@ onMounted(() => {
   gap: 16px;
   background: #fff;
   border-radius: 12px;
-  overflow: hidden;
+  /* 分类浮层需要溢出显示 */
+  overflow: visible;
 }
 
 .category-sidebar {
@@ -389,6 +506,7 @@ onMounted(() => {
 }
 
 .category-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -531,6 +649,12 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.news-item:hover .news-text {
+  color: #e2231a;
 }
 
 .news-tag {
@@ -546,6 +670,13 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.announcement-content {
+  margin: 0;
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 /* 商品区块 */
@@ -732,6 +863,12 @@ onMounted(() => {
 .product-sales {
   color: #999;
   font-size: 12px;
+}
+
+.home-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 /* 响应式 */

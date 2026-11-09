@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { MERCHANT_REFUND_AUDIT_ENABLED } from '@/config/features'
+import { REFUND_AUDIT_ENABLED } from '@/config/features'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,7 +14,7 @@ const router = useRouter()
         <el-menu-item index="/merchant/products">商品管理</el-menu-item>
         <el-menu-item index="/merchant/comments">评论管理</el-menu-item>
         <el-menu-item index="/merchant/orders">订单管理</el-menu-item>
-        <el-menu-item v-if="MERCHANT_REFUND_AUDIT_ENABLED" index="/merchant/refunds">退款审核</el-menu-item>
+        <el-menu-item v-if="REFUND_AUDIT_ENABLED" index="/merchant/refunds">退款审核</el-menu-item>
         <el-menu-item index="/merchant/stats">销售统计</el-menu-item>
       </el-menu>
       <div class="back-home">

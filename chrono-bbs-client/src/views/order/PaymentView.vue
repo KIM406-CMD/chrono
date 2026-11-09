@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Clock, CircleCheckFilled } from '@element-plus/icons-vue'
 import { getOrderDetail } from '@/api/order'
 import { payByCard, getPaymentQRCode, confirmQRCodePayment } from '@/api/payment'
+import { formatCardNo, formatExpiry, isValidCardNo, isValidCvv, isValidExpiry } from '@/utils/luhn'
 import type { Order } from '@/types/order'
 
 const router = useRouter()
@@ -21,6 +22,20 @@ const cardForm = ref({
   cardNo: '',
   expireDate: '',
   cvv: '',
+})
+
+// 输入时格式化，提升可读性
+watch(() => cardForm.value.cardNo, (value) => {
+  const next = formatCardNo(value)
+  if (next !== value) cardForm.value.cardNo = next
+})
+watch(() => cardForm.value.expireDate, (value) => {
+  const next = formatExpiry(value)
+  if (next !== value) cardForm.value.expireDate = next
+})
+watch(() => cardForm.value.cvv, (value) => {
+  const next = value.replace(/\D/g, '').slice(0, 4)
+  if (next !== value) cardForm.value.cvv = next
 })
 
 const priceYuan = (fen: number) => (fen / 100).toFixed(2)
@@ -40,6 +55,18 @@ const loadOrder = async () => {
 const handlePayCard = async () => {
   if (!cardForm.value.cardNo || !cardForm.value.expireDate || !cardForm.value.cvv) {
     ElMessage.warning('请填写完整的卡号信息')
+    return
+  }
+  if (!isValidCardNo(cardForm.value.cardNo)) {
+    ElMessage.warning('银行卡号格式不正确（需 16-19 位且通过 Luhn 校验）')
+    return
+  }
+  if (!isValidExpiry(cardForm.value.expireDate)) {
+    ElMessage.warning('有效期格式应为 MM/YY，且不能早于当前月份')
+    return
+  }
+  if (!isValidCvv(cardForm.value.cvv)) {
+    ElMessage.warning('CVV 安全码应为 3-4 位数字')
     return
   }
   paying.value = true
@@ -184,7 +211,7 @@ onMounted(() => {
             <el-input
               v-model="cardForm.cardNo"
               placeholder="请输入银行卡号"
-              maxlength="19"
+              maxlength="23"
             />
           </div>
           <div class="form-row">
@@ -201,7 +228,7 @@ onMounted(() => {
               <el-input
                 v-model="cardForm.cvv"
                 placeholder="CVV"
-                maxlength="3"
+                maxlength="4"
                 type="password"
               />
             </div>

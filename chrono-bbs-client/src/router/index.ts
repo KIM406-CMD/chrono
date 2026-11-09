@@ -230,6 +230,12 @@ const adminRoutes: RouteRecordRaw[] = [
         meta: { title: '订单管理' },
       },
       {
+        path: 'refunds',
+        name: 'AdminRefundAudit',
+        component: () => import('@/views/merchant/RefundManageView.vue'),
+        meta: { title: '退款审核' },
+      },
+      {
         path: 'report',
         name: 'SalesReport',
         component: () => import('@/views/admin/SalesReportView.vue'),

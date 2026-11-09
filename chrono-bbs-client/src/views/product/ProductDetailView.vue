@@ -6,9 +6,11 @@ import { ArrowLeft, ArrowRight, Plus, Minus, Shop, ShoppingCart } from '@element
 import { getProductDetail } from '@/api/product'
 import { addToCart } from '@/api/cart'
 import { getComments } from '@/api/comment'
+import { createConversation } from '@/api/chat'
 import type { Product, Sku } from '@/types/product'
 import type { CommentItem } from '@/types/comment'
 import { useUserStore } from '@/stores/user'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const route = useRoute()
 const router = useRouter()
@@ -111,6 +113,33 @@ const formatPrice = (price: number) => {
   return (price / 100).toFixed(2)
 }
 
+// 从商品详情发起与商家的会话
+const handleContactShop = async () => {
+  if (!product.value) return
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再联系客服')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  try {
+    const res = await createConversation({
+      merchantId: product.value.merchantId,
+      productId: product.value.id,
+    })
+    router.push(`/chat/${res.data.id}`)
+  } catch {
+    ElMessage.error('创建会话失败')
+  }
+}
+
+// 商品详情富文本（清洗后渲染，避免 XSS）
+const sanitizedDescription = computed(() => sanitizeHtml(product.value?.description || ''))
+
+// 顶部副标题使用去标签后的纯文本
+const plainDescription = computed(() =>
+  (product.value?.description || '').replace(/<[^>]*>/g, '').trim(),
+)
+
 // 评论相关
 const activeTab = ref<'detail' | 'specs' | 'comments'>('detail')
 const comments = ref<CommentItem[]>([])
@@ -212,7 +241,7 @@ onMounted(() => {
           <h1 class="product-title">{{ product?.name }}</h1>
           
           <!-- 商品简介 -->
-          <p class="product-subtitle">{{ product?.description }}</p>
+          <p class="product-subtitle">{{ plainDescription }}</p>
 
           <!-- 价格区 -->
           <div class="price-section">
@@ -282,6 +311,9 @@ onMounted(() => {
                 <span class="shop-desc">官方认证店铺</span>
               </div>
             </div>
+            <el-button plain type="primary" size="small" @click="handleContactShop">
+              联系客服
+            </el-button>
           </div>
 
           <!-- 商品参数 -->
@@ -312,16 +344,34 @@ onMounted(() => {
         
         <div class="desc-content">
           <template v-if="activeTab === 'detail'">
-            <div class="desc-placeholder">
-              <p>商品详情内容</p>
-              <p class="desc-hint">此处将展示商品的详细图文描述信息</p>
+            <div v-if="sanitizedDescription" class="desc-rich" v-html="sanitizedDescription"></div>
+            <div v-else class="desc-placeholder">
+              <p>暂无商品详情</p>
+              <p class="desc-hint">商家暂未填写图文描述</p>
             </div>
           </template>
 
           <template v-else-if="activeTab === 'specs'">
-            <div class="desc-placeholder">
-              <p>规格参数</p>
-              <p class="desc-hint">此处将展示商品的详细规格参数信息</p>
+            <div class="spec-params">
+              <el-descriptions :column="2" border size="small">
+                <el-descriptions-item label="品牌">{{ product?.brand || '—' }}</el-descriptions-item>
+                <el-descriptions-item label="分类">{{ product?.categoryName || '—' }}</el-descriptions-item>
+                <el-descriptions-item label="店铺">{{ product?.shopName || '—' }}</el-descriptions-item>
+                <el-descriptions-item label="销量">{{ product?.sales || 0 }} 件</el-descriptions-item>
+              </el-descriptions>
+              <el-table
+                v-if="product?.skuList?.length"
+                :data="product.skuList"
+                size="small"
+                border
+                class="spec-table"
+              >
+                <el-table-column prop="specText" label="规格" min-width="160" />
+                <el-table-column label="价格" width="120" align="right">
+                  <template #default="{ row }">¥{{ formatPrice(row.price) }}</template>
+                </el-table-column>
+                <el-table-column prop="stock" label="库存" width="100" align="center" />
+              </el-table>
             </div>
           </template>
 
@@ -907,6 +957,34 @@ onMounted(() => {
 
 .desc-placeholder p {
   margin: 8px 0;
+}
+
+.desc-rich {
+  font-size: 14px;
+  line-height: 1.9;
+  color: #444;
+  word-break: break-word;
+}
+
+.desc-rich :deep(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10px 0;
+}
+
+.desc-rich :deep(p) {
+  margin: 8px 0;
+}
+
+.spec-params {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.spec-table {
+  width: 100%;
 }
 
 .desc-hint {
