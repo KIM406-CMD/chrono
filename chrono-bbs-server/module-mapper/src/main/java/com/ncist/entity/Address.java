@@ -7,6 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 收货地址实体。
+ *
+ * <p>对应 {@code address} 表，保存用户的收货信息；下单时地址内容会快照到订单中，
+ * 后续修改地址不会影响历史订单。</p>
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
