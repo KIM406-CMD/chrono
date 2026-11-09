@@ -583,6 +583,7 @@ onUnmounted(() => {
 /* 验证码行 */
 .captcha-row {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
 
@@ -591,8 +592,8 @@ onUnmounted(() => {
 }
 
 .captcha-box {
-  width: 120px;
-  height: 48px;
+  width: 130px;
+  height: 40px;
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
@@ -612,7 +613,7 @@ onUnmounted(() => {
 .captcha-box img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .captcha-hint {

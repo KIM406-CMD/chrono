@@ -271,13 +271,15 @@ onMounted(() => {
 
 .captcha-row {
   display: flex;
+  align-items: center;
   gap: 10px;
   width: 100%;
 }
 
 .captcha-img {
   height: 40px;
-  width: 120px;
+  width: 130px;
+  object-fit: contain;
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid #dcdfe6;
