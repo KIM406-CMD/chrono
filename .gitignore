@@ -53,6 +53,8 @@ build/
 # Node / Frontend
 node_modules/
 dist/
+# vite-plugin-mock 临时打包文件
+_*.bundled_*.mjs
 dist-ssr/
 *.local
 npm-debug.log*
