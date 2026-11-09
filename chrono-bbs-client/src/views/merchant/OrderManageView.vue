@@ -21,8 +21,17 @@ const statusLabel = (s: OrderStatus) => {
     [OrderStatus.SHIPPED]: '已发货',
     [OrderStatus.COMPLETED]: '已完成',
     [OrderStatus.CANCELLED]: '已取消',
+    [OrderStatus.REFUNDING]: '退款中',
+    [OrderStatus.REFUNDED]: '已退款',
   }
   return map[s] || '未知'
+}
+
+const statusTagType = (s: OrderStatus) => {
+  if (s === OrderStatus.PAID || s === OrderStatus.REFUNDING) return 'warning'
+  if (s === OrderStatus.SHIPPED) return 'success'
+  if (s === OrderStatus.REFUNDED) return 'danger'
+  return 'info'
 }
 
 const loadOrders = async () => {
@@ -76,6 +85,8 @@ onMounted(() => {
         <el-option label="已发货" :value="OrderStatus.SHIPPED" />
         <el-option label="已完成" :value="OrderStatus.COMPLETED" />
         <el-option label="已取消" :value="OrderStatus.CANCELLED" />
+        <el-option label="退款中" :value="OrderStatus.REFUNDING" />
+        <el-option label="已退款" :value="OrderStatus.REFUNDED" />
       </el-select>
     </div>
 
@@ -93,7 +104,7 @@ onMounted(() => {
       <el-table-column label="状态" width="90" align="center">
         <template #default="{ row }">
           <el-tag
-            :type="row.status === OrderStatus.PAID ? 'warning' : row.status === OrderStatus.SHIPPED ? 'success' : 'info'"
+            :type="statusTagType(row.status)"
             size="small"
           >
             {{ statusLabel(row.status) }}
