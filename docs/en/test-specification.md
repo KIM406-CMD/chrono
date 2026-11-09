@@ -74,6 +74,12 @@ class AuthControllerE2ETest {
 }
 ```
 
+### 1.4 Frontend Tests
+
+- **Unit tests**: Vitest (`src/**/*.spec.ts`), currently covering card Luhn/expiry/CVV validation and rich-text sanitization.
+- **E2E smoke tests**: Playwright (`e2e/*.spec.ts`), starting the frontend with `dev:mock` to verify guest browsing of the home page, product detail and coupon center.
+- **Code quality**: ESLint (`eslint.config.js`); run `npm run lint` before committing.
+
 ---
 
 ## 2. Technology Stack
@@ -215,6 +221,12 @@ mvn test -pl module-start -Dtest=AuthServiceImplTest
 
 # Run a specific test method
 mvn test -pl module-start -Dtest=AuthServiceImplTest#shouldRegisterNewUser
+
+# Frontend quality checks
+cd chrono-bbs-client
+npm run lint
+npm run test
+npm run test:e2e   # first run: npx playwright install chromium
 ```
 
 ### 7.2 Report Location

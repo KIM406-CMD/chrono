@@ -39,7 +39,11 @@ mvn -pl module-start spring-boot:run # 启动应用（需先 install），默认
 cd chrono-bbs-client
 npm install
 npm run dev        # 开发服务器，端口 5173
+npm run dev:mock   # Mock 调试模式，不连后端
 npm run build      # 类型检查（vue-tsc -b）后 vite 打包
+npm run lint       # ESLint
+npm run test       # Vitest 单元测试
+npm run test:e2e   # Playwright 冒烟测试（首次需 npx playwright install chromium）
 npm run preview    # 预览构建产物
 ```
 
