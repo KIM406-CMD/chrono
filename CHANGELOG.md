@@ -104,6 +104,7 @@
 - api-doc.md：6.2 创建订单参数表新增 `userCouponId`（可选），与前端契约对齐
 
 ### Fixed
+- 商家销售统计与管理员销售报表按后端 VO 字段重写（`orderCount`/`salesTrend`/`productName`/`salesCount`/`totalAmount`、`avgOrderAmount`、`salesByCategory`/`salesByMerchant`），修复指标空白与 NaN；商家审核改用 `applicantUsername`，商家订单商品列改用 `items` 首项，api-doc 11.4/12.2 同步返回字段
 - 首页商品卡片改用商品列表接口的 `image` 字段展示首图，`maxPrice` 缺失时隐藏原价；商家/后台商品列表价格与店铺名缺失时显示占位，修复 NaN 与空白列；api-doc 11.3/12.4 同步实际返回字段
 - 商品详情页改用后端返回的 `skuList`/`shopName` 字段，修复 SKU 不显示、无法加购及店铺名空白；商品图片字段统一为字符串数组，接口文档 4.1/4.2 补充实际响应字段并与前端类型同步
 - 修复 MerchantController 遗漏 `@GetMapping("/stats")` 导致 11.6 销售统计端点不暴露的问题；同时修正 stats 参数注解顺序（@Parameter 内移到 @RequestParam 之后）

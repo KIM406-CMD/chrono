@@ -61,7 +61,7 @@ onMounted(() => { loadData() })
 
     <el-table :data="merchants" v-loading="loading" stripe class="ma-table">
       <el-table-column prop="id" label="ID" width="70" />
-      <el-table-column prop="username" label="用户名" width="120" />
+      <el-table-column prop="applicantUsername" label="用户名" width="120" />
       <el-table-column prop="shopName" label="店铺名称" min-width="150" />
       <el-table-column prop="contactPhone" label="联系电话" width="140" />
       <el-table-column label="状态" width="80" align="center">

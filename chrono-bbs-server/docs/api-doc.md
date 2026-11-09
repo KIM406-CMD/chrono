@@ -1030,6 +1030,8 @@ GET /api/merchant/orders
 | page | Integer | 否 | 页码 |
 | size | Integer | 否 | 每页大小 |
 
+**返回**：`PageResult<MerchantOrderVO>`，列表项含 `id、orderNo、userId、receiverName、receiverPhone、receiverAddress、totalAmount、status、paidAt、shippedAt、createdAt、itemCount、items[]`；`items` 含 `productId、productName、productImage、quantity、unitPrice、subtotal`。
+
 ---
 
 ### 11.5 发货
@@ -1113,6 +1115,8 @@ GET /api/admin/merchants
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | status | Integer | 否 | 0=待审核，1=已通过，2=已拒绝 |
+
+**返回**：`PageResult<AdminMerchantVO>`，列表项含 `id、userId、applicantUsername、shopName、contactPhone、status、reviewReason、reviewedAt、createdAt`。
 
 #### 审核商家
 

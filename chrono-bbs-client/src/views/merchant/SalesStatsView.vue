@@ -33,37 +33,46 @@ onMounted(() => { loadData() })
           <div class="stat-value">¥{{ priceYuan(report.totalSales) }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">总订单数</div>
-          <div class="stat-value">{{ report.totalOrders }}</div>
+          <div class="stat-label">订单数</div>
+          <div class="stat-value">{{ report.orderCount }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">用户数</div>
-          <div class="stat-value">{{ report.totalUsers }}</div>
+          <div class="stat-label">客单价</div>
+          <div class="stat-value">¥{{ priceYuan(report.orderCount ? report.totalSales / report.orderCount : 0) }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">商品数</div>
-          <div class="stat-value">{{ report.totalProducts }}</div>
+          <div class="stat-label">销售分类</div>
+          <div class="stat-value">{{ report.salesByCategory?.length || 0 }}</div>
         </div>
       </div>
 
       <div class="ss-section">
-        <h3>每日销售额</h3>
-        <el-table :data="report.dailySales" stripe size="small">
+        <h3>销售趋势</h3>
+        <el-table :data="report.salesTrend" stripe size="small">
           <el-table-column prop="date" label="日期" width="140" />
           <el-table-column label="销售额" align="right">
             <template #default="{ row }">¥{{ priceYuan(row.amount) }}</template>
           </el-table-column>
-          <el-table-column prop="orderCount" label="订单数" align="center" width="100" />
         </el-table>
       </div>
 
       <div class="ss-section">
         <h3>热销商品 Top 5</h3>
-        <el-table :data="report.topProducts" stripe size="small">
-          <el-table-column prop="name" label="商品名称" min-width="200" />
-          <el-table-column prop="sales" label="销量" width="100" align="center" />
+        <el-table :data="(report.topProducts || []).slice(0, 5)" stripe size="small">
+          <el-table-column prop="productName" label="商品名称" min-width="200" />
+          <el-table-column prop="salesCount" label="销量" width="100" align="center" />
           <el-table-column label="销售额" width="150" align="right">
-            <template #default="{ row }">¥{{ priceYuan(row.amount) }}</template>
+            <template #default="{ row }">¥{{ priceYuan(row.totalAmount) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div class="ss-section">
+        <h3>分类销售额</h3>
+        <el-table :data="report.salesByCategory" stripe size="small">
+          <el-table-column prop="categoryName" label="分类" min-width="200" />
+          <el-table-column label="销售额" width="150" align="right">
+            <template #default="{ row }">¥{{ priceYuan(row.totalAmount) }}</template>
           </el-table-column>
         </el-table>
       </div>

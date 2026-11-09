@@ -81,7 +81,11 @@ onMounted(() => {
 
     <el-table :data="orders" v-loading="loading" stripe class="om-table">
       <el-table-column prop="orderNo" label="订单编号" width="200" />
-      <el-table-column prop="firstItemName" label="商品" min-width="180" show-overflow-tooltip />
+      <el-table-column label="商品" min-width="180" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ row.items?.[0]?.productName || '—' }}{{ (row.items?.length || 0) > 1 ? ` 等 ${row.items.length} 件` : '' }}
+        </template>
+      </el-table-column>
       <el-table-column label="金额" width="120" align="right">
         <template #default="{ row }">¥{{ priceYuan(row.totalAmount) }}</template>
       </el-table-column>
