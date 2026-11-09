@@ -112,6 +112,9 @@ const handleUserCommand = (command: string) => {
     case 'orders':
         router.push('/orders')
         break
+    case 'payments':
+      router.push('/payments')
+      break
     case 'refunds':
       router.push('/refunds')
       break
@@ -218,6 +221,7 @@ const handleUserCommand = (command: string) => {
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="orders">📋 我的订单</el-dropdown-item>
+                  <el-dropdown-item command="payments">💳 支付记录</el-dropdown-item>
                   <el-dropdown-item command="refunds">🧾 退款/售后</el-dropdown-item>
                     <el-dropdown-item v-if="CHAT_ENABLED" command="chat">💬 我的消息</el-dropdown-item>
                     <el-dropdown-item command="address">📍 收货地址</el-dropdown-item>
@@ -274,6 +278,7 @@ const handleUserCommand = (command: string) => {
             :class="{ active: activeCategoryId === cat.id }"
             @click="onCategoryClick(cat)"
           >
+            <img v-if="cat.icon" :src="cat.icon" class="nav-cat-icon" alt="" />
             {{ cat.name }}
           </span>
           <CategoryFlyout
@@ -490,6 +495,15 @@ const handleUserCommand = (command: string) => {
 .category-wrap:hover > .category-item {
   color: #e2231a;
   border-bottom-color: #e2231a;
+}
+
+.nav-cat-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  border-radius: 2px;
+  object-fit: cover;
+  vertical-align: -2px;
 }
 
 /* ========== 内容区域 ========== */

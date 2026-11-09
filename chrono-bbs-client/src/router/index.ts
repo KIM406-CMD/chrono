@@ -87,6 +87,12 @@ const userRoutes: RouteRecordRaw[] = [
         meta: { title: '我的订单', roles: ['USER', 'MERCHANT', 'ADMIN'] },
       },
       {
+        path: 'payments',
+        name: 'PaymentRecords',
+        component: () => import('@/views/order/PaymentRecordView.vue'),
+        meta: { title: '支付记录', roles: ['USER', 'MERCHANT', 'ADMIN'] },
+      },
+      {
         path: 'order/:id',
         name: 'OrderDetail',
         component: () => import('@/views/order/OrderDetailView.vue'),

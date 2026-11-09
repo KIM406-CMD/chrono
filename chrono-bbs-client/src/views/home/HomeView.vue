@@ -164,7 +164,8 @@ onMounted(() => {
                   @mouseleave="hoveredCategoryId = 0"
                   @click="goToCategory(cat.id)"
                 >
-                  <span class="cat-icon">📦</span>
+                  <img v-if="cat.icon" :src="cat.icon" class="cat-icon-img" alt="" />
+                  <span v-else class="cat-icon">📦</span>
                   <span class="cat-name">{{ cat.name }}</span>
                   <ArrowRight class="cat-arrow" />
                   <CategoryFlyout
@@ -525,6 +526,14 @@ onMounted(() => {
 
 .cat-icon {
   font-size: 16px;
+}
+
+.cat-icon-img {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .cat-name {
