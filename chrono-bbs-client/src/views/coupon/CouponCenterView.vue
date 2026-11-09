@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getSeckillList, getMyCoupons, claimSeckillCoupon } from '@/api/seckill'
+import { getSeckillList, getSeckillDetail, getMyCoupons, claimSeckillCoupon } from '@/api/seckill'
 import { CouponType, CouponStatus, UserCouponStatus, type SeckillCoupon, type UserCoupon } from '@/types/coupon'
 import { useUserStore } from '@/stores/user'
 
@@ -54,6 +54,24 @@ const loadMine = async () => {
   }
 }
 
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detail = ref<SeckillCoupon | null>(null)
+
+const openDetail = async (coupon: SeckillCoupon) => {
+  detailVisible.value = true
+  detailLoading.value = true
+  detail.value = coupon
+  try {
+    const res = await getSeckillDetail(coupon.id)
+    detail.value = res.data
+  } catch {
+    // 接口失败时使用列表数据兜底
+  } finally {
+    detailLoading.value = false
+  }
+}
+
 const handleClaim = async (coupon: SeckillCoupon) => {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录后再领取优惠券')
@@ -99,6 +117,7 @@ onMounted(() => {
               >
                 {{ coupon.status === CouponStatus.ACTIVE ? '立即领取' : coupon.status === CouponStatus.NOT_STARTED ? '未开始' : '已结束' }}
               </el-button>
+              <el-button text size="small" @click="openDetail(coupon)">详情</el-button>
             </div>
           </div>
           <div v-if="coupons.length === 0 && !centerLoading" class="cc-empty">暂无优惠券</div>
@@ -123,6 +142,35 @@ onMounted(() => {
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <el-dialog v-model="detailVisible" title="优惠券详情" width="480px">
+      <div v-loading="detailLoading">
+        <el-descriptions v-if="detail" :column="1" border>
+          <el-descriptions-item label="券名称">{{ detail.name }}</el-descriptions-item>
+          <el-descriptions-item label="优惠内容">
+            {{ discountText(detail.discountType, detail.discountValue, detail.minAmount) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="使用门槛">
+            {{ detail.minAmount > 0 ? `满 ¥${(detail.minAmount / 100).toFixed(2)} 可用` : '无门槛' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发放数量">{{ detail.remainCount }} / {{ detail.totalCount }}</el-descriptions-item>
+          <el-descriptions-item label="每人限领">{{ detail.perUserLimit }} 张</el-descriptions-item>
+          <el-descriptions-item label="活动时间">{{ detail.startTime }} ~ {{ detail.endTime }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag
+              :type="detail.status === CouponStatus.ACTIVE ? 'success' : detail.status === CouponStatus.NOT_STARTED ? 'warning' : 'info'"
+              size="small"
+            >
+              {{ detail.status === CouponStatus.ACTIVE ? '进行中' : detail.status === CouponStatus.NOT_STARTED ? '未开始' : '已结束' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="说明">{{ detail.description || '暂无描述' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
