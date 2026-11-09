@@ -91,6 +91,9 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- 后端 module-service 模块：为 DTO、VO、Service 接口/实现、定时任务与配置补充简体中文 Javadoc
+- 后端 module-api 模块：为 Controller 与全局异常处理器补充简体中文 Javadoc
+- 后端 module-mapper 模块：为实体类、Mapper 接口与字段补充简体中文 Javadoc
 - 文档：英文 HMI 设计文档原型图对齐与细节完善
 - 后端 module-start 模块：为启动类、配置类与 JWT 拦截器补充简体中文 Javadoc
 - 后端 common 模块：为 public 类、接口、枚举与 public 方法补充简体中文 Javadoc
@@ -133,6 +136,7 @@
 - Docker：移除 `docker/sql/` 重复副本，统一复用仓库根目录 `initial/` 下的初始化脚本
 
 ### Fixed
+- 修正 `User` 实体 `status` 注释为 `1-正常 / 0-禁用`，与后端实际语义和数据库脚本一致
 - 商家评论管理商品下拉支持加载全部分页商品，避免商品超过 100 个时下拉缺项
 - 商品详情评论对游客开放查看：游客可浏览评价，登录后才可发表评价
 - 首页左侧分类支持点击跳转分类搜索；商城头部购物车角标显示实际商品数量

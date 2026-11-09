@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 评论出参（api-doc 9.1）
+ * 评论出参（api-doc 9.1）。
+ *
+ * <p>商品详情页展示评价列表时使用；一级评论可携带追评与商家回复。</p>
  */
 @Data
 @Builder
@@ -21,6 +23,7 @@ public class CommentVO {
     private String avatar;
     private Long orderItemId;
     private String content;
+    /** 星级评分，取值 1-5；追评、商家回复等非一级评论可能为空。 */
     private Integer star;
     private LocalDateTime createdAt;
 

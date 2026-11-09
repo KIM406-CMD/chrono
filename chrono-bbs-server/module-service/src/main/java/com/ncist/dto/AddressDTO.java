@@ -5,7 +5,9 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 /**
- * 新增/修改收货地址入参（api-doc 8.3/8.4）
+ * 新增/修改收货地址入参（api-doc 8.3/8.4）。
+ *
+ * <p>商城端用户维护自己的收货地址时使用；新增与修改共用，修改时地址 ID 由路径参数传入。</p>
  */
 @Data
 public class AddressDTO {
@@ -29,6 +31,6 @@ public class AddressDTO {
     @NotBlank(message = "详细地址不能为空")
     private String detail;
 
-    /** 1=默认地址，不传或 0=非默认 */
+    /** 是否为默认地址：1=默认，0=非默认；不传或为 0 时按非默认处理。 */
     private Integer isDefault;
 }

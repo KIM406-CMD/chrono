@@ -30,21 +30,34 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 评论服务实现
+ * 评论服务实现。
+ *
+ * <p>负责商品评价的查询、发表、追评与商家回复。列表查询先分页获取一级评论，
+ * 再批量查询其子评论并按父评论分组，避免 N+1 查询；
+ * 所有写操作使用 {@code @Transactional} 保证单据与评论记录的一致性。</p>
+ *
+ * <p>业务约束：仅已收货订单的明细可评价，且每个明细只能评价一次；
+ * 追评仅限原评论者且每条一级评论仅一次；商家回复需通过资质与商品归属校验。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class CommentServiceImpl implements CommentService {
 
-    /** 已收货/已完成 */
+    /** 订单状态：已收货/已完成，仅该状态允许评价。 */
     private static final int ORDER_STATUS_RECEIVED = 4;
 
+    /** 评论数据访问组件。 */
     private final CommentMapper commentMapper;
+    /** 订单数据访问组件，用于校验订单状态与属主。 */
     private final OrderMapper orderMapper;
+    /** 订单明细数据访问组件，用于校验评价来源。 */
     private final OrderItemMapper orderItemMapper;
+    /** 商品数据访问组件，用于商家回复时校验商品归属。 */
     private final ProductMapper productMapper;
+    /** 商家数据访问组件，用于校验商家资质。 */
     private final MerchantMapper merchantMapper;
 
+    /** {@inheritDoc} */
     @Override
     public PageResult<CommentVO> listByProduct(Long productId, Integer star, Integer page, Integer size) {
         int p = page == null || page < 1 ? 1 : page;
@@ -64,6 +77,11 @@ public class CommentServiceImpl implements CommentService {
         return PageResult.of(total, p, s, list);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>依次校验订单明细属主、商品匹配、订单已收货与评价幂等，全部通过后写入评论。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(Long userId, CommentCreateDTO dto) {
@@ -94,6 +112,11 @@ public class CommentServiceImpl implements CommentService {
         return comment.getId();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>追评记录以原评论 ID 作为 parent_id，并以 is_append=1 标识。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long append(Long userId, CommentAppendDTO dto) {
@@ -123,6 +146,11 @@ public class CommentServiceImpl implements CommentService {
         return append.getId();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>回复记录以被回复的一级评论 ID 作为 parent_id，并以 is_append=0 标识。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long reply(Long userId, CommentReplyDTO dto) {
@@ -161,6 +189,14 @@ public class CommentServiceImpl implements CommentService {
 
     // ================ 私有校验与组装 ================
 
+    /**
+     * 查询订单明细并校验其所属订单属于当前用户。
+     *
+     * @param orderItemId 订单明细 ID
+     * @param userId      当前用户 ID
+     * @return 订单明细实体
+     * @throws BusinessException 明细不存在或所属订单不属于当前用户时抛出
+     */
     private OrderItem requireOwnedOrderItem(Long orderItemId, Long userId) {
         OrderItem orderItem = orderItemMapper.selectById(orderItemId);
         if (orderItem == null) {
@@ -173,6 +209,14 @@ public class CommentServiceImpl implements CommentService {
         return orderItem;
     }
 
+    /**
+     * 查询评论并校验作者为当前用户。
+     *
+     * @param commentId 评论 ID
+     * @param userId    当前用户 ID
+     * @return 评论实体
+     * @throws BusinessException 评论不存在或不属于当前用户时抛出
+     */
     private Comment requireOwnedComment(Long commentId, Long userId) {
         Comment comment = commentMapper.selectById(commentId);
         if (comment == null) {
@@ -184,6 +228,15 @@ public class CommentServiceImpl implements CommentService {
         return comment;
     }
 
+    /**
+     * 将一级评论及其子评论组装为视图对象。
+     *
+     * <p>子评论中 is_append=1 的第一条作为追评，其余作为商家回复列表。</p>
+     *
+     * @param comment  一级评论明细
+     * @param children 该评论的子评论（追评与回复）
+     * @return 评论视图对象
+     */
     private CommentVO toVO(CommentDetail comment, List<CommentDetail> children) {
         CommentVO.CommentVOBuilder builder = CommentVO.builder()
                 .id(comment.getId())
@@ -205,6 +258,12 @@ public class CommentServiceImpl implements CommentService {
         return builder.build();
     }
 
+    /**
+     * 将子评论（追评或回复）转换为视图对象。
+     *
+     * @param child 子评论明细
+     * @return 子评论视图对象
+     */
     private CommentVO toChildVO(CommentDetail child) {
         return CommentVO.builder()
                 .id(child.getId())

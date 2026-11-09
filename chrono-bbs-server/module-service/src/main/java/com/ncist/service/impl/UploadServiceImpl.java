@@ -22,23 +22,43 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 文件上传服务（阿里云 OSS）
+ * 文件上传服务实现（阿里云 OSS）。
+ *
+ * <p>上传前校验文件非空、大小与扩展名，并对图片内容做真实性校验；
+ * 宽度超过 800px 的 jpg/jpeg/png 会等比压缩后上传，webp 不缩放。
+ * OSS 客户端采用双重检查锁懒加载，应用关闭时通过 {@code @PreDestroy} 释放连接。</p>
  */
 @Slf4j
 @Service
 public class UploadServiceImpl implements UploadService {
 
+    /** 允许上传的图片扩展名（小写）。 */
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    /** 单文件大小上限：2MB。 */
     private static final long MAX_SIZE = 2 * 1024 * 1024; // 2MB
+    /** 图片压缩目标宽度（像素），小于该宽度不缩放。 */
     private static final int TARGET_WIDTH = 800;
 
+    /** 阿里云 OSS 配置。 */
     private final OssProperties ossProperties;
+    /** OSS 客户端，首次上传时懒加载；使用 volatile 保证双重检查锁的可见性。 */
     private volatile OSS ossClient;
 
+    /**
+     * 构造上传服务。
+     *
+     * @param ossProperties 阿里云 OSS 配置
+     */
     public UploadServiceImpl(OssProperties ossProperties) {
         this.ossProperties = ossProperties;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>校验通过后按扩展名选择压缩策略，生成日期目录下的随机对象名并上传，
+     * 最终返回拼接后的访问 URL。</p>
+     */
     @Override
     public String uploadImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -105,11 +125,23 @@ public class UploadServiceImpl implements UploadService {
                 && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P';
     }
 
+    /**
+     * 生成 OSS 对象名：{@code product/yyyyMMdd/{uuid}.{ext}}。
+     *
+     * @param extension 文件扩展名
+     * @return OSS 对象 key
+     */
     private String buildObjectKey(String extension) {
         String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         return "product/" + datePath + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
     }
 
+    /**
+     * 根据 endpoint 与对象 key 拼接访问 URL，bucket 作为子域名。
+     *
+     * @param objectKey OSS 对象 key
+     * @return 图片访问 URL
+     */
     private String buildUrl(String objectKey) {
         // https://{bucket}.{endpoint-host}/{key}
         String endpoint = ossProperties.getEndpoint()
@@ -133,6 +165,9 @@ public class UploadServiceImpl implements UploadService {
         return ossClient;
     }
 
+    /**
+     * 应用关闭时释放 OSS 客户端连接。
+     */
     @PreDestroy
     public void destroy() {
         if (ossClient != null) {

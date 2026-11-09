@@ -21,19 +21,33 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 /**
- * 支付服务实现（模拟支付）
+ * 支付服务实现（模拟支付）。
+ *
+ * <p>支付记录写入与订单状态更新在同一事务中完成；订单状态通过
+ * {@code WHERE status = 待支付} 的条件更新，避免并发下重复支付。
+ * 银行卡号仅保留后 4 位存储，二维码内容包含订单号与金额。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
+    /** 支付方式：银行卡。 */
     private static final int PAY_METHOD_CARD = 1;
+    /** 支付方式：二维码。 */
     private static final int PAY_METHOD_QRCODE = 2;
 
+    /** 订单数据访问组件。 */
     private final OrderMapper orderMapper;
+    /** 支付记录数据访问组件。 */
     private final PaymentMapper paymentMapper;
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>先校验订单可支付与卡号 Luhn 合法性，再写入脱敏支付记录并条件更新订单状态；
+     * 状态更新影响 0 行时抛异常回滚。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public PayResultVO payByCard(Long userId, CardPayDTO dto) {
@@ -57,6 +71,7 @@ public class PaymentServiceImpl implements PaymentService {
         return PayResultVO.builder().status(2).paidAt(paidAt).build();
     }
 
+    /** {@inheritDoc} */
     @Override
     public PaymentQrVO getQrcode(Long userId, Long orderId) {
         Order order = requirePayableOrder(orderId, userId);
@@ -70,6 +85,11 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>写入二维码支付记录后条件更新订单状态，更新 0 行时抛异常回滚。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public PayResultVO confirmQrcode(Long userId, Long orderId) {
@@ -89,6 +109,14 @@ public class PaymentServiceImpl implements PaymentService {
 
     // ================ 私有校验 ================
 
+    /**
+     * 查询订单并校验属主与可支付状态（待支付）。
+     *
+     * @param orderId 订单 ID
+     * @param userId  当前用户 ID
+     * @return 订单实体
+     * @throws BusinessException 订单不存在、不属于当前用户或状态不是待支付时抛出
+     */
     private Order requirePayableOrder(Long orderId, Long userId) {
         Order order = orderMapper.selectById(orderId);
         if (order == null) {
@@ -103,7 +131,12 @@ public class PaymentServiceImpl implements PaymentService {
         return order;
     }
 
-    // Luhn 校验（模拟支付通道的卡号合法性）
+    /**
+     * 使用 Luhn 算法校验银行卡号合法性（模拟支付通道校验）。
+     *
+     * @param cardNo 银行卡号
+     * @return 校验位合法时返回 true
+     */
     private boolean luhnValid(String cardNo) {
         int sum = 0;
         boolean doubleDigit = false;

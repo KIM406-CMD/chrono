@@ -45,27 +45,48 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 订单服务实现
+ * 订单服务实现。
+ *
+ * <p>下单流程以 Redis 防重复提交 Token 保证幂等：Token 绑定用户、5 分钟有效，
+ * 校验后通过删除操作的返回值确保只能消费一次。库存扣减使用
+ * {@code UPDATE ... WHERE stock >= quantity} 原子完成，避免超卖。</p>
+ *
+ * <p>创建、取消与删除订单涉及多表写入，使用 {@code @Transactional} 保证一致性；
+ * 取消订单会回补库存并回退优惠券。订单号为“时间戳 + 6 位随机数”，
+ * 冲突时最多重试 5 次。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
+    /** 防重复提交 Token 的 Redis key 前缀，值为绑定的用户 ID。 */
     private static final String SUBMIT_TOKEN_PREFIX = "order:submit-token:";
+    /** 订单号中的时间部分格式：yyyyMMddHHmmss。 */
     private static final DateTimeFormatter ORDER_NO_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    /** 订单号随机后缀生成器（加密安全随机数）。 */
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    /** 订单数据访问组件。 */
     private final OrderMapper orderMapper;
+    /** 订单明细数据访问组件。 */
     private final OrderItemMapper orderItemMapper;
+    /** 购物车数据访问组件。 */
     private final CartItemMapper cartItemMapper;
+    /** 收货地址数据访问组件。 */
     private final AddressMapper addressMapper;
+    /** SKU 数据访问组件，用于原子扣减与回补库存。 */
     private final ProductSkuMapper productSkuMapper;
+    /** 用户优惠券数据访问组件，用于核销与回退。 */
     private final UserCouponMapper userCouponMapper;
+    /** 秒杀券服务，用于复用优惠计算逻辑。 */
     private final SeckillService seckillService;
+    /** Redis 字符串操作模板，用于防重复提交 Token。 */
     private final StringRedisTemplate stringRedisTemplate;
+    /** JSON 序列化组件，用于写入与解析地址快照。 */
     private final ObjectMapper objectMapper;
 
+    /** {@inheritDoc} */
     @Override
     public SubmitTokenVO getSubmitToken(Long userId) {
         String token = UUID.randomUUID().toString().replace("-", "");
@@ -76,6 +97,13 @@ public class OrderServiceImpl implements OrderService {
         return SubmitTokenVO.builder().token(token).build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>流程：消费 Token → 校验地址属主 → 校验购物车项与库存 → 原子扣减库存 →
+     * 计算优惠与订单金额 → 写入地址快照/订单/明细 → 清理购物车 → 核销优惠券。
+     * 任一步骤失败均回滚事务。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CreateOrderVO createOrder(Long userId, CreateOrderDTO dto) {
@@ -162,6 +190,11 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>批量查询订单项后按订单分组，组装订单项数量与首项名称/图片，避免 N+1 查询。</p>
+     */
     @Override
     public PageResult<OrderListItemVO> listOrders(Long userId, Integer status, Integer page, Integer size) {
         int p = page == null || page < 1 ? 1 : page;
@@ -182,6 +215,7 @@ public class OrderServiceImpl implements OrderService {
         return PageResult.of(total, p, s, list);
     }
 
+    /** {@inheritDoc} */
     @Override
     public OrderDetailVO getOrderDetail(Long userId, Long id) {
         Order order = requireOwnedOrder(id, userId);
@@ -207,6 +241,12 @@ public class OrderServiceImpl implements OrderService {
         return builder.build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>先以状态条件更新取消订单，成功后逐项回补库存并把优惠券恢复为未使用；
+     * 整个过程在事务中完成。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelOrder(Long userId, Long id, String reason) {
@@ -223,6 +263,7 @@ public class OrderServiceImpl implements OrderService {
         userCouponMapper.revokeByOrderId(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void receiveOrder(Long userId, Long id) {
         requireOwnedOrder(id, userId);
@@ -231,6 +272,11 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>先按状态条件删除订单，成功后删除对应订单明细，事务保证两者一致。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteOrder(Long userId, Long id) {
@@ -243,6 +289,14 @@ public class OrderServiceImpl implements OrderService {
 
     // ================ 私有校验与组装 ================
 
+    /**
+     * 查询订单并校验属主。
+     *
+     * @param id     订单 ID
+     * @param userId 当前用户 ID
+     * @return 订单实体
+     * @throws BusinessException 订单不存在或不属于当前用户时抛出
+     */
     private Order requireOwnedOrder(Long id, Long userId) {
         Order order = orderMapper.selectById(id);
         if (order == null) {
@@ -254,6 +308,13 @@ public class OrderServiceImpl implements OrderService {
         return order;
     }
 
+    /**
+     * 将订单及其明细组装为列表项视图对象。
+     *
+     * @param order 订单实体
+     * @param items 该订单的明细
+     * @return 订单列表项，包含明细数量与首项名称/图片
+     */
     private OrderListItemVO toListItem(Order order, List<OrderItemDetail> items) {
         OrderItemDetail first = items.stream()
                 .min(java.util.Comparator.comparing(OrderItemDetail::getId)).orElse(null);
@@ -269,6 +330,12 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    /**
+     * 将订单明细联查结果转换为订单项视图对象。
+     *
+     * @param detail 订单明细联查结果
+     * @return 订单项视图对象
+     */
     private OrderItemVO toItemVO(OrderItemDetail detail) {
         return OrderItemVO.builder()
                 .id(detail.getId())
@@ -284,6 +351,12 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    /**
+     * 将收货地址序列化为订单地址快照。
+     *
+     * @param address 收货地址
+     * @return 地址快照 JSON；序列化失败时返回 null 并记录告警
+     */
     private String writeAddressSnapshot(Address address) {
         try {
             return objectMapper.writeValueAsString(address);
@@ -293,6 +366,12 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    /**
+     * 解析商品图片 JSON 数组并返回首张图片。
+     *
+     * @param images 商品图片 JSON 数组
+     * @return 首张图片 URL；数据为空或解析失败时返回 null
+     */
     private String firstImage(String images) {
         if (images == null || images.isBlank()) {
             return null;
@@ -307,7 +386,12 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    // 订单号：yyyyMMddHHmmss + 6 位随机数，冲突时重试
+    /**
+     * 生成订单号：yyyyMMddHHmmss + 6 位随机数，数据库冲突时最多重试 5 次。
+     *
+     * @return 未被占用的订单号
+     * @throws BusinessException 连续 5 次生成的订单号均已存在时抛出
+     */
     private String generateOrderNo() {
         for (int i = 0; i < 5; i++) {
             String orderNo = LocalDateTime.now().format(ORDER_NO_FORMAT)

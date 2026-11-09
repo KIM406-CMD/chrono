@@ -32,18 +32,28 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 管理后台服务实现（所有方法要求管理员角色）
+ * 管理后台服务实现（所有方法要求管理员角色）。
+ *
+ * <p>每个 public 方法入口均通过 {@code UserContext} 校验管理员角色。
+ * 商家审核在事务中完成“更新审核状态 + 升级用户角色”；
+ * 其余写操作多为单表单语句。分页参数在内部统一兜底，页码至少为 1、每页默认 10 条。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class AdminServiceImpl implements AdminService {
 
+    /** 用户数据访问组件。 */
     private final UserMapper userMapper;
+    /** 商家数据访问组件。 */
     private final MerchantMapper merchantMapper;
+    /** 分类数据访问组件。 */
     private final CategoryMapper categoryMapper;
+    /** 商品数据访问组件。 */
     private final ProductMapper productMapper;
+    /** 订单数据访问组件，用于订单列表与销售报表。 */
     private final OrderMapper orderMapper;
 
+    /** {@inheritDoc} */
     @Override
     public PageResult<AdminUserVO> listUsers(String keyword, Integer role, Integer status, Integer page, Integer size) {
         requireAdmin();
@@ -63,6 +73,11 @@ public class AdminServiceImpl implements AdminService {
         return PageResult.of(total, p, s, list);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>管理员账号不允许被禁用，避免后台失去管理入口。</p>
+     */
     @Override
     public void updateUserStatus(Long id, Integer status) {
         requireAdmin();
@@ -79,6 +94,7 @@ public class AdminServiceImpl implements AdminService {
         userMapper.updateStatus(id, status);
     }
 
+    /** {@inheritDoc} */
     @Override
     public PageResult<AdminMerchantVO> listMerchants(Integer status, Integer page, Integer size) {
         requireAdmin();
@@ -104,6 +120,12 @@ public class AdminServiceImpl implements AdminService {
         return PageResult.of(total, p, s, list);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>使用“status=0”条件更新保证同一申请不会被重复审核；
+     * 审核通过后同步升级申请人角色，两个写操作在同一事务内完成。</p>
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reviewMerchant(Long id, MerchantReviewDTO dto) {
@@ -123,6 +145,7 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Long createCategory(CategoryUpsertDTO dto) {
         requireAdmin();
@@ -142,6 +165,7 @@ public class AdminServiceImpl implements AdminService {
         return category.getId();
     }
 
+    /** {@inheritDoc} */
     @Override
     public void updateCategory(Long id, CategoryUpsertDTO dto) {
         requireAdmin();
@@ -158,6 +182,7 @@ public class AdminServiceImpl implements AdminService {
         categoryMapper.update(category);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void deleteCategory(Long id) {
         requireAdmin();
@@ -173,6 +198,7 @@ public class AdminServiceImpl implements AdminService {
         categoryMapper.deleteById(id);
     }
 
+    /** {@inheritDoc} */
     @Override
     public PageResult<Map<String, Object>> listProducts(String keyword, Long categoryId, Long merchantId,
                                                          Integer status, Integer page, Integer size) {
@@ -190,6 +216,7 @@ public class AdminServiceImpl implements AdminService {
         return PageResult.of(total, p, s, list);
     }
 
+    /** {@inheritDoc} */
     @Override
     public PageResult<Map<String, Object>> listOrders(String orderNo, Integer status, Integer page, Integer size) {
         requireAdmin();
@@ -203,6 +230,12 @@ public class AdminServiceImpl implements AdminService {
         return PageResult.of(total, p, s, list);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>销售趋势按 groupBy 分组统计；订单状态分布固定包含待支付、已支付、已发货、
+     * 已完成与已取消五种状态，缺失状态补 0。</p>
+     */
     @Override
     public AdminReportVO getReport(String startDate, String endDate, String groupBy) {
         requireAdmin();
@@ -277,6 +310,11 @@ public class AdminServiceImpl implements AdminService {
 
     // ================ 私有辅助 ================
 
+    /**
+     * 校验当前登录用户为管理员。
+     *
+     * @throws BusinessException 当前用户角色不是管理员时抛出
+     */
     private void requireAdmin() {
         Integer role = UserContext.getRole();
         if (!UserRoleEnum.ADMIN.getCode().equals(role)) {
@@ -284,7 +322,15 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
-    /** 校验父分类存在且层级连续；一级分类强制 parentId=0 */
+    /**
+     * 解析并校验父分类：一级分类强制 parentId=0；
+     * 非一级分类要求父分类存在且层级连续（父层级 = 当前层级 - 1）。
+     *
+     * @param parentId 请求中的父分类 ID
+     * @param level    当前分类层级（1~3）
+     * @return 实际使用的父分类 ID
+     * @throws BusinessException 父分类缺失、不存在或层级不连续时抛出
+     */
     private Long resolveParent(Long parentId, Integer level) {
         if (level == 1) {
             return 0L;
@@ -299,30 +345,66 @@ public class AdminServiceImpl implements AdminService {
         return parentId;
     }
 
+    /**
+     * 归一化页码：为空或小于 1 时按第 1 页处理。
+     *
+     * @param page 原始页码
+     * @return 合法页码
+     */
     private int normalizePage(Integer page) {
         return page == null || page < 1 ? 1 : page;
     }
 
+    /**
+     * 归一化每页条数：为空或小于 1 时按 10 条处理。
+     *
+     * @param size 原始每页条数
+     * @return 合法每页条数
+     */
     private int normalizeSize(Integer size) {
         return size == null || size < 1 ? 10 : size;
     }
 
+    /**
+     * 将 null 数值转换为 0，避免报表计算空指针。
+     *
+     * @param value 原始数值
+     * @return 非 null 数值
+     */
     private Long defaultZero(Long value) {
         return value == null ? 0L : value;
     }
 
+    /**
+     * 将 Map 查询结果中的数值转换为 Long。
+     *
+     * @param value 原始值，可为 Number 或可解析字符串
+     * @return 转换结果；value 为 null 时返回 0
+     */
     private Long toLong(Object value) {
         if (value == null) return 0L;
         if (value instanceof Number num) return num.longValue();
         return Long.parseLong(String.valueOf(value));
     }
 
+    /**
+     * 将 Map 查询结果中的数值转换为 Integer。
+     *
+     * @param value 原始值，可为 Number 或可解析字符串
+     * @return 转换结果；value 为 null 时返回 0
+     */
     private Integer toInt(Object value) {
         if (value == null) return 0;
         if (value instanceof Number num) return num.intValue();
         return Integer.parseInt(String.valueOf(value));
     }
 
+    /**
+     * 将 Map 查询结果中的时间值转换为 {@link java.time.LocalDateTime}。
+     *
+     * @param value 原始时间值，可能为 LocalDateTime、Timestamp 或可解析字符串
+     * @return 转换后的时间；value 为空或解析失败时返回 null
+     */
     private java.time.LocalDateTime toLocalDateTime(Object value) {
         if (value == null) return null;
         if (value instanceof java.time.LocalDateTime ldt) return ldt;
@@ -334,6 +416,12 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
+    /**
+     * 将商品实体转换为管理后台展示用的有序 Map。
+     *
+     * @param p 商品实体
+     * @return 按固定字段顺序组织的商品信息
+     */
     private Map<String, Object> productToMap(Product p) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", p.getId());

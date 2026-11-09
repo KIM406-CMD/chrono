@@ -8,6 +8,11 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 用户信息响应。
+ *
+ * <p>登录后返回、个人信息查询与修改时使用；不包含密码等敏感字段。</p>
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,12 +35,15 @@ public class UserInfoVO {
     @Schema(description = "邮箱", example = "test@example.com")
     private String email;
 
+    /** 头像 URL。 */
     @Schema(description = "头像 URL")
     private String avatar;
 
+    /** 角色：1=普通用户，2=商家，3=管理员。 */
     @Schema(description = "角色：1=普通用户，2=商家，3=管理员", example = "1")
     private Integer role;
 
+    /** 账号状态：0=禁用，1=正常。 */
     @Schema(description = "状态：0=禁用，1=正常", example = "1")
     private Integer status;
 
