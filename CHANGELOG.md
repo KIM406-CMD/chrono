@@ -91,6 +91,7 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- 开发规范：后端 public 类、接口与 public 方法统一要求编写简体中文 Javadoc，并在 AGENTS.md / CLAUDE.md 中补充 `@param`、`@return`、`@throws` 与字段注释要求
 - 管理后台用户、订单、商品列表新增条件筛选：关键词、角色、状态、订单号，支持查询与重置
 - 管理后台分类编辑支持修改排序值；分类树接口不返回排序值时按父级子分类补齐
 - 聊天、商家退款审核接口未就绪时显示“功能开发中”并隐藏入口，避免请求不存在的接口与展示错误数据

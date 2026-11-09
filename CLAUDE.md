@@ -86,6 +86,7 @@ MyBatis 配置在 `application.yaml`：`map-underscore-to-camel-case: true`，Ma
 - **提交前更新 `CHANGELOG.md`**：在 `## [Unreleased]` 下按 `Added` / `Changed` / `Fixed` / `Removed` 追加对应条目。
 - **分支**：日常在 `dev` 或 `feature/<模块>-<描述>` 上开发，禁止直接向 `main` 提交。
 - **后端风格**：Lombok、Service 接口与实现分离、统一 `Result<T>` 返回。
+- **后端 Javadoc**：所有 public 类、接口、枚举与 public 方法必须编写简体中文 Javadoc，说明业务语义、`@param`、`@return`、`@throws`；非直观字段需有字段注释。
 - **前端风格**：Composition API、`<script setup lang="ts">`、接口统一经 `src/api/` 封装。
 
 ## 关键文档
