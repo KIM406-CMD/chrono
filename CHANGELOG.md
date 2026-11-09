@@ -91,6 +91,7 @@
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
 
 ### Changed
+- 后端 module-api 模块：为 Controller 与全局异常处理器补充简体中文 Javadoc
 - 后端 module-mapper 模块：为实体类、Mapper 接口与字段补充简体中文 Javadoc
 - 文档：英文 HMI 设计文档原型图对齐与细节完善
 - 后端 module-start 模块：为启动类、配置类与 JWT 拦截器补充简体中文 Javadoc
