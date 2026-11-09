@@ -898,6 +898,7 @@ server {
 | `/admin/categories` | 分类管理 | 管理员 | 三级分类增删改 |
 | `/admin/products` | 商品管理 | 管理员 | 全局商品管理 |
 | `/admin/orders` | 订单管理 | 管理员 | 全局订单管理 |
+| `/admin/refunds` | 退款审核 | 管理员 | 审核全平台退款/退货 |
 | `/admin/report` | 销售报表 | 管理员 | 全局销售统计 |
 | `/admin/coupons` | 秒杀券管理 | 管理员 | 券的增删改查 |
 

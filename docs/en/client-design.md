@@ -896,6 +896,7 @@ server {
 | `/admin/categories` | Category Management | Administrator | Create, read, update, and delete three-level categories |
 | `/admin/products` | Product Management | Administrator | Global product management |
 | `/admin/orders` | Order Management | Administrator | Global order management |
+| `/admin/refunds` | Refund Review | Administrator | Review refunds/returns across all merchants |
 | `/admin/report` | Sales Reports | Administrator | Global sales statistics |
 | `/admin/coupons` | Flash-sale Coupon Management | Administrator | Create, read, update, and delete coupons |
 
