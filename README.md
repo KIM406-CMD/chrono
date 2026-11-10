@@ -220,6 +220,8 @@ npm run build
 
 > 若 Nginx 运行在容器中，请把 `proxy_pass` 中的 `127.0.0.1` 改为后端服务名或 `host.docker.internal`。
 
+生产环境启动后端前必须配置：`DB_PASSWORD`（数据库密码）、`JWT_SECRET`（至少 32 字节随机字符串）以及 OSS 密钥（如启用 OSS）。仓库中的 `application-dev.yml`、`application-test.yml` 和 `docker-compose.yml` 中的数据库口令仅用于本地开发/测试，请勿用于生产。
+
 ---
 
 ## 📖 文档索引

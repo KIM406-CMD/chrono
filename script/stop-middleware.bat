@@ -1,6 +1,5 @@
 @echo off
 setlocal EnableExtensions
-chcp 65001 >nul
 
 rem Stop Docker middleware.
 rem Usage: script\stop-middleware.bat [--volumes]
@@ -25,28 +24,28 @@ if /I "%~1"=="-v" (
 )
 if /I "%~1"=="-h" goto usage
 if /I "%~1"=="--help" goto usage
-echo 未知参数: %~1
+echo Unknown argument: %~1
 exit /b 1
 
 :usage
-echo 用法: stop-middleware.bat [--volumes]
+echo Usage: stop-middleware.bat [--volumes]
 echo.
-echo   --volumes  停止并删除数据卷（下次启动会重新执行 initial\ 下的初始化脚本）
+echo   --volumes  Stop and delete data volumes (re-runs initial scripts next start)
 exit /b 0
 
 :args_done
 where docker >nul 2>nul
 if errorlevel 1 (
-  echo [错误] 未找到 docker。
+  echo [ERROR] docker not found.
   exit /b 1
 )
 
 pushd "%DOCKER_DIR%"
 if "%REMOVE_VOLUMES%"=="1" (
-  echo [信息] 停止中间件并删除数据卷...
+  echo [INFO] Stopping middleware and deleting data volumes...
   docker compose down -v
 ) else (
-  echo [信息] 停止中间件（保留数据卷）...
+  echo [INFO] Stopping middleware ^(keeping data volumes^)...
   docker compose down
 )
 popd

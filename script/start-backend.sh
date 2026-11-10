@@ -43,10 +43,9 @@ if [ -f "$ROOT_DIR/.env" ]; then
   set +a
 fi
 
-# 未配置 OSS 密钥时以占位值启动，避免配置绑定失败；图片上传功能将不可用
+# 未配置 OSS 密钥时以占位值启动，避免配置绑定失败；默认使用本地 uploads/ 存储
 if [ -z "${ALIYUN_OSS_ACCESS_KEY_ID:-}" ] || [ -z "${ALIYUN_OSS_ACCESS_KEY_SECRET:-}" ]; then
-  echo "提示：未配置 ALIYUN_OSS_ACCESS_KEY_ID / ALIYUN_OSS_ACCESS_KEY_SECRET，"
-  echo "      图片上传功能不可用。可在仓库根目录创建 .env 后重新启动。"
+  echo "提示：未配置 OSS 密钥，图片将保存到本地 uploads/ 目录（upload.mode=local）。"
   export ALIYUN_OSS_ACCESS_KEY_ID="${ALIYUN_OSS_ACCESS_KEY_ID:-none}"
   export ALIYUN_OSS_ACCESS_KEY_SECRET="${ALIYUN_OSS_ACCESS_KEY_SECRET:-none}"
 fi

@@ -1,6 +1,5 @@
 @echo off
 setlocal EnableExtensions
-chcp 65001 >nul
 
 rem Start backend (Spring Boot).
 rem Default: Docker middleware (MySQL localhost:3307).
@@ -27,27 +26,26 @@ if /I "%~1"=="--skip-build" (
 )
 if /I "%~1"=="-h" goto usage
 if /I "%~1"=="--help" goto usage
-echo 未知参数: %~1
+echo Unknown argument: %~1
 exit /b 1
 
 :usage
-echo 用法: start-backend.bat [--local] [--skip-build]
+echo Usage: start-backend.bat [--local] [--skip-build]
 echo.
-echo   --local       对接本机中间件（MySQL 3306），默认对接 Docker 中间件（MySQL 3307）
-echo   --skip-build  跳过 mvn clean install，直接运行已构建的模块
+echo   --local       Use local middleware (MySQL 3306); default is Docker (3307)
+echo   --skip-build  Skip Maven build and run existing classes
 exit /b 0
 
 :args_done
 if exist "%ROOT_DIR%\.env" (
-  echo [信息] 加载环境变量: %ROOT_DIR%\.env
+  echo [INFO] Loading environment: %ROOT_DIR%\.env
   for /f "usebackq eol=# tokens=1* delims==" %%A in ("%ROOT_DIR%\.env") do (
     if not "%%A"=="" set "%%A=%%B"
   )
 )
 
 if not defined ALIYUN_OSS_ACCESS_KEY_ID (
-  echo [提示] 未配置 ALIYUN_OSS_ACCESS_KEY_ID，图片上传功能不可用。
-  echo        可在仓库根目录创建 .env 后重新启动。
+  echo [INFO] No OSS key configured; images are stored in local uploads/
   set "ALIYUN_OSS_ACCESS_KEY_ID=none"
 )
 if not defined ALIYUN_OSS_ACCESS_KEY_SECRET (
@@ -56,27 +54,27 @@ if not defined ALIYUN_OSS_ACCESS_KEY_SECRET (
 
 where mvn >nul 2>nul
 if errorlevel 1 (
-  echo [错误] 未找到 mvn，请安装 Maven 3.8+ 并配置 PATH。
+  echo [ERROR] mvn not found. Install Maven 3.8+ and add it to PATH.
   exit /b 1
 )
 where java >nul 2>nul
 if errorlevel 1 (
-  echo [错误] 未找到 java，请安装 JDK 21+ 并配置 JAVA_HOME。
+  echo [ERROR] java not found. Install JDK 21+ and set JAVA_HOME.
   exit /b 1
 )
 
 if /I "%MODE%"=="docker" (
   rem Docker MySQL is exposed on host port 3307.
   set "SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/chrono_bbs_dev?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai"
-  echo [信息] 中间件模式: Docker（MySQL localhost:3307）
+  echo [INFO] Middleware mode: Docker ^(MySQL localhost:3307^)
 ) else (
-  echo [信息] 中间件模式: 本地（MySQL 按 application-dev.yml）
+  echo [INFO] Middleware mode: local ^(MySQL per application-dev.yml^)
 )
 
 if "%SKIP_BUILD%"=="1" (
-  echo [信息] 跳过 Maven 构建
+  echo [INFO] Skipping Maven build
 ) else (
-  echo [1/2] 构建后端（mvn clean install -DskipTests）...
+  echo [1/2] Building backend ^(mvn clean install -DskipTests^)...
   pushd "%SERVER_DIR%"
   call mvn clean install -DskipTests
   if errorlevel 1 (
@@ -86,7 +84,7 @@ if "%SKIP_BUILD%"=="1" (
   popd
 )
 
-echo [2/2] 启动后端 http://localhost:8080（Knife4j: /doc.html）
+echo [2/2] Starting backend http://localhost:8080 ^(Knife4j: /doc.html^)
 pushd "%SERVER_DIR%"
 call mvn -pl module-start spring-boot:run
 popd

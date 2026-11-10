@@ -2046,4 +2046,4 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 > **Document update date**: 2026-11-10
 >
-> **Corresponding version**: v0.3.0-dev (Unreleased)
+> **Corresponding version**: v1.0.0

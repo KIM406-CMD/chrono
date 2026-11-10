@@ -1,6 +1,5 @@
 @echo off
 setlocal EnableExtensions
-chcp 65001 >nul
 
 rem Start middleware, backend and frontend.
 rem Default: Docker middleware. --local: use local middleware.
@@ -25,14 +24,14 @@ if /I "%~1"=="--skip-build" (
 )
 if /I "%~1"=="-h" goto usage
 if /I "%~1"=="--help" goto usage
-echo 未知参数: %~1
+echo Unknown argument: %~1
 exit /b 1
 
 :usage
-echo 用法: start-all.bat [--local] [--skip-build]
+echo Usage: start-all.bat [--local] [--skip-build]
 echo.
-echo   --local       使用本机中间件（默认使用 Docker 中间件）
-echo   --skip-build  跳过后端 Maven 构建
+echo   --local       Use local middleware instead of Docker
+echo   --skip-build  Skip backend Maven build
 exit /b 0
 
 :args_done
@@ -41,16 +40,16 @@ call "%SCRIPT_DIR%start-middleware.bat" %MODE_ARG%
 if errorlevel 1 exit /b 1
 
 rem Step 2: backend in a new window.
-echo [信息] 在新窗口启动后端...
-start "Chrono BBS 后端" cmd /k ""%SCRIPT_DIR%start-backend.bat" %MODE_ARG% %BUILD_ARG%"
+echo [INFO] Starting backend in a new window...
+start "Chrono BBS Backend" cmd /k ""%SCRIPT_DIR%start-backend.bat" %MODE_ARG% %BUILD_ARG%"
 
 rem Step 3: frontend in a new window.
-echo [信息] 在新窗口启动前端...
-start "Chrono BBS 前端" cmd /k ""%SCRIPT_DIR%start-frontend.bat""
+echo [INFO] Starting frontend in a new window...
+start "Chrono BBS Frontend" cmd /k ""%SCRIPT_DIR%start-frontend.bat""
 
 echo.
-echo 已在新窗口启动后端与前端：
-echo   后端 http://localhost:8080/doc.html
-echo   前端 http://localhost:5173
-echo 关闭对应窗口即可停止服务。
+echo Backend and frontend have been started in separate windows:
+echo   Backend  http://localhost:8080/doc.html
+echo   Frontend http://localhost:5173
+echo Close the corresponding window to stop the service.
 exit /b 0

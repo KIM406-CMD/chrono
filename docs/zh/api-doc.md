@@ -2053,4 +2053,4 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 > **文档更新日期**：2026-11-10
 >
-> **对应版本**：v0.3.0-dev（Unreleased）
+> **对应版本**：v1.0.0

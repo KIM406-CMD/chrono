@@ -54,15 +54,19 @@ script\start-all.bat --local    :: 本机中间件 + 后端 + 前端
 - `--install`：前端强制重新执行 `npm install`
 - `--volumes`：停止中间件时同时删除数据卷（会清空数据库，下次启动重新执行 `initial/` 初始化脚本）
 
-## 环境变量（OSS）
+## 环境变量（OSS / JWT / 生产数据库）
 
-图片上传依赖阿里云 OSS 密钥。将 `script/.env.example` 复制为仓库根目录的 `.env` 并填写：
+开发环境默认把图片写入本地 `uploads/` 目录，无需 OSS。需要对象存储或生产部署时，将 `script/.env.example` 复制为仓库根目录的 `.env` 并填写：
 
 ```bash
 cp script/.env.example .env
 ```
 
-后端脚本启动时会自动加载根目录 `.env`。未配置密钥时后端仍可启动，但图片上传功能不可用。
+后端脚本启动时会自动加载根目录 `.env`。可配置：
+
+- `ALIYUN_OSS_ACCESS_KEY_ID` / `ALIYUN_OSS_ACCESS_KEY_SECRET`：OSS 密钥（设置 `UPLOAD_MODE=oss` 后启用）；
+- `JWT_SECRET`：JWT 签名密钥，至少 32 字节，生产环境必须配置；
+- `DB_PASSWORD`：生产数据库密码（`application-prod.yml` 不再提供默认值）。
 
 ## 访问地址
 

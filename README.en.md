@@ -224,6 +224,8 @@ Place `deploy/nginx.conf` in the Nginx configuration directory and reload Nginx.
 
 > If Nginx runs in a container, replace `127.0.0.1` in `proxy_pass` with the backend service name or `host.docker.internal`.
 
+Before starting the backend in production, configure `DB_PASSWORD`, `JWT_SECRET` (a random string of at least 32 bytes) and OSS credentials (if OSS is enabled). The database passwords in `application-dev.yml`, `application-test.yml` and `docker-compose.yml` are for local development/testing only and must not be used in production.
+
 ---
 
 ## Documentation Index
