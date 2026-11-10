@@ -30,18 +30,18 @@ INSERT IGNORE INTO `merchant` (`id`, `user_id`, `shop_name`, `business_license`,
 -- 3. 商品
 -- =====================================================
 INSERT IGNORE INTO `product` (`id`, `name`, `description`, `images`, `brand`, `category_id`, `merchant_id`, `status`, `sales`) VALUES
-(10001, '海南贵妃芒 5斤装', '<p>海南三亚直采贵妃芒，果皮红润、果肉细腻，自然熟发货。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229751483.png"]', '鲜果直供', 2001, 1, 1, 120),
-(10002, '智利车厘子 2斤装', '<p>智利进口 JJ 级车厘子，果径 28-30mm，甜脆多汁。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229746515.png"]', '鲜果直供', 2002, 1, 1, 300),
+(10001, '缤纷水果拼盘', '<p>当季精选水果拼盘，橙子、苹果、草莓等多种水果搭配，新鲜直发。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229751483.png"]', '鲜果直供', 2001, 1, 1, 120),
+(10002, '臻选水果礼盒', '<p>精选水果礼盒，果品丰富、包装精美，送礼自用皆宜。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229746515.png"]', '鲜果直供', 2001, 1, 1, 300),
 (10003, '赣南脐橙 10斤装', '<p>江西赣南脐橙，果肉饱满、酸甜适口，产地直发。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229307477.png"]', '鲜果直供', 2003, 1, 1, 210),
-(10004, '泰国金枕榴莲 整颗', '<p>泰国金枕榴莲，果肉金黄、香甜软糯，下单后现开。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229751483.png"]', '鲜果直供', 2001, 1, 1, 66),
-(10005, '云南蓝莓 125g×4盒', '<p>云南高海拔蓝莓，果粉完整、颗颗饱满，冷链配送。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229304109.png"]', '鲜果直供', 2002, 1, 1, 98),
-(10006, '广西沃柑 5斤装', '<p>广西武鸣沃柑，皮薄易剥、汁水充足，现摘现发。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229310307.png"]', '鲜果直供', 2003, 1, 1, 260),
+(10004, '每日鲜果组合', '<p>每日鲜果组合装，多款当季水果搭配，营养均衡。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229751483.png"]', '鲜果直供', 2001, 1, 1, 66),
+(10005, '新鲜草莓 2斤装', '<p>新鲜草莓，果肉饱满、酸甜可口，冷链配送。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229304109.png"]', '鲜果直供', 2002, 1, 1, 98),
+(10006, '红富士苹果 5斤装', '<p>红富士苹果，脆甜多汁、果香浓郁，产地直发。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/食品饮料/水果/1794229310307.png"]', '鲜果直供', 201, 1, 1, 260),
 (20001, '星耀 X1 智能手机', '<p>6.7 英寸 OLED 直屏，5000mAh 电池，一亿像素主摄。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/手机/1794229094917.png"]', '星耀', 5001, 2, 1, 88),
 (20002, '星耀 X1 Pro 智能手机', '<p>旗舰影像芯片，2K 曲面屏，120W 快充，12GB+512GB。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/手机/1794229089817.png"]', '星耀', 5001, 2, 1, 55),
 (20003, '降噪蓝牙耳机', '<p>主动降噪深度 42dB，蓝牙 5.3，单次续航 8 小时。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/耳机/1794229170945.png"]', '声悦', 5002, 2, 1, 150),
-(20004, '智能运动手环', '<p>1.6 英寸 AMOLED 屏，心率/血氧监测，50 米防水。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/手表/1794229444281.png"]', '星耀', 5003, 2, 1, 120),
-(20005, '65W 氮化镓充电器', '<p>氮化镓快充，65W 双口输出，兼容手机与笔记本。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/充电宝/1794229610154.png"]', '极充', 5002, 2, 1, 240),
-(20006, '便携蓝牙音箱', '<p>360° 环绕音效，IPX7 防水，续航 12 小时。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/耳机/1794229394246.png"]', '声悦', 5002, 2, 1, 77);
+(20004, '智能运动手表', '<p>智能运动手表，心率/血氧监测，多运动模式，50 米防水。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/手表/1794229444281.png"]', '星耀', 5003, 2, 1, 120),
+(20005, '10000mAh 移动电源', '<p>10000mAh 移动电源，双口输出，轻薄便携，兼容手机与平板。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/充电宝/1794229610154.png"]', '极充', 5002, 2, 1, 240),
+(20006, '真无线蓝牙耳机（蓝色）', '<p>真无线蓝牙耳机，入耳式设计，佩戴舒适，续航持久。</p>', '["https://chrono-bbs.oss-cn-beijing.aliyuncs.com/img/电子产品/耳机/1794229394246.png"]', '声悦', 5002, 2, 1, 77);
 
 -- =====================================================
 -- 4. 商品 SKU
@@ -102,6 +102,6 @@ INSERT IGNORE INTO `refund` (`id`, `order_id`, `order_item_id`, `user_id`, `merc
 -- 9. 商品评论与商家回复
 -- =====================================================
 INSERT IGNORE INTO `comment` (`id`, `product_id`, `user_id`, `order_item_id`, `parent_id`, `content`, `star`, `is_append`, `status`, `created_at`) VALUES
-(80001, 10001, 4, 40001, NULL, '芒果很甜，果肉细腻，包装也很用心。', 5, 0, 0, '2026-11-03 18:00:00'),
-(80002, 10002, 4, 40002, NULL, '车厘子个头挺大，新鲜度不错。', 4, 0, 0, '2026-11-04 19:00:00'),
+(80001, 10001, 4, 40001, NULL, '水果很新鲜，种类丰富，包装也很用心。', 5, 0, 0, '2026-11-03 18:00:00'),
+(80002, 10002, 4, 40002, NULL, '水果礼盒很精致，果品新鲜，送人很有面子。', 4, 0, 0, '2026-11-04 19:00:00'),
 (80003, 10001, 2, NULL, 80001, '感谢支持，欢迎再次光临鲜果直供！', NULL, 0, 0, '2026-11-03 19:00:00');
