@@ -137,6 +137,7 @@ public class ProductServiceImpl implements ProductService {
                 .categoryId(product.getCategoryId())
                 .categoryName(categoryName)
                 .merchantId(product.getMerchantId())
+                .merchantUserId(merchant == null ? null : merchant.getUserId())
                 .shopName(shopName)
                 .status(product.getStatus())
                 .sales(product.getSales())

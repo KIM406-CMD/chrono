@@ -16,7 +16,7 @@ public interface ChatService {
     /** 历史消息（从新到旧），进入会话即标记对方消息已读 */
     PageResult<MessageVO> history(Long userId, Long conversationId, Integer page, Integer size);
 
-    /** 创建或获取与指定商家的会话 */
+    /** 创建或获取与指定商家的会话，merchantId 为商家用户 ID */
     ConversationVO createConversation(Long userId, Long merchantId, Long productId);
 
     /** 标记会话中对方发来的消息为已读 */

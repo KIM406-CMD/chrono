@@ -27,7 +27,10 @@ public class ProductDetailVO {
     /** 三级分类 ID。 */
     private Long categoryId;
     private String categoryName;
+    /** 商家表主键，用于后台按商家筛选商品。 */
     private Long merchantId;
+    /** 商家用户的用户 ID，聊天会话接口使用该值。 */
+    private Long merchantUserId;
     private String shopName;
     /** 商品状态：0=下架，1=上架。 */
     private Integer status;

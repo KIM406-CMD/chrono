@@ -134,6 +134,8 @@ class ProductServiceImplTest {
         assertEquals(1, vo.getSkuList().size());
         assertEquals("水果", vo.getCategoryName());
         assertEquals("测试小店", vo.getShopName());
+        // 聊天会话使用商家用户 ID，而非商家表主键
+        assertEquals(1L, vo.getMerchantUserId());
     }
 
     @Test

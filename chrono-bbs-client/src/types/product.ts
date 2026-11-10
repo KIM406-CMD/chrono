@@ -46,6 +46,8 @@ export interface Product {
   categoryId: number
   categoryName: string
   merchantId: number
+  /** 商家用户的用户 ID，聊天会话使用 */
+  merchantUserId?: number
   shopName?: string
   status: ProductStatus
   sales: number

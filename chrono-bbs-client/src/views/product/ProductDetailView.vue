@@ -123,7 +123,8 @@ const handleContactShop = async () => {
   }
   try {
     const res = await createConversation({
-      merchantId: product.value.merchantId,
+      // 聊天会话使用商家用户 ID；Mock 数据未提供时回退到 merchantId
+      merchantId: product.value.merchantUserId ?? product.value.merchantId,
       productId: product.value.id,
     })
     router.push(`/chat/${res.data.id}`)

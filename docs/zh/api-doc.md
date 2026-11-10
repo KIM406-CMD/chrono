@@ -412,7 +412,8 @@ GET /api/product/{id}
 | brand | String | 品牌 |
 | categoryId | Long | 分类 ID |
 | categoryName | String | 分类名称 |
-| merchantId | Long | 商家 ID |
+| merchantId | Long | 商家表主键，用于后台筛选 |
+| merchantUserId | Long | 商家用户 ID，创建聊天会话时使用 |
 | shopName | String | 店铺名称 |
 | status | Integer | 状态：0-下架，1-上架 |
 | sales | Integer | 销量 |
@@ -1553,7 +1554,7 @@ POST /api/chat/conversation
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| merchantId | Long | 是 | 商家 ID |
+| merchantId | Long | 是 | 商家用户 ID（商品详情返回的 `merchantUserId`） |
 | productId | Long | 否 | 商品 ID（关联商品） |
 
 > 若已有同用户+同商家的会话则直接返回，否则新建

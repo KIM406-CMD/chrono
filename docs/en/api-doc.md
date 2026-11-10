@@ -411,7 +411,8 @@ GET /api/product/{id}
 | brand | String | Brand |
 | categoryId | Long | Category ID |
 | categoryName | String | Category name |
-| merchantId | Long | Merchant ID |
+| merchantId | Long | Merchant table primary key, used for admin filtering |
+| merchantUserId | Long | Merchant user ID, used when creating a chat conversation |
 | shopName | String | Shop name |
 | status | Integer | Status: 0-Unlisted, 1-Listed |
 | sales | Integer | Sales volume |
@@ -1552,7 +1553,7 @@ POST /api/chat/conversation
 
 | Parameter | Type | Required | Description |
 |------|------|------|------|
-| merchantId | Long | Yes | Merchant ID |
+| merchantId | Long | Yes | Merchant user ID (the `merchantUserId` returned by product detail) |
 | productId | Long | No | Product ID (associated product) |
 
 > If a conversation between the same user and merchant already exists, return it directly; otherwise create a new one
