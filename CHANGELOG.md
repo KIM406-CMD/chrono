@@ -13,6 +13,7 @@
 - 商品删除引用校验：数据库未建外键，改为删除前显式统计购物车与订单明细引用，避免商家/管理员误删已售商品产生孤儿数据
 
 ### Added
+- 测试补齐：新增 `ChatServiceImplTest`、`MerchantServiceImplTest`、`UploadServiceImplTest`，并填充 `AuthControllerE2ETest` 的未登录与公开接口用例
 - 本地上传兜底：新增 `upload.mode` 配置，开发环境默认写入 `uploads/` 并通过 `/uploads/**` 访问，无需 OSS 密钥即可上传；生产可设置 `UPLOAD_MODE=oss` 切回对象存储，Vite 与 Nginx 已补充代理
 - 演示种子数据：新增 `initial/demo-data.sql`（幂等），内置 `merchant1` / `merchant2` / `user1` 演示账号，以及 12 个商品、13 个 SKU、购物车、3 笔订单、支付流水、退款申请与商品评论；Docker 初始化自动执行
 - 管理员商品操作接口：新增 `PUT /api/admin/products/{id}/status` 与 `DELETE /api/admin/products/{id}`，支持全平台商品上下架/删除并同步搜索索引
