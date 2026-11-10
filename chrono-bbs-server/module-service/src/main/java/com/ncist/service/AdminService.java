@@ -163,4 +163,14 @@ public interface AdminService {
      * @return 全局销售报表数据
      */
     AdminReportVO getReport(String startDate, String endDate, String groupBy);
+
+    /**
+     * 全量重建商品搜索索引。
+     *
+     * <p>将数据库中所有上架商品重新写入 Elasticsearch 索引，
+     * 适用于批量导入商品后索引不一致的场景。操作以覆盖写方式执行，可重复调用。</p>
+     *
+     * @return 同步的商品数量
+     */
+    int rebuildSearchIndex();
 }

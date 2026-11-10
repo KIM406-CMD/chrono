@@ -452,6 +452,18 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public int rebuildSearchIndex() {
+        requireAdmin();
+        try {
+            return productSearchIndexService.syncAll();
+        } catch (Exception e) {
+            log.error("全量重建搜索索引失败：{}", e.getMessage());
+            throw new BusinessException(CommonErrorCode.INTERNAL_ERROR);
+        }
+    }
+
     // ================ 私有辅助 ================
 
     /**
