@@ -1457,7 +1457,7 @@ Parameters are the same as 4.3 (`name`, `description`, `images`, `brand`, `categ
 **Swagger Group**: File Upload  
 **Permission**: Login required
 
-> Note: This module is implemented. Validation order: non-empty → size (≤2MB) → extension → real image content validation via ImageIO; if width > 800px, scale proportionally; if ≤800px, upload as-is.
+> Note: This module is implemented. Validation order: non-empty → size (≤2MB) → extension → real image content validation via ImageIO; if width > 800px, scale proportionally; if ≤800px, upload as-is. Development defaults to local storage under `uploads/` (`upload.mode=local`, served via `/uploads/**`); set `UPLOAD_MODE=oss` with OSS keys to switch to object storage.
 > Special note: the JDK natively does not support decoding the webp format, so the RIFF/WEBP magic header is used to validate file authenticity; after passing, the file is uploaded as-is (no scaling). Files exceeding the multipart limit are returned as 4062 by the global exception handler.
 
 ### 13.1 Upload Image

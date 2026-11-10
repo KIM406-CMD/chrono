@@ -5,8 +5,9 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * 文件上传服务。
  *
- * <p>负责将商品图片上传至阿里云 OSS。上传前校验文件非空、大小与扩展名，
- * 并对图片内容做真实性校验；宽度超过 800px 的图片会等比压缩后再上传。</p>
+ * <p>负责将商品图片上传至阿里云 OSS 或本地目录（由 {@code upload.mode} 决定）。
+ * 上传前校验文件非空、大小与扩展名，并对图片内容做真实性校验；
+ * 宽度超过 800px 的图片会等比压缩后再上传。</p>
  */
 public interface UploadService {
 

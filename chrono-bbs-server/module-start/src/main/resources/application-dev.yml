@@ -17,3 +17,9 @@ aliyun:
     access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
     access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
     bucket-name: chrono-bbs
+
+# 图片上传：默认写本地目录，配置 OSS 密钥后可切换为 oss
+upload:
+  mode: ${UPLOAD_MODE:local}
+  local-dir: ${UPLOAD_LOCAL_DIR:./uploads}
+  public-prefix: /uploads

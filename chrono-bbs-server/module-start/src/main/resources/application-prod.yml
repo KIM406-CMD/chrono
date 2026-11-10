@@ -17,3 +17,9 @@ aliyun:
     access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
     access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
     bucket-name: ${ALIYUN_OSS_BUCKET_NAME:chrono-bbs}
+
+# 生产默认使用 OSS，也可通过 UPLOAD_MODE=local 改用本地目录
+upload:
+  mode: ${UPLOAD_MODE:oss}
+  local-dir: ${UPLOAD_LOCAL_DIR:./uploads}
+  public-prefix: /uploads

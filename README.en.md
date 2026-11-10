@@ -178,7 +178,7 @@ The scripts are in `initial/` and create the `chrono_bbs_dev` database. The defa
 
 > To upgrade an existing database, run `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql` (idempotent); for demo data, also run `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql` (idempotent).
 > In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
-> Image upload requires Aliyun OSS. Copy `script/.env.example` to `.env` in the repository root and fill in the keys; the backend still starts without them, but uploads are unavailable.
+> In development, images are written to the backend's local `uploads/` directory (`upload.mode=local`) and no OSS configuration is required. To use object storage, copy `script/.env.example` to `.env`, fill in the keys and set `UPLOAD_MODE=oss`.
 
 ### 4. Default test account
 

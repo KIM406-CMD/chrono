@@ -615,7 +615,7 @@ export const getHotSearch = () =>
 
 ---
 
-## 9. Image Upload (Frontend → Backend → OSS)
+## 9. Image Upload (Frontend → Backend → Local Directory / OSS)
 
 ### 9.1 Upload Component `components/ImageUpload.vue`
 

@@ -617,7 +617,7 @@ export const getHotSearch = () =>
 
 ---
 
-## 九、图片上传（前端 → 后端 → OSS）
+## 九、图片上传（前端 → 后端 → 本地目录 / OSS）
 
 ### 9.1 上传组件 `components/ImageUpload.vue`
 
