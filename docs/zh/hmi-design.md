@@ -230,30 +230,44 @@ const emit = defineEmits<{
 
 ### 2.3 响应式实现
 
+内容区宽度与后台侧边栏宽度通过 `src/styles/variables.css` 中的 CSS 变量统一控制：
+
 ```css
-/* 使用 CSS 变量实现响应式 */
 :root {
-  --content-max-width: 1200px;
-  --product-grid-columns: 3;
+  --content-width: 1200px;
   --sidebar-width: 200px;
 }
 
 @media (min-width: 1440px) {
   :root {
-    --content-max-width: 1440px;
-    --product-grid-columns: 4;
+    --content-width: 1440px;
     --sidebar-width: 220px;
   }
 }
 
 @media (min-width: 1920px) {
   :root {
-    --content-max-width: 1600px;
-    --product-grid-columns: 5;
+    --content-width: 1600px;
     --sidebar-width: 240px;
   }
 }
 ```
+
+商城头部、分类栏、页脚与各业务页面统一使用 `max-width: var(--content-width)`，
+后台侧边栏使用 `width: var(--sidebar-width)`，因此大屏下内容区自动扩展。
+
+### 2.4 窄屏适配
+
+| 断点 | 适配规则 |
+|------|----------|
+| ≤1400px | 首页、搜索页商品网格由 5 列降为 4 列 |
+| ≤1200px | 商品网格降为 3 列；商品详情主图与信息改为上下排列；登录/注册页隐藏装饰图 |
+| ≤900px | 购物车、结算页、账户设置、帮助中心、聊天页由左右分栏改为上下排列；筛选栏控件占满整行 |
+| ≤768px | 商城头部搜索框换行；商品网格降为 2 列；领券中心卡片改为单列；页脚改为两列 |
+| ≤600px | 订单/支付/退款/地址页面收紧内边距；订单状态栏、底部结算栏允许换行 |
+| ≤480px | 页脚改为单列；领券卡片操作区允许换行 |
+
+表格类页面（订单、商品、退款、用户管理等）保留 Element Plus 表格的横向滚动，避免列内容被压缩。
 
 ---
 
