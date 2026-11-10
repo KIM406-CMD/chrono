@@ -37,8 +37,8 @@ fi
 cd "$DOCKER_DIR"
 if [ "$REMOVE_VOLUMES" -eq 1 ]; then
   echo "==> 停止中间件并删除数据卷..."
-  docker compose down -v
+  docker compose --profile frontend down -v
 else
   echo "==> 停止中间件（保留数据卷）..."
-  docker compose down
+  docker compose --profile frontend down
 fi

@@ -4,9 +4,9 @@
 #
 # 默认使用 Docker 中间件；--local 使用本机中间件。
 # 后端在后台运行，日志写入 logs/backend.log；
-# 前端在前台运行，Ctrl+C 会同时停止前后端。
+# 默认启动 Vite 开发服务器，--docker-frontend 改为启动 Docker Nginx 容器。
 #
-# 用法：./script/start-all.sh [--local] [--skip-build]
+# 用法：./script/start-all.sh [--local] [--skip-build] [--docker-frontend]
 # ============================================================
 set -euo pipefail
 
@@ -15,13 +15,15 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 MODE="docker"
 SKIP_BUILD=0
+DOCKER_FRONTEND=0
 
 usage() {
   cat <<'EOF'
-用法: start-all.sh [--local] [--skip-build]
+用法: start-all.sh [--local] [--skip-build] [--docker-frontend]
 
-  --local       使用本机中间件（默认使用 Docker 中间件）
-  --skip-build  跳过后端 Maven 构建
+  --local            使用本机中间件（默认使用 Docker 中间件）
+  --skip-build       跳过后端 Maven 构建
+  --docker-frontend  启动 Docker Nginx 容器，不启动 Vite 开发服务器
 EOF
 }
 
@@ -29,6 +31,7 @@ for arg in "$@"; do
   case "$arg" in
     --local) MODE="local" ;;
     --skip-build) SKIP_BUILD=1 ;;
+    --docker-frontend) DOCKER_FRONTEND=1 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "未知参数: $arg" >&2; usage >&2; exit 1 ;;
   esac
@@ -66,7 +69,16 @@ stop_backend() {
 }
 trap stop_backend EXIT INT TERM
 
-# 3. 前端（前台）
-echo "==> 后端启动中，请查看 $BACKEND_LOG"
-echo "==> 启动前端，按 Ctrl+C 同时停止前端与后端"
-"$SCRIPT_DIR/start-frontend.sh"
+# 3. 前端
+if [ "$DOCKER_FRONTEND" -eq 1 ]; then
+  echo "==> 启动前端 Nginx 容器..."
+  (cd "$ROOT_DIR/docker" && docker compose --profile frontend up -d nginx)
+  echo "==> 前端已启动: http://localhost:3000"
+  echo "==> 后端运行中（日志：$BACKEND_LOG），按 Ctrl+C 停止后端"
+  echo "==> 停止前端容器：./script/stop-middleware.sh"
+  wait "$BACKEND_PID"
+else
+  echo "==> 后端启动中，请查看 $BACKEND_LOG"
+  echo "==> 启动前端，按 Ctrl+C 同时停止前端与后端"
+  "$SCRIPT_DIR/start-frontend.sh"
+fi

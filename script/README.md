@@ -51,8 +51,19 @@ script\start-all.bat --local    :: 本机中间件 + 后端 + 前端
 
 - `--local`：使用本机中间件（默认 Docker）
 - `--skip-build`：跳过后端 `mvn clean install`，适用于已构建过、只改了少量代码的场景
+- `--docker-frontend`：`start-all` 使用 Docker Nginx 容器（`http://localhost:3000`）代替 Vite 开发服务器
 - `--install`：前端强制重新执行 `npm install`
 - `--volumes`：停止中间件时同时删除数据卷（会清空数据库，下次启动重新执行 `initial/` 初始化脚本）
+
+推荐（前端使用 Nginx 容器，不启动 Vite）：
+
+```bat
+script\start-all.bat --docker-frontend --skip-build
+```
+
+```bash
+./script/start-all.sh --docker-frontend --skip-build
+```
 
 ## 环境变量（OSS / JWT / 生产数据库）
 

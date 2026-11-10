@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Added
+- 启动脚本新增 `--docker-frontend`：`start-all` 可一次性启动中间件、Nginx 容器与后端，不启动 Vite；`stop-middleware` 同步停止 Nginx 容器
+
 ---
 
 ## [1.0.0] - 2026-11-10

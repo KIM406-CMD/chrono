@@ -43,9 +43,9 @@ if errorlevel 1 (
 pushd "%DOCKER_DIR%"
 if "%REMOVE_VOLUMES%"=="1" (
   echo [INFO] Stopping middleware and deleting data volumes...
-  docker compose down -v
+  docker compose --profile frontend down -v
 ) else (
   echo [INFO] Stopping middleware ^(keeping data volumes^)...
-  docker compose down
+  docker compose --profile frontend down
 )
 popd
