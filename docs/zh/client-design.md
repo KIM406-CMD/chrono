@@ -859,7 +859,7 @@ server {
 
 | 前端操作 | HTTP 方法 | API 路径 | 请求体/参数 |
 |----------|-----------|----------|-------------|
-| 注册 | POST | `/api/user/register` | `{ username, password, phone, email, role, captchaUuid, captchaCode }` |
+| 注册 | POST | `/api/user/register` | `{ username, password, phone, email, role, shopName, captchaUuid, captchaCode }`（商家注册需传 `role=2` 与 `shopName`） |
 | 登录 | POST | `/api/user/login` | `{ username, password, captchaUuid, captchaCode }` |
 | 获取重置密码验证码 | POST | `/api/user/forgot-code` | `{ account, captchaUuid, captchaCode }` |
 | 重置密码 | POST | `/api/user/reset-password` | `{ uuid, code, newPassword }` |

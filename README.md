@@ -101,7 +101,9 @@ chrono-bbs/
 │   ├── schema.sql                    # 建表语句（含最新字段）
 │   ├── data.sql                      # 初始数据
 │   ├── migration-2026-11-09.sql      # 已有库增量迁移（可重复执行）
-│   └── demo-data.sql                 # 演示商家/商品/订单/评论（可重复执行）
+│   ├── demo-data.sql                 # 演示商家/商品/订单/评论（可重复执行）
+│   ├── batch-products.sql            # 批量商品数据（可选导入）
+│   └── rename-products.sql           # 商品名称/品牌/分类与图片对齐（可重复执行）
 │
 ├── AGENTS.md                         # 🤖 AI 助手行为规范
 ├── CHANGELOG.md                      # 📝 变更日志
@@ -187,8 +189,8 @@ mysql -u root -p < initial/demo-data.sql
 
 脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`，演示商家与用户见下方测试账号。
 
-> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行）；需要演示数据时再执行 `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql`（可重复执行）。
-> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
+> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行）；需要演示数据时再执行 `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql`（可重复执行）；商品名称/图片不一致时执行 `initial/rename-products.sql`（可重复执行）。
+> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql → rename-products.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
 > 开发环境默认将图片写入后端本地 `uploads/` 目录（`upload.mode=local`），无需配置 OSS 即可上传；需要对象存储时，复制 `script/.env.example` 为根目录 `.env` 填写密钥并设置 `UPLOAD_MODE=oss`。
 
 ### 5. 默认测试账号

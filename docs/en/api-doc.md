@@ -136,9 +136,12 @@ POST /api/user/register
 | password | String | Yes | Password, length 6-20 |
 | phone | String | Yes | Phone number, format `1[3-9]\d{9}` |
 | email | String | No | Email |
-| role | Integer | No | Reserved field; registration always creates a regular user (1). Merchant role is granted only after merchant approval |
+| role | Integer | No | Registration role: 1 = regular user (default), 2 = merchant; administrator (3) cannot be registered |
+| shopName | String | No | Shop name; required when `role=2`, and a pending merchant record is created |
 | captchaUuid | String | Yes | Captcha UUID (from 2.1) |
 | captchaCode | String | Yes | Captcha input value |
+
+> A self-registered merchant gets role `2` and a merchant record with `status=0` (pending review). Product/order management becomes available after an administrator approves the merchant.
 
 **Return**:
 
@@ -2023,7 +2026,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 | Module | Enum | Code and Message |
 |------|------|-----------|
-| User Authentication | AuthErrorCode | 401 Not logged in or login expired / token expired / invalid token; 400 Invalid captcha; 409 Username already exists / Phone number already registered / Username does not exist / Incorrect password; 403 No permission / Account has been disabled; 404 Account does not exist |
+| User Authentication | AuthErrorCode | 401 Not logged in or login expired / token expired / invalid token; 400 Invalid captcha / invalid registration role / shop name required for merchant registration; 409 Username already exists / Phone number already registered / Username does not exist / Incorrect password; 403 No permission / Account has been disabled; 404 Account does not exist |
 | Category Management | CategoryErrorCode | 404 Category does not exist |
 | Product Management | ProductErrorCode | 404 Product does not exist; 403 Only merchants can perform this operation / Merchant onboarding review not approved / No permission to operate on another merchant's products; 400 SKU list cannot be empty / SKU price must be greater than 0 / SKU stock cannot be negative / Invalid product status value; 409 Product is referenced by transactions and cannot be deleted |
 | Flash-sale Coupons | SeckillErrorCode | 404 Flash-sale coupon does not exist / Coupon does not exist; 409 Flash-sale coupon is sold out / Already claimed this flash-sale coupon / Coupon has expired or been used; 400 Activity has not started or has ended / Minimum spending threshold not met / Only Not Started flash-sale coupons can be deleted / Invalid time or discount parameter; 403 Only merchants or administrators can manage flash-sale coupons |
@@ -2062,4 +2065,4 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 > **Document update date**: 2026-11-10
 >
-> **Corresponding version**: v1.0.0
+> **Corresponding version**: v1.1.0

@@ -9,17 +9,23 @@
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] - 2026-11-10
+
 ### Added
+- 开放商家自助注册：注册页支持选择“买家/商家”，商家注册需填写店铺名称，后端创建 `status=0` 的待审核商家记录；管理员审核通过后可用商家后台，驳回时自动降级为普通用户
 - 启动脚本新增 `--docker-frontend`：`start-all` 可一次性启动中间件、Nginx 容器与后端，不启动 Vite；`stop-middleware` 同步停止 Nginx 容器
 - 响应式布局：内容区与后台侧边栏接入 CSS 变量（1200/1440/1600px、200/220/240px），商城、购物车、结算、订单、设置、地址、领券、搜索、聊天、帮助中心及后台统计页补充 1400/1200/900/768/600px 断点，商品网格、分栏表单与页脚自动重排
 - 管理员搜索索引重建接口 `POST /api/admin/search-index/rebuild`，用于批量导入商品后全量覆盖写入 Elasticsearch
 - 账户设置支持单独修改邮箱与手机号：新增两个修改弹窗，`UpdateProfileRequest` 增加 `phone` 字段
 - 收货地址改为省/市/区级联选择，新增 `src/utils/region.ts` 地区数据，提交前校验省市区完整性
-- 演示数据补充 `initial/batch-products.sql`（批量商品）与 `initial/rename-products.sql`（商品命名）
+- 演示数据补充 `initial/batch-products.sql`（批量商品）与 `initial/rename-products.sql`（商品命名与图片对齐）
 
 ### Changed
 - 秒杀券列表/详情接口新增可选登录态：携带令牌时回填 `claimed` 与 `userClaimCount`，游客访问保持默认值
 - 演示商品图片迁移至阿里云 OSS，新增 `initial/update-product-images-oss.sql` 供已初始化数据库升级
+- 商品数据校正：按 OSS 图片内容重命名 186 个批量商品与 8 个演示商品，并同步调整品牌与分类，修正图片与商品名称不符的问题
 - 搜索结果页移除独立搜索栏，统一使用商城顶部搜索入口
 
 ### Fixed

@@ -101,7 +101,9 @@ chrono-bbs/
 │   ├── schema.sql                    # DDL (latest schema)
 │   ├── data.sql                      # Seed data
 │   ├── migration-2026-11-09.sql      # Incremental migration (idempotent)
-│   └── demo-data.sql                 # Demo merchants/products/orders/comments (idempotent)
+│   ├── demo-data.sql                 # Demo merchants/products/orders/comments (idempotent)
+│   ├── batch-products.sql            # Optional bulk product data
+│   └── rename-products.sql           # Align product names/brands/categories with images (idempotent)
 │
 ├── deploy/                           # 🚀 Deployment configuration
 │   └── nginx.conf                    # Nginx static site + API proxy
@@ -191,8 +193,8 @@ mysql -u root -p < initial/demo-data.sql
 
 The scripts are in `initial/` and create the `chrono_bbs_dev` database. The default administrator is `admin` / `admin123`; demo merchants and users are listed below.
 
-> To upgrade an existing database, run `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql` (idempotent); for demo data, also run `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql` (idempotent).
-> In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
+> To upgrade an existing database, run `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql` (idempotent); for demo data, also run `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql` (idempotent); if product names and images do not match, run `initial/rename-products.sql` (idempotent).
+> In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql → rename-products.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
 > In development, images are written to the backend's local `uploads/` directory (`upload.mode=local`) and no OSS configuration is required. To use object storage, copy `script/.env.example` to `.env`, fill in the keys and set `UPLOAD_MODE=oss`.
 
 ### 5. Default test account
