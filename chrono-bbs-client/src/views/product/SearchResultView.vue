@@ -2,11 +2,10 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Search, Delete } from '@element-plus/icons-vue'
+import { Delete } from '@element-plus/icons-vue'
 import { getProductList, getCategoryTree } from '@/api/product'
 import {
   searchProducts,
-  getSearchSuggest,
   getSearchHistory,
   clearSearchHistory,
   getHotSearch,
@@ -38,27 +37,6 @@ const categoryTree = ref<Category[]>([])
 const hotKeywords = ref<string[]>([])
 const historyKeywords = ref<string[]>([])
 const HISTORY_KEY = 'search_history'
-
-// 搜索建议：优先调用 /api/search/suggest，失败时回退到本地商品名
-const querySuggest = async (query: string, cb: (data: { value: string }[]) => void) => {
-  const q = (query || '').trim()
-  if (!q) {
-    cb([])
-    return
-  }
-  try {
-    const res = await getSearchSuggest(q)
-    cb((res.data || []).slice(0, 8).map((value) => ({ value })))
-    return
-  } catch {
-    // 后端搜索未实现时回退到本地
-  }
-  const lower = q.toLowerCase()
-  const names = allProducts.value
-    .map((item) => item.name)
-    .filter((name) => name.toLowerCase().includes(lower))
-  cb(Array.from(new Set(names)).slice(0, 8).map((value) => ({ value })))
-}
 
 const loadHistory = async () => {
   if (userStore.isLoggedIn) {
@@ -377,29 +355,6 @@ watch(
 
 <template>
   <div class="search-page">
-    <div class="search-header">
-      <el-button text class="back-btn" @click="router.push('/home')">
-        <ArrowLeft />
-      </el-button>
-      <div class="search-bar">
-        <el-autocomplete
-          v-model="keyword"
-          :fetch-suggestions="querySuggest"
-          placeholder="搜索商品"
-          size="large"
-          :trigger-on-focus="false"
-          @keyup.enter="handleSearch()"
-          @select="(item: { value: string }) => handleSearch(item.value)"
-        >
-          <template #suffix>
-            <el-button text class="search-icon-btn" @click="handleSearch()">
-              <Search />
-            </el-button>
-          </template>
-        </el-autocomplete>
-      </div>
-    </div>
-
     <!-- 有关键词 / 分类 / 筛选条件：搜索结果 -->
     <template v-if="hasQuery()">
       <div class="filter-bar">
