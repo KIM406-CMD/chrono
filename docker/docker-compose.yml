@@ -1,9 +1,10 @@
 # ============================================================
 # 网上超市系统 — 本地开发中间件编排
 #
-# 启动：cd docker && docker compose up -d
-# 停止：docker compose down
-# 重置数据：docker compose down -v（会删除 MySQL/Redis/ES 数据卷）
+# 启动中间件：cd docker && docker compose up -d
+# 启动前端：   cd docker && docker compose --profile frontend up -d --build nginx
+# 停止：       docker compose down
+# 重置数据：   docker compose down -v（会删除 MySQL/Redis/ES 数据卷）
 #
 # MySQL 首次创建数据卷时会按顺序执行 ../initial 下的脚本：
 #   01-schema.sql    —— schema.sql，建库建表（20 张表）
@@ -92,6 +93,29 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+
+  # ==================== 前端 Nginx（可选） ====================
+  # 启用：docker compose --profile frontend up -d --build nginx
+  # 默认端口 3000，可通过 FRONTEND_PORT 环境变量覆盖
+  # 后端仍运行在宿主机 8080，容器通过 host.docker.internal 访问
+  nginx:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+    container_name: chrono-nginx
+    restart: unless-stopped
+    profiles: ["frontend"]
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    extra_hosts:
+      # Linux 上让 host.docker.internal 指向宿主机
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   mysql-data:

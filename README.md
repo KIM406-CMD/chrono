@@ -158,9 +158,25 @@ Bash / Git Bash / macOS / Linux：
 | 启动前端 | `script\start-frontend.bat` | `./script/start-frontend.sh` |
 | 停止中间件 | `script\stop-middleware.bat` | `./script/stop-middleware.sh` |
 
+### 3. Docker 部署前端（可选）
+
+前端提供多阶段镜像（Node 构建 + Nginx 托管），后端仍运行在宿主机 `8080`：
+
+```bash
+cd docker
+docker compose --profile frontend up -d --build nginx
+```
+
+| 服务 | 地址 |
+|------|------|
+| 前端（Nginx 容器） | <http://localhost:3000> |
+
+> 默认映射宿主机 `3000`，可用 `FRONTEND_PORT=3001` 覆盖；若本机已有 Nginx 占用 3000，请先停止本机 Nginx。
+> 容器通过 `host.docker.internal:8080` 访问后端；后端纳入 Compose 后可将 `deploy/nginx.docker.conf` 中的地址改为后端服务名。
+
 > 默认使用 Docker 中间件（MySQL 映射到宿主机 `3307`）；追加 `--local` 使用本机已启动的 MySQL / Redis / Elasticsearch（MySQL 按 `application-dev.yml` 使用 `3306`）。
 
-### 3. 本机中间件数据库初始化（可选）
+### 4. 本机中间件数据库初始化（可选）
 
 使用 `--local` 且首次运行时，先初始化数据库：
 
@@ -176,7 +192,7 @@ mysql -u root -p < initial/demo-data.sql
 > Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
 > 开发环境默认将图片写入后端本地 `uploads/` 目录（`upload.mode=local`），无需配置 OSS 即可上传；需要对象存储时，复制 `script/.env.example` 为根目录 `.env` 填写密钥并设置 `UPLOAD_MODE=oss`。
 
-### 4. 默认测试账号
+### 5. 默认测试账号
 
 | 角色 | 用户名 | 密码 | 说明 |
 |------|--------|------|------|
@@ -187,7 +203,7 @@ mysql -u root -p < initial/demo-data.sql
 
 > 演示账号由 `initial/demo-data.sql` 创建；普通用户也可通过前端注册功能自行创建。
 
-### 5. 生产部署（Nginx）
+### 6. 生产部署（Nginx）
 
 ```bash
 cd chrono-bbs-client

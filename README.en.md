@@ -164,7 +164,23 @@ The script starts middleware, backend, and frontend in order:
 
 > Docker middleware is used by default (MySQL exposed on host port `3307`); add `--local` to use locally running MySQL / Redis / Elasticsearch (MySQL uses `3306` from `application-dev.yml`).
 
-### 3. Initialize a local database (optional)
+### 3. Deploy the frontend with Docker (optional)
+
+A multi-stage frontend image (Node build + Nginx hosting) is provided; the backend still runs on host port `8080`:
+
+```bash
+cd docker
+docker compose --profile frontend up -d --build nginx
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend (Nginx container) | <http://localhost:3000> |
+
+> Host port `3000` is used by default; override with `FRONTEND_PORT=3001`. Stop any local Nginx using 3000 first.
+> The container reaches the backend through `host.docker.internal:8080`; if the backend is added to Compose, update the address in `deploy/nginx.docker.conf` to the service name.
+
+### 4. Initialize a local database (optional)
 
 When using `--local` for the first time, initialize the database:
 
@@ -180,7 +196,7 @@ The scripts are in `initial/` and create the `chrono_bbs_dev` database. The defa
 > In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
 > In development, images are written to the backend's local `uploads/` directory (`upload.mode=local`) and no OSS configuration is required. To use object storage, copy `script/.env.example` to `.env`, fill in the keys and set `UPLOAD_MODE=oss`.
 
-### 4. Default test account
+### 5. Default test account
 
 | Role | Username | Password | Notes |
 |------|----------|----------|-------|
@@ -191,7 +207,7 @@ The scripts are in `initial/` and create the `chrono_bbs_dev` database. The defa
 
 > Demo accounts are created by `initial/demo-data.sql`; regular users can also register through the frontend.
 
-### 5. Production deployment (Nginx)
+### 6. Production deployment (Nginx)
 
 ```bash
 cd chrono-bbs-client
