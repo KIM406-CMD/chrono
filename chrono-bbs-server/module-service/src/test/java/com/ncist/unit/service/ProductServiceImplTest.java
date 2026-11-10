@@ -14,6 +14,7 @@ import com.ncist.mapper.CategoryMapper;
 import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.ProductMapper;
 import com.ncist.mapper.ProductSkuMapper;
+import com.ncist.service.ProductSearchIndexService;
 import com.ncist.service.impl.ProductServiceImpl;
 import com.ncist.vo.ProductDetailVO;
 import com.ncist.vo.ProductVO;
@@ -58,6 +59,9 @@ class ProductServiceImplTest {
 
     @Mock
     private MerchantMapper merchantMapper;
+
+    @Mock
+    private ProductSearchIndexService productSearchIndexService;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();

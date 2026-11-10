@@ -1495,7 +1495,7 @@ POST /api/upload/image
 **Swagger 分组**：即时通讯  
 **权限**：需登录
 
-> 实现状态：后端 `ChatController` 尚未实现；开发阶段由 Mock 提供 HTTP 接口，前端聊天入口默认开启（`CHAT_ENABLED = true`）。
+> 说明：本模块已实现。会话参与者为买家用户 ID（`userId`）与商家用户 ID（`merchantId`），同一对用户+商家仅一条会话（唯一索引防并发）。拉取历史消息时自动将对方发来的消息标记为已读并清零当前用户一侧的未读数；所有接口均校验当前用户属于该会话（防越权）。
 
 ### 14.1 会话列表
 
@@ -1607,7 +1607,7 @@ POST /api/chat/message
 **Swagger 分组**：商品搜索  
 **权限**：公开
 
-> 实现状态：后端搜索模块尚未实现（`SearchController` 为空）。开发阶段由 Mock 提供完整搜索接口；前端搜索页已接入本节接口，接口不可用时自动降级为基于 `/api/product/list` 的本地过滤，游客可正常使用。
+> 说明：本模块已实现。检索与搜索建议走 Elasticsearch 索引 `chrono_product`（`name`/`description` 分词，`brand`/`categoryId`/`status` 过滤，`minPrice`/`sales`/`createdAt` 排序），搜索历史与热搜榜走 MySQL `search_history` 表。索引在应用启动时自动创建，为空时自动全量同步上架商品（按 id 覆盖写）；商家修改/上下架/删除商品时增量同步（新建商品默认下架，上架时才写入索引），ES 异常只记日志、不回滚商品主业务。`keyword` 与 `categoryId` 至少提供一个，均为空时返回空分页；关键词分词后要求所有词项命中（避免部分匹配），默认综合排序为“有关键词按相关性、否则按销量”；`page*size` 超过 ES 深分页上限（10000）时返回空分页。登录用户检索时自动记录搜索历史（同关键词去重，仅保留最近一次）。
 
 ### 15.1 全文检索
 
@@ -1617,14 +1617,14 @@ GET /api/search
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| keyword | String | 是 | 搜索关键词 |
-| categoryId | Long | 否 | 分类筛选 |
-| brand | String | 否 | 品牌筛选 |
+| keyword | String | 否 | 搜索关键词（与 `categoryId` 至少提供一个） |
+| categoryId | Long | 否 | 分类筛选（仅传分类时为分类浏览） |
+| brand | String | 否 | 品牌筛选（精确匹配） |
 | minPrice | Integer | 否 | 最低价（分） |
 | maxPrice | Integer | 否 | 最高价（分） |
-| sort | String | 否 | `sales_desc` / `price_asc` / `price_desc` / `time_desc` |
+| sort | String | 否 | `sales_desc` / `price_asc` / `price_desc` / `time_desc`，不传为综合排序 |
 | page | Integer | 否 | 页码，默认 1 |
-| size | Integer | 否 | 每页大小，默认 20 |
+| size | Integer | 否 | 每页大小，默认 20，上限 100 |
 
 > 前端统一走后端中转路径 `/api/search`，由后端 `SearchController` 内部使用 Elasticsearch 检索。
 
@@ -1682,7 +1682,7 @@ GET /api/search/suggest?keyword=iph
 GET /api/search/history
 ```
 
-> 仅登录用户，返回最近 20 条
+> 仅登录用户（未登录返回 401），返回最近 20 条，`data` 为 `string[]`，同关键词只保留最近一次
 
 ---
 
@@ -1692,6 +1692,8 @@ GET /api/search/history
 DELETE /api/search/history
 ```
 
+> 仅登录用户，按 `userId` 删除全部记录
+
 ---
 
 ### 15.5 热搜榜
@@ -1700,7 +1702,7 @@ DELETE /api/search/history
 GET /api/search/hot
 ```
 
-> 公开接口，基于近 7 天搜索频率
+> 公开接口，基于近 7 天搜索频率，返回 TOP 10，`data` 为 `string[]`
 
 ---
 
@@ -1937,6 +1939,8 @@ POST /api/seckill/calculate
 **端点**：`ws://localhost:8080/chat/{userId}?token=<jwt_token>`  
 **协议**：JSR 356 原生 WebSocket（后端 `@OnOpen` / `@OnMessage` / `@OnClose`）
 
+> 说明：本模块已实现。`@OnOpen` 校验 JWT 且 token 中的 userId 必须与路径一致、并与 Redis 记录的 `token:{userId}` 一致（防冒连），通过后写 `online:{userId}` 并补推离线未读消息；`@OnMessage` 校验会话归属 → 落库 MySQL → 更新会话最后消息与对方未读数 → 对方在线则实时推送，同时回显发送方；`@OnClose` 仅在无其他连接时删除 `online:{userId}`；`@OnError` 记录日志并关闭连接。鉴权失败以 1008（VIOLATED_POLICY）关闭。
+
 ### 17.1 连接
 
 ```typescript
@@ -2014,6 +2018,8 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 商家管理 | MerchantErrorCode | 4041 商家不存在；4042 商家状态不允许此操作；4043 您已提交过入驻申请；4044 您不是商家，无权操作；4045 该订单不属于您的店铺；4046 订单状态不允许发货；4047 商家暂无商品 |
 | 管理后台 | AdminErrorCode | 4051 仅管理员可执行此操作；4052 不能禁用管理员账号；4053 该分类存在子分类，无法删除；4054 该分类下存在商品，无法删除；4055 父分类不存在或层级不合法；4056 该商家已完成审核，请勿重复操作 |
 | 文件上传 | UploadErrorCode | 4061 上传文件不能为空；4062 文件大小不能超过 2MB；4063 仅支持 jpg/jpeg/png/webp 格式；4064 文件上传失败 |
+| 即时通讯 | ChatErrorCode | 404 会话不存在 / 商家不存在；403 无权访问该会话 / 商家资质无效；400 不能与自己发起会话 / 消息内容不能为空 / 消息类型非法 / 消息内容超过 2000 字 |
+| 商品搜索 | SearchErrorCode | 503 搜索服务暂不可用 |
 
 ---
 
@@ -2034,7 +2040,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 管理后台 | `/api/admin` | ❌ | ❌ | ❌ | ✅ 全部 |
 | 文件上传 | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | 即时通讯 | `/api/chat` | ❌ | ✅ | ✅ | — |
-| 商品搜索 | `/api/search` | ✅ | ✅ | ✅ | ✅ |
+| 商品搜索 | `/api/search` | ✅ 检索/建议/热搜 | ✅ + 搜索历史/清空 | ✅ | ✅ |
 | 秒杀券 | `/api/seckill` | ✅ 查看 | ✅ 抢领/我的券/计算 | — | ✅ 创建/编辑/删除 |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
 

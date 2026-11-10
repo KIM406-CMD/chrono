@@ -8,9 +8,8 @@ spring:
     redis:
       host: ${REDIS_HOST:prod-host}
       port: ${REDIS_PORT:6379}
-    elasticsearch:
-      client:
-        uris: ${ES_URIS:http://prod-host:9200}
+  elasticsearch:
+    uris: ${ES_URIS:http://prod-host:9200}
 
 aliyun:
   oss:

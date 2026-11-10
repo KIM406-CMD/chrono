@@ -18,6 +18,7 @@ import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.ProductMapper;
 import com.ncist.mapper.ProductSkuMapper;
 import com.ncist.service.ProductService;
+import com.ncist.service.ProductSearchIndexService;
 import com.ncist.vo.ProductDetailVO;
 import com.ncist.vo.ProductSkuVO;
 import com.ncist.vo.ProductVO;
@@ -57,6 +58,7 @@ public class ProductServiceImpl implements ProductService {
     private final MerchantMapper merchantMapper;
     /** JSON 序列化组件，用于商品图片数组编解码。 */
     private final ObjectMapper objectMapper;
+    private final ProductSearchIndexService productSearchIndexService;
 
     /**
      * {@inheritDoc}
@@ -205,6 +207,8 @@ public class ProductServiceImpl implements ProductService {
             productSkuMapper.deleteByProductId(id);
             insertSkus(id, dto.getSkuList());
         }
+        // 同步搜索索引（失败只记录日志，不回滚商品主业务）
+        productSearchIndexService.syncProduct(id);
     }
 
     /** {@inheritDoc} */
@@ -218,6 +222,8 @@ public class ProductServiceImpl implements ProductService {
         Merchant merchant = requireApprovedMerchant(userId);
         requireOwnership(id, merchant.getId());
         productMapper.updateStatus(id, status);
+        // 上下架后同步搜索索引：上架写入、下架移除
+        productSearchIndexService.syncProduct(id);
     }
 
     /**
@@ -240,6 +246,8 @@ public class ProductServiceImpl implements ProductService {
             log.warn("商品 {} 存在交易引用，删除被拒绝", id);
             throw new BusinessException(ProductErrorCode.PRODUCT_REFERENCED);
         }
+        // 删除成功后移除搜索索引
+        productSearchIndexService.deleteProduct(id);
     }
 
     // ================ 私有校验与组装方法 ================

@@ -54,6 +54,8 @@ public class JwtInterceptor implements HandlerInterceptor {
         if (handler instanceof HandlerMethod handlerMethod) {
             if (handlerMethod.hasMethodAnnotation(Public.class)
                     || handlerMethod.getBeanType().isAnnotationPresent(Public.class)) {
+                // 公开接口的可选登录：携带有效 token 时填充用户上下文（如登录用户搜索需记录历史），无效则按游客处理
+                fillContextIfTokenPresent(request);
                 return true;
             }
         }
@@ -89,6 +91,30 @@ public class JwtInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         UserContext.clear();
+    }
+
+    // 公开接口的可选登录：token 有效时填充用户上下文，任何异常都按游客处理
+    private void fillContextIfTokenPresent(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (!StringUtils.hasText(header) || !header.startsWith("Bearer")) {
+            return;
+        }
+        try {
+            String token = header.substring(7);
+            Claims claims = JwtUtil.parseToken(token);
+            Long userId = Long.valueOf(String.valueOf(claims.get("userId")));
+            String serverToken = stringRedisTemplate.opsForValue().get(TOKEN_PREFIX + userId);
+            if (serverToken == null || !serverToken.equals(token)) {
+                return;
+            }
+            UserContext.set(new UserContext.UserInfo(
+                    userId,
+                    String.valueOf(claims.get("username")),
+                    Integer.valueOf(String.valueOf(claims.get("role")))
+            ));
+        } catch (Exception ignored) {
+            // 游客访问公开接口：token 无效/过期时忽略
+        }
     }
 
     /**

@@ -965,31 +965,31 @@ flowchart TD
 
 ## 十三、搜索模块
 
-### 13.1 搜索建议 — `POST /api/search/suggest`
+> 实现说明：搜索相关接口均为 `GET`（不是 POST），ES 文档已包含返回所需全部字段，检索结果直接组装返回，**不再回查 MySQL**；未实现品牌/价格聚合筛选。
+
+### 13.1 搜索建议 — `GET /api/search/suggest`
 
 ```mermaid
 flowchart TD
-    A["用户输入关键词（实时触发）"] --> B["POST /api/search/suggest<br/>{ keyword }"]
-    B --> C["构建 ES suggest DSL<br/>completion 补全查询"]
-    C --> D["查询 ES: product_index"]
-    D --> E["ES 返回建议词列表"]
-    E --> F["返回建议词列表"]
+    A["用户输入关键词（实时触发）"] --> B["GET /api/search/suggest?keyword="]
+    B --> C["构建 ES 查询<br/>match_bool_prefix(name) + term(status=1)"]
+    C --> D["查询 ES: chrono_product（size=10，仅取 name）"]
+    D --> E["按命中顺序去重商品名"]
+    E --> F["返回字符串数组"]
 ```
 
-### 13.2 商品搜索 — `POST /api/search`
+### 13.2 商品搜索 — `GET /api/search`
 
 ```mermaid
 flowchart TD
-    A["用户回车搜索<br/>POST /api/search<br/>{ keyword, page, size, filters[], sort }"] --> B["构建 ES 搜索 DSL"]
-    B --> C["query: bool → must(multi_match: 名称, 描述, 品牌)"]
-    C --> D["filter: term(品牌) + range(价格) + term(分类)"]
-    D --> E["sort: 综合/价格/销量/新品"]
-    E --> F["aggs: 品牌聚合 + 价格区间聚合"]
-    F --> G["查询 ES: product_index"]
-    G --> H["解析 ES 结果 → 提取商品 ID 列表"]
-    H --> I["按 ID 列表查询 MySQL 补全数据"]
-    I --> J["记录搜索历史到搜索历史表"]
-    J --> K["返回分页结果 + 聚合筛选条件"]
+    A["GET /api/search<br/>keyword / categoryId / brand / minPrice / maxPrice / sort / page / size"] --> B{"keyword 与 categoryId 都为空?"}
+    B -- 是 --> C["返回空分页"]
+    B -- 否 --> D["登录用户写入搜索历史（同词先删后插）"]
+    D --> E["构建 ES 查询<br/>must: multi_match(name^3, description, brand, operator=AND)<br/>filter: term(status=1) + term(categoryId) + term(brand) + range(minPrice)"]
+    E --> F["排序：综合(可选 _score, sales) / sales_desc / price_asc / price_desc / time_desc"]
+    F --> G["查询 ES: chrono_product（from/size）"]
+    G --> H["解析 hits → SearchItemVO（id/name/description/brand/categoryId/categoryName/minPrice/sales/image）"]
+    H --> I["返回分页结果（total/page/size/list）"]
 ```
 
 ### 13.3 搜索历史 — `GET /api/search/history`
@@ -997,26 +997,29 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["GET /api/search/history"] --> B["解析 JWT，获取 userId"]
-    B --> C["查询搜索历史表<br/>按搜索时间倒序，取最近 20 条"]
+    B --> C["查询 search_history 表<br/>按搜索时间倒序，取最近 20 条（同词已去重）"]
     C --> D["返回搜索历史列表"]
+    E["DELETE /api/search/history"] --> F["按 userId 删除全部记录"]
 ```
 
 ### 13.4 同步商品到 ES
 
 ```mermaid
 flowchart TD
-    A["商品创建/上架/更新 触发同步"] --> B["组装 ES 文档<br/>{ id, 名称, 描述, 品牌, 分类ID/名称, 价格区间, 图片, 销量, 状态, 补全建议词 }"]
-    B --> C["ES Index 请求: product_index / _doc / {productId}"]
+    A["商品上架/更新 触发同步"] --> B["组装 ES 文档<br/>{ id, name, description, brand, categoryId, categoryName, minPrice, sales, image, status, createdAt }"]
+    B --> C["ES Index 请求: chrono_product / _doc / {productId}（按 id 覆盖写）"]
     C --> D["ES 自动创建或更新文档"]
-    D --> E["同步完成"]
+    D --> E["同步完成（异常仅记日志，不回滚主业务）"]
 ```
 
 ### 13.5 从 ES 删除商品
 
 ```mermaid
 flowchart TD
-    A["商品下架 触发删除"] --> B["ES Delete 请求: product_index / _doc / {productId}"]
-    B --> C["删除完成"]
+    A["商品下架/删除 触发删除"] --> B["ES Delete 请求: chrono_product / _doc / {productId}"]
+    B --> C{"文档不存在（404）?"}
+    C -- 是 --> D["静默忽略"]
+    C -- 否 --> E["删除完成"]
 ```
 
 ---

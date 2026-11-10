@@ -395,31 +395,34 @@ public class OrderServiceImpl implements OrderService {
 |------|------|------|
 | 插 order + 插 order_item + 清购物车 + 扣 MySQL 库存 | ✅ 同一事务 | MySQL 写操作，ACID 保证 |
 | 扣 Redis 库存 | ❌ 独立操作 | Redis 不支持回滚，在下单成功/失败后分别补偿 |
-| 发送 ES 同步消息 | ❌ 事务后异步 | 不影响主流程 |
+| 发送 ES 同步消息 | ❌ 事务内同步调用 | 内部吞异常，失败仅记日志 |
 
 ---
 
 ## 九、ES 数据同步策略
 
-### 9.1 同步方式
+### 9.1 同步方式（实现现状）
 
-采用 **异步 + MQ 或线程池**，不阻塞主流程：
+采用 **同步调用 + 异常隔离**：商品 Service 处理完 MySQL 后直接调用 `ProductSearchIndexService` 同步 ES，
+同步逻辑内部捕获全部异常，仅记录 WARN 日志，**不影响也不回滚商品主业务**（未引入 MQ/@Async）。
 
 ```
-商品上架/更新 → Service 层处理完 MySQL → 异步发送 ES 更新消息
-商品下架/删除 → Service 层处理完 MySQL → 异步发送 ES 删除消息
+商品上架/更新 → Service 层处理完 MySQL → 同步写入/覆盖 ES 文档
+商品下架/删除 → Service 层处理完 MySQL → 同步删除 ES 文档（文档本不存在时忽略 404）
+应用启动      → 索引不存在则创建 mapping；索引为空时全量同步上架商品
 ```
-
-> 课程设计阶段可用 `@Async` + 线程池替代 MQ，简化架构。
 
 ### 9.2 同步内容
 
+索引名 `chrono_product`，字段：`id`、`name`、`description`、`brand`、`categoryId`、`categoryName`、`minPrice`、`sales`、`image`、`status`、`createdAt`。
+
 | 操作 | ES 动作 |
 |------|------|
-| 商品上架 | INSERT 到 `product_index` |
-| 商品更新（名称/价格/描述） | UPDATE `product_index` |
-| 商品下架/删除 | DELETE 从 `product_index` |
-| 订单支付（销量变化） | 定时任务批量更新 `sales` 字段 |
+| 商品新建（默认下架） | 不写入索引，上架时写入 |
+| 商品上架 | INSERT/覆盖 `chrono_product` |
+| 商品更新（名称/描述/品牌/价格/SKU） | UPDATE `chrono_product`（重新计算最低价） |
+| 商品下架/删除 | DELETE 从 `chrono_product` |
+| 订单支付（销量变化） | 暂未实现定时同步，销量在商品更新或全量初始化时刷新 |
 
 ---
 

@@ -111,6 +111,16 @@
 - 文档：新增《面向对象开发步骤与设计分析》，梳理需求与用例、领域分析、职责分配、架构设计与详细设计步骤（中文 `docs/zh/object-oriented-development.md`，英文 `docs/en/object-oriented-development.md`）
 - 部署：新增 `deploy/nginx.conf`（History 回退、`/api` 反向代理、上传大小限制、静态缓存与 gzip），README 补充生产部署步骤
 - Docker：`docker-compose.yml` 增加编排说明，直接挂载 `initial/schema.sql` 与 `initial/data.sql` 自动初始化；两个脚本统一为 `chrono_bbs_dev` 库
+- 即时通讯 5 个接口：会话列表（联查店铺名/头像/关联商品名/未读数）、历史消息分页（从新到旧，进入即标记对方消息已读并清零该侧未读数）、创建或获取会话（校验商家资质、唯一索引兜底并发）、标记已读、未读总数
+- ConversationMapper/MessageMapper 全注解 SQL：会话联查、按用户查会话、未读计数、消息分页、批量已读、离线未读查询
+- 新增 ConversationDetail/MessageDetail 联查实体，ConversationVO/MessageVO，ConversationCreateDTO/SendMessageDTO；ChatErrorCode（8 个）
+- WebSocket 通信：JSR 356 原生端点 `/chat/{userId}?token=`（JWT + Redis token 双校验、防冒连），上线写 `online:{userId}` 并补推离线未读，消息落库后实时推送对方并回显发送方，断开清理在线状态
+- RedisOnlineService：在线状态读写与握手 token 一致性校验；WebSocketConfig 注册 ServerEndpointExporter 并注入端点依赖
+- 商品搜索 5 个接口：全文检索（多字段 AND 匹配 + 分类/品牌/价格过滤 + 综合/销量/价格/时间排序 + 分页）、搜索建议（`match_bool_prefix` 自动补全）、搜索历史（最近 20 条，同关键词去重）、清空搜索历史、近 7 天热搜榜
+- ES 索引 `chrono_product`：启动时自动创建 mapping（`name`/`description` 分词，`brand`/`categoryId`/`status` 过滤，`minPrice`/`sales`/`createdAt` 排序）；索引为空时自动全量同步上架商品（按 id 覆盖写，可重复执行）
+- 商品增量同步：`ProductSearchIndexService` 在商品修改/上下架/删除时同步 ES，异常仅记日志、不影响商品主业务（下架商品重复删除的 404 不告警，bulk 失败项输出原因日志）；`ProductServiceImpl` 注入该服务
+- SearchHistoryMapper（5 方法，全注解 SQL：新增、同关键词去重、最近 20 条、按用户清空、近 7 天热搜聚合）；新增 SearchItemVO/ProductDoc、SearchErrorCode（SEARCH_UNAVAILABLE 503）
+- JwtInterceptor：`@Public` 接口支持可选登录（携带有效 token 时填充 UserContext，无效按游客处理），用于登录用户搜索时记录历史；搜索历史写入失败不影响检索
 
 ### Changed
 - `docker/docker-compose.yml` 挂载 `initial/migration-2026-11-09.sql` 为 `03-migration.sql`；增量脚本改为幂等（列/索引已存在则跳过），Docker 首次初始化按 schema → data → migration 执行
@@ -158,6 +168,7 @@
 - README.md / CLAUDE.md：数据库表数量由 14 更新为 20；README 补充 Docker 自动初始化与 3307 端口说明；CLAUDE.md 测试说明由 H2 更正为 `chrono_bbs_test` MySQL + 本地 Redis
 - api-doc.md：文末更新日期改为 2026-11-09，版本标记为 v0.2.0-dev（Unreleased）
 - test-specification.md：集成测试数据库地址由 `chrono_bbs` 更正为 `chrono_bbs_test`，与 `application-test.yml` 一致
+- 搜索模块文档与实现对齐：api-doc §15 补模块说明、§18 错误码表补 SearchErrorCode、§19 权限总览细化游客/登录用户差异；db-design §13 索引由 `product_index` 改为 `chrono_product` 并补全 11 个字段类型；server-design §9 同步策略改为"同步调用 + 异常隔离"（未引入 MQ）；detailed-design §13 五个流程图改为 GET 接口、AND 匹配、直接返回 ES 文档字段（不回查 MySQL、无聚合）
 
 ### Removed
 - 文档：移除 `chrono-bbs-server/docs/` 下与根 `docs/` 重复的 10 份 Markdown 与 2 份 Word 副本，统一以根 `docs/` 为准
@@ -185,6 +196,11 @@
 - 商家销售统计与管理员销售报表按后端 VO 字段重写（`orderCount`/`salesTrend`/`productName`/`salesCount`/`totalAmount`、`avgOrderAmount`、`salesByCategory`/`salesByMerchant`），修复指标空白与 NaN；商家审核改用 `applicantUsername`，商家订单商品列改用 `items` 首项，api-doc 11.4/12.2 同步返回字段
 - 首页商品卡片改用商品列表接口的 `image` 字段展示首图，`maxPrice` 缺失时隐藏原价；商家/后台商品列表价格与店铺名缺失时显示占位，修复 NaN 与空白列；api-doc 11.3/12.4 同步实际返回字段
 - 商品详情页改用后端返回的 `skuList`/`shopName` 字段，修复 SKU 不显示、无法加购及店铺名空白；商品图片字段统一为字符串数组，接口文档 4.1/4.2 补充实际响应字段并与前端类型同步
+- 修复搜索相关性误命中：multi_match 由默认 OR 改为 `operator=AND`（"可乐"不再命中"乐事薯片"）
+- 修复显式 `sort=sales_desc` 被默认综合排序覆盖、关键词相关性未参与综合排序：现已按关键词时 `_score` 优先、否则销量兜底
+- 修复深分页（`(page-1)*size ≥ 10000`）触发 ES `max_result_window` 报错返回 503：改为返回空分页
+- 修复下架商品重复同步索引时 ES 404 被当作异常打印告警日志
+- 清理 SearchHistoryMapper 未使用的 selectById 方法与多余导入、JwtInterceptor 重复注释、SearchController 误用的 @Parameter
 - 修复 MerchantController 遗漏 `@GetMapping("/stats")` 导致 11.6 销售统计端点不暴露的问题；同时修正 stats 参数注解顺序（@Parameter 内移到 @RequestParam 之后）
 - 修复 AdminServiceImpl 四处：分类修改三字段全空时 MyBatis `<set>` 渲染为空导致 SQL 语法错误（提前 400 拦截）；createCategory 补 level 取值 1-3 校验；一级分类强制 parentId=0 防脏数据；updateUserStatus 补 status ∈ {0,1} 校验
 - 修复上传文件超 multipart 限制时 MaxUploadSizeExceededException 被全局兜底成 500 的问题：新增专用异常处理器映射为业务错误码 4062

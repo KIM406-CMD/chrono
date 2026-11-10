@@ -565,6 +565,20 @@
 
 > **实现状态**：`SearchServiceImpl` 目前为占位实现，尚未接入 ES；下表为规划。
 
-| 索引 | 同步字段 | 说明 |
+索引名 `chrono_product`（Spring Boot 启动时自动创建 mapping，replicas=0）。
+
+| 字段 | 类型 | 说明 |
 |------|------|------|
-| `product_index` | id, name, description, brand, category_id, min_price, sales, created_at | 商品上架时写入，下架/删除时移除，更新时异步同步 |
+| `id` | long | 商品 ID（文档 _id 亦为商品 ID） |
+| `name` | text | 商品名，加权检索（`name^3`），附带 `keyword` 子字段 |
+| `description` | text | 商品描述 |
+| `brand` | keyword | 品牌，精确过滤 |
+| `categoryId` | long | 分类 ID，精确过滤 |
+| `categoryName` | keyword | 分类名 |
+| `minPrice` | integer | 最低 SKU 价格（分），价格过滤与排序 |
+| `sales` | integer | 销量，综合排序兜底 |
+| `image` | keyword（不建索引） | 首图 URL |
+| `status` | integer | 0-下架 1-上架，仅上架商品可被搜索 |
+| `createdAt` | date | 商品创建时间，`time_desc` 排序 |
+
+同步策略：商品上架/更新时按商品 ID 覆盖写入，下架/删除时删除文档；应用启动时索引不存在则创建，索引为空时全量同步上架商品。ES 异常只记日志，不影响 MySQL 主业务。
