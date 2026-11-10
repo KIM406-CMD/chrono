@@ -45,12 +45,78 @@ const roleText = computed(() => {
 const profileFormRef = ref<FormInstance>()
 const profileForm = reactive({
   nickname: '',
-  email: '',
 })
 
 const profileRules: FormRules = {
   nickname: [{ max: 20, message: '昵称不超过 20 个字符', trigger: 'blur' }],
-  email: [{ type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }],
+}
+
+const emailDialogVisible = ref(false)
+const emailFormRef = ref<FormInstance>()
+const emailForm = reactive({ email: '' })
+const emailRules: FormRules = {
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
+  ],
+}
+const emailSaving = ref(false)
+
+const phoneDialogVisible = ref(false)
+const phoneFormRef = ref<FormInstance>()
+const phoneForm = reactive({ phone: '' })
+const phoneRules: FormRules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
+  ],
+}
+const phoneSaving = ref(false)
+
+const openEmailDialog = () => {
+  emailForm.email = userInfo.value?.email || ''
+  emailDialogVisible.value = true
+}
+
+const openPhoneDialog = () => {
+  phoneForm.phone = userInfo.value?.phone || ''
+  phoneDialogVisible.value = true
+}
+
+const handleSaveEmail = async () => {
+  const valid = await emailFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  emailSaving.value = true
+  try {
+    await updateProfile({ email: emailForm.email })
+    if (userInfo.value) {
+      const updated = { ...userInfo.value, email: emailForm.email }
+      userStore.setUserInfo(updated)
+      userInfo.value = updated
+    }
+    ElMessage.success('邮箱修改成功')
+    emailDialogVisible.value = false
+  } finally {
+    emailSaving.value = false
+  }
+}
+
+const handleSavePhone = async () => {
+  const valid = await phoneFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  phoneSaving.value = true
+  try {
+    await updateProfile({ phone: phoneForm.phone })
+    if (userInfo.value) {
+      const updated = { ...userInfo.value, phone: phoneForm.phone }
+      userStore.setUserInfo(updated)
+      userInfo.value = updated
+    }
+    ElMessage.success('手机号修改成功')
+    phoneDialogVisible.value = false
+  } finally {
+    phoneSaving.value = false
+  }
 }
 
 const passwordFormRef = ref<FormInstance>()
@@ -132,7 +198,6 @@ const readImageAsDataUrl = (file: File) => {
 
 const fillForm = (info: UserInfo | null) => {
   profileForm.nickname = info?.nickname || ''
-  profileForm.email = info?.email || ''
   avatarPreview.value = info?.avatar || ''
 }
 
@@ -154,14 +219,12 @@ const handleSaveProfile = async () => {
   try {
     await updateProfile({
       nickname: profileForm.nickname,
-      email: profileForm.email,
       avatar: avatarPreview.value,
     })
     if (userInfo.value) {
       userStore.setUserInfo({
         ...userInfo.value,
         nickname: profileForm.nickname,
-        email: profileForm.email,
         avatar: avatarPreview.value,
       })
       userInfo.value = userStore.userInfo
@@ -285,11 +348,17 @@ onMounted(() => {
             <el-form-item label="昵称" prop="nickname">
               <el-input v-model="profileForm.nickname" placeholder="请输入昵称" maxlength="20" />
             </el-form-item>
-            <el-form-item label="邮箱" prop="email">
-              <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+            <el-form-item label="邮箱">
+              <div class="st-field-row">
+                <el-input :model-value="userInfo?.email || '未绑定'" disabled />
+                <el-button type="primary" plain @click="openEmailDialog">修改</el-button>
+              </div>
             </el-form-item>
             <el-form-item label="手机号">
-              <el-input :model-value="userInfo?.phone || ''" disabled />
+              <div class="st-field-row">
+                <el-input :model-value="userInfo?.phone || '未绑定'" disabled />
+                <el-button type="primary" plain @click="openPhoneDialog">修改</el-button>
+              </div>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="profileSaving" @click="handleSaveProfile">
@@ -414,6 +483,40 @@ onMounted(() => {
         </template>
       </section>
     </div>
+
+    <el-dialog v-model="emailDialogVisible" title="修改邮箱" width="420px" destroy-on-close>
+      <el-form
+        ref="emailFormRef"
+        :model="emailForm"
+        :rules="emailRules"
+        label-width="70px"
+      >
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="emailForm.email" placeholder="请输入新邮箱" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="emailDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="emailSaving" @click="handleSaveEmail">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="phoneDialogVisible" title="修改手机号" width="420px" destroy-on-close>
+      <el-form
+        ref="phoneFormRef"
+        :model="phoneForm"
+        :rules="phoneRules"
+        label-width="70px"
+      >
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="phoneForm.phone" placeholder="请输入新手机号" maxlength="11" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="phoneDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="phoneSaving" @click="handleSavePhone">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -570,8 +673,19 @@ onMounted(() => {
 }
 
 .st-form {
-  max-width: 420px;
+  max-width: 520px;
   padding-top: 16px;
+}
+
+.st-field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.st-field-row .el-input {
+  flex: 1;
 }
 
 .st-group {

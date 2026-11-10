@@ -74,6 +74,7 @@ export interface ForgotPasswordRequest {
 export interface UpdateProfileRequest {
   nickname?: string
   email?: string
+  phone?: string
   avatar?: string
 }
 
