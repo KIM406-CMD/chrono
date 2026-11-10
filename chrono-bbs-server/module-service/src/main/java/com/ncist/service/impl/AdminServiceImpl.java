@@ -161,6 +161,10 @@ public class AdminServiceImpl implements AdminService {
         if (productMapper.selectById(id) == null) {
             throw new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND);
         }
+        // 数据库未建立外键约束，删除前显式校验交易引用
+        if (productMapper.countCartReferences(id) > 0 || productMapper.countOrderReferences(id) > 0) {
+            throw new BusinessException(ProductErrorCode.PRODUCT_REFERENCED);
+        }
         try {
             productMapper.deleteById(id);
             productSkuMapper.deleteByProductId(id);

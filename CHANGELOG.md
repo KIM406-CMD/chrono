@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- 商品删除引用校验：数据库未建外键，改为删除前显式统计购物车与订单明细引用，避免商家/管理员误删已售商品产生孤儿数据
+
 ### Added
 - 演示种子数据：新增 `initial/demo-data.sql`（幂等），内置 `merchant1` / `merchant2` / `user1` 演示账号，以及 12 个商品、13 个 SKU、购物车、3 笔订单、支付流水、退款申请与商品评论；Docker 初始化自动执行
 - 管理员商品操作接口：新增 `PUT /api/admin/products/{id}/status` 与 `DELETE /api/admin/products/{id}`，支持全平台商品上下架/删除并同步搜索索引

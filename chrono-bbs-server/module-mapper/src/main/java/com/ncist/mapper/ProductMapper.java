@@ -109,6 +109,28 @@ public interface ProductMapper {
     int deleteById(Long id);
 
     /**
+     * 统计商品被购物车引用的数量。
+     *
+     * <p>数据库未建立外键约束，删除前需显式校验，避免产生孤儿购物车项。</p>
+     *
+     * @param productId 商品 ID
+     * @return 引用该商品的购物车项数量
+     */
+    @Select("SELECT COUNT(*) FROM cart_item WHERE product_id = #{productId}")
+    long countCartReferences(Long productId);
+
+    /**
+     * 统计商品被订单明细引用的数量。
+     *
+     * <p>数据库未建立外键约束，删除前需显式校验，避免订单历史丢失商品关联。</p>
+     *
+     * @param productId 商品 ID
+     * @return 引用该商品的订单明细数量
+     */
+    @Select("SELECT COUNT(*) FROM order_item WHERE product_id = #{productId}")
+    long countOrderReferences(Long productId);
+
+    /**
      * 管理后台分页查询全平台商品。
      *
      * @param keyword 关键字，模糊匹配商品名称或品牌；为空时不过滤

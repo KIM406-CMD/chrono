@@ -482,6 +482,8 @@ PUT /api/product/{id}/status
 
 ### 4.6 删除商品
 
+> 仅商品所属商家可操作；商品被购物车或订单引用时返回 409，建议改为下架。
+
 ```
 DELETE /api/product/{id}
 ```

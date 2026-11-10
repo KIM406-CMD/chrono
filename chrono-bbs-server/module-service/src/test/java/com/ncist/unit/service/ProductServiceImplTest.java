@@ -26,7 +26,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 
@@ -236,12 +235,12 @@ class ProductServiceImplTest {
     void deleteReferenced() {
         when(merchantMapper.selectByUserId(1L)).thenReturn(approvedMerchant());
         when(productMapper.selectById(66L)).thenReturn(ownProduct());
-        org.mockito.Mockito.doThrow(new DataIntegrityViolationException("FK"))
-                .when(productMapper).deleteById(66L);
+        when(productMapper.countOrderReferences(66L)).thenReturn(1L);
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> productService.deleteProduct(66L, 1L));
         assertEquals("商品已被交易引用，无法删除，请下架", ex.getMessage());
+        verify(productMapper, never()).deleteById(66L);
     }
 
     @Test

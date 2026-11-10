@@ -481,6 +481,8 @@ PUT /api/product/{id}/status
 
 ### 4.6 Delete Product
 
+> Only the owning merchant can delete; returns 409 when the product is referenced by carts or orders, in which case taking it off shelf is recommended.
+
 ```
 DELETE /api/product/{id}
 ```

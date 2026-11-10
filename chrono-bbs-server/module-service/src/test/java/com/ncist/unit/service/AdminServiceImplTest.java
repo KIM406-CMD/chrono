@@ -22,7 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -119,12 +118,14 @@ class AdminServiceImplTest {
     @DisplayName("管理员删除商品-存在交易引用返回409")
     void deleteReferenced() {
         when(productMapper.selectById(1L)).thenReturn(product(1L));
-        when(productMapper.deleteById(1L)).thenThrow(new DataIntegrityViolationException("fk"));
+        when(productMapper.countCartReferences(1L)).thenReturn(0L);
+        when(productMapper.countOrderReferences(1L)).thenReturn(1L);
 
         BusinessException e = assertThrows(BusinessException.class,
                 () -> adminService.deleteProduct(1L));
 
         assertEquals(ProductErrorCode.PRODUCT_REFERENCED.getCode(), e.getCode());
+        verify(productMapper, never()).deleteById(1L);
         verify(productSearchIndexService, never()).deleteProduct(1L);
     }
 
