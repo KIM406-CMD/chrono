@@ -525,7 +525,7 @@ export const useUserStore = defineStore('user', () => {
 
 ## 七、即时通讯
 
-> **实现状态**：聊天入口已启用（`CHAT_ENABLED = true`），当前通过 Mock HTTP 接口（`mock/chat.ts`）联调。后端 WebSocket 接口完成后，切换至下方 WebSocket 方案。
+> **实现状态**：聊天入口已启用（`CHAT_ENABLED = true`）。`npm run dev` 与生产环境通过 `src/utils/chatSocket.ts` 直连后端 WebSocket，聊天页实时收发、未读角标实时刷新、断线自动重连；仅 `npm run dev:mock` 演示模式使用 Mock HTTP 接口。
 
 ### 7.1 后端 WebSocket 约定
 
@@ -547,67 +547,16 @@ ws://localhost:8080/chat/{userId}
 }
 ```
 
-### 7.2 前端封装 `composables/useWebSocket.ts`
+### 7.2 前端封装 `utils/chatSocket.ts`
 
-```typescript
-import { ref, onUnmounted } from 'vue'
-import { getToken } from '@/utils/token'
+采用全局单例 `chatSocket`，由商城布局持有连接、聊天页共享同一实例：
 
-interface WSMessage {
-  type: 'TEXT' | 'IMAGE'
-  conversationId: number
-  content: string
-  productId?: number
-  timestamp: number
-}
-
-export function useWebSocket(userId: number) {
-  const messages = ref<WSMessage[]>([])
-  const isConnected = ref(false)
-  let ws: WebSocket | null = null
-  let reconnectTimer: number | null = null
-
-  function connect() {
-    const token = getToken()
-    ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${token}`)
-
-    ws.onopen = () => {
-      isConnected.value = true
-      console.log('WebSocket 已连接')
-    }
-
-    ws.onmessage = (event) => {
-      const msg: WSMessage = JSON.parse(event.data)
-      messages.value.push(msg)
-    }
-
-    ws.onclose = () => {
-      isConnected.value = false
-      // 自动重连（3 秒后重试）
-      reconnectTimer = window.setTimeout(connect, 3000)
-    }
-
-    ws.onerror = (err) => {
-      console.error('WebSocket 错误', err)
-    }
-  }
-
-  function send(msg: { type: string; conversationId: number; content: string; productId?: number }) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ ...msg, timestamp: Date.now() }))
-    }
-  }
-
-  function disconnect() {
-    if (reconnectTimer) clearTimeout(reconnectTimer)
-    ws?.close()
-  }
-
-  onUnmounted(disconnect)
-
-  return { messages, isConnected, connect, send, disconnect }
-}
-```
+- `connect(userId, token)`：以当前页面同源地址建立 `/chat/{userId}?token=...` 连接，重复调用复用现有连接；
+- `send({ conversationId, content })`：连接就绪时发送 `TEXT` 帧，未就绪返回 `false`；
+- `onFrame(listener)` / `onStatus(listener)`：订阅实时消息与连接状态，返回取消订阅函数；
+- `disconnect()`：登出或离开商城布局时主动关闭；
+- 断线后按 1s、2s、4s……最长 30s 指数退避重连；收到 1008（鉴权失败）时停止重连，等待重新登录；
+- Vite 开发服务器与 Nginx 均配置 `/chat/` 的 WebSocket 转发，前端无需硬编码后端端口。
 
 ---
 
@@ -852,13 +801,14 @@ server {
         add_header Cache-Control "public, max-age=604800, immutable";
     }
 
-    # WebSocket 代理（聊天功能实现后启用）
-    location /ws/ {
+    # 聊天 WebSocket 代理
+    location /chat/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_read_timeout 3600s;
     }
 }
 ```
@@ -986,15 +936,15 @@ server {
 - `npm run dev` 连接真实后端；`npm run dev:mock` 使用 `mock/` 目录，互不影响。
 - Mock 商品创建/编辑已持久化多 SKU，并自动计算最低/最高价；管理员报表字段与后端 `AdminReportVO` 对齐。
 
-> 说明：聊天、商家退款审核、退货寄回确认、管理员商品操作、真实全文搜索与评论图片仍受后端接口限制，相关入口保持关闭或降级。
+> 说明：商家退款审核列表、管理员商品上下架/删除等能力仍受后端扩展接口限制，相关入口在 `dev:mock` 下通过 Mock 演示。
 
 
-### 15.8 聊天联调（Mock HTTP）
+### 15.8 聊天联调
 
 - 商城顶部消息入口、用户菜单“我的消息”默认开启；未读角标调用 `GET /api/chat/unread-count`。
-- 聊天页支持会话列表、历史消息、发送消息、标记已读；发送走 Mock 的 `POST /api/chat/message`（正式后端为 WebSocket）。
+- 聊天页支持会话列表、历史消息、实时收发、标记已读；`npm run dev` / 生产环境通过 WebSocket 直连后端，`dev:mock` 下才使用 `POST /api/chat/message`。
 - 商品详情页店铺卡片新增“联系客服”：登录后调用 `POST /api/chat/conversation` 创建/复用会话并跳转聊天页。
-- Mock 已实现会话创建去重、未读计数汇总与已读清零。
+- 未读角标随 WebSocket 实时消息刷新，打开会话后自动清零。
 
 ### 15.9 退款审核（商家/管理员）
 

@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UserFilled } from '@element-plus/icons-vue'
 import { getConversations, getMessages, markConversationRead, sendMessage } from '@/api/chat'
 import { useUserStore } from '@/stores/user'
 import { CHAT_ENABLED } from '@/config/features'
+import { chatSocket, type ChatFrame } from '@/utils/chatSocket'
 import type { Conversation, ChatMessage } from '@/api/chat'
+
+const isMockMode = import.meta.env.MODE === 'mock'
+let unsubscribeFrame: (() => void) | null = null
+let localFrameSeq = 0
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -48,6 +53,56 @@ const loadMessages = async (convId: number) => {
   }
 }
 
+const handleFrame = (frame: ChatFrame) => {
+  if (frame.type === 'ERROR') {
+    ElMessage.error(frame.message || '消息发送失败')
+    return
+  }
+  const convId = frame.conversationId
+  if (!convId || !frame.content) return
+
+  const isMine = frame.senderId === userStore.userInfo?.id
+  const conv = conversations.value.find((item) => item.id === convId)
+  const message: ChatMessage = {
+    // 离线补推帧可能缺少消息 ID，用负数占位避免与后端 ID 冲突
+    id: frame.messageId ?? -(++localFrameSeq),
+    conversationId: convId,
+    senderId: frame.senderId ?? 0,
+    senderName: isMine
+      ? (userStore.userInfo?.nickname || userStore.userInfo?.username || '我')
+      : (conv?.merchantName || ''),
+    content: frame.content,
+    type: frame.type === 'IMAGE' ? 'image' : 'text',
+    createdAt: new Date(frame.timestamp ?? Date.now()).toISOString(),
+  }
+
+  if (convId === activeConv.value) {
+    if (!messages.value.some((item) => item.id === message.id)) {
+      messages.value.push(message)
+      scrollToBottom()
+    }
+    if (!isMine) {
+      markConversationRead(convId)
+        .then(() => window.dispatchEvent(new Event('chat-unread-changed')))
+        .catch(() => undefined)
+      if (conv) conv.unreadCount = 0
+    }
+    return
+  }
+
+  if (conv) {
+    conv.lastMessage = message.content
+    conv.lastMessageTime = message.createdAt
+    if (!isMine) {
+      conv.unreadCount = (conv.unreadCount || 0) + 1
+      window.dispatchEvent(new Event('chat-unread-changed'))
+    }
+    return
+  }
+
+  if (!isMine) loadConversations()
+}
+
 const scrollToBottom = () => {
   nextTick(() => {
     if (msgListRef.value) {
@@ -66,26 +121,49 @@ const handleSend = async () => {
   if (!text || !activeConv.value) return
   const conv = conversations.value.find((c) => c.id === activeConv.value)
   if (!conv) return
-  inputText.value = ''
-  try {
-    const res = await sendMessage({ conversationId: conv.id, content: text, type: 'text' })
-    messages.value.push(res.data)
-    conv.lastMessage = text
-    conv.lastMessageTime = res.data.createdAt
-    scrollToBottom()
-  } catch {
-    ElMessage.error('发送失败')
+
+  // Mock 模式保留 HTTP 联调；真实后端模式统一走 WebSocket
+  if (isMockMode) {
+    inputText.value = ''
+    try {
+      const res = await sendMessage({ conversationId: conv.id, content: text, type: 'text' })
+      messages.value.push(res.data)
+      conv.lastMessage = text
+      conv.lastMessageTime = res.data.createdAt
+      scrollToBottom()
+    } catch {
+      ElMessage.error('发送失败')
+    }
+    return
   }
+
+  if (!chatSocket.send({ conversationId: conv.id, content: text })) {
+    ElMessage.error('聊天连接尚未建立，请稍后重试')
+    return
+  }
+  inputText.value = ''
+  conv.lastMessage = text
+  conv.lastMessageTime = new Date().toISOString()
+  scrollToBottom()
 }
 
 onMounted(async () => {
   if (!CHAT_ENABLED) return
+  if (!isMockMode && userStore.userInfo?.id && userStore.token) {
+    chatSocket.connect(userStore.userInfo.id, userStore.token)
+  }
+  unsubscribeFrame = chatSocket.onFrame(handleFrame)
   await loadConversations()
   const convId = Number(route.params.conversationId)
   if (convId) {
     activeConv.value = convId
     await loadMessages(convId)
   }
+})
+
+onBeforeUnmount(() => {
+  unsubscribeFrame?.()
+  unsubscribeFrame = null
 })
 </script>
 

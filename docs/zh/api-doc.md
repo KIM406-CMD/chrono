@@ -1585,7 +1585,7 @@ GET /api/chat/unread-count
 
 ### 14.6 发送消息（Mock 扩展）
 
-> 正式后端通过 WebSocket 发送消息（见第 17 节）；开发阶段由 Mock 提供 HTTP 接口，前端聊天页在 `dev:mock` 下使用。
+> 正式后端通过 WebSocket 发送消息（见第 17 节）。前端聊天页在 `npm run dev` / 生产环境直接连接 WebSocket 实时收发；仅 `npm run dev:mock` 演示模式使用本 HTTP 接口。
 
 ```
 POST /api/chat/message

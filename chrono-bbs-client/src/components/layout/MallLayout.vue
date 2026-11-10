@@ -7,6 +7,7 @@ import { getCategoryTree } from '@/api/product'
 import { getCartList } from '@/api/cart'
 import { getUnreadCount } from '@/api/chat'
 import { CHAT_ENABLED } from '@/config/features'
+import { chatSocket } from '@/utils/chatSocket'
 import CategoryFlyout from '@/components/category/CategoryFlyout.vue'
 import type { Category } from '@/types/product'
 
@@ -52,6 +53,9 @@ const onCategoryClick = (cat: Category) => {
   router.push({ path: '/search', query: { categoryId: String(cat.id) } })
 }
 
+const isMockMode = import.meta.env.MODE === 'mock'
+let unsubscribeChatFrame: (() => void) | null = null
+
 // 未读消息数
 const unreadMsgCount = ref(0)
 
@@ -85,9 +89,23 @@ const onUnreadChanged = () => {
   if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
 }
 
+// 商城布局持有全局聊天连接，未读角标可随实时消息刷新
+const syncChatConnection = () => {
+  if (!CHAT_ENABLED || isMockMode) return
+  if (userStore.isLoggedIn && userStore.userInfo?.id && userStore.token) {
+    chatSocket.connect(userStore.userInfo.id, userStore.token)
+  } else {
+    chatSocket.disconnect()
+  }
+}
+
 onMounted(() => {
   loadCategories()
   window.addEventListener('chat-unread-changed', onUnreadChanged)
+  unsubscribeChatFrame = chatSocket.onFrame((frame) => {
+    if (frame.type !== 'ERROR') loadUnreadCount()
+  })
+  syncChatConnection()
   if (userStore.isLoggedIn) {
     if (CHAT_ENABLED) loadUnreadCount()
     loadCartCount()
@@ -96,13 +114,17 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('chat-unread-changed', onUnreadChanged)
+  unsubscribeChatFrame?.()
+  unsubscribeChatFrame = null
+  chatSocket.disconnect()
 })
 
 watch(() => route.fullPath, () => {
   loadCartCount()
   if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
 })
-watch(() => userStore.token, () => {
+watch(() => [userStore.token, userStore.userInfo?.id], () => {
+  syncChatConnection()
   loadCartCount()
   if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
 })
