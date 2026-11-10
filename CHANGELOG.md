@@ -10,6 +10,7 @@
 ## [Unreleased]
 
 ### Added
+- 演示种子数据：新增 `initial/demo-data.sql`（幂等），内置 `merchant1` / `merchant2` / `user1` 演示账号，以及 12 个商品、13 个 SKU、购物车、3 笔订单、支付流水、退款申请与商品评论；Docker 初始化自动执行
 - 管理员商品操作接口：新增 `PUT /api/admin/products/{id}/status` 与 `DELETE /api/admin/products/{id}`，支持全平台商品上下架/删除并同步搜索索引
 - 支付记录接口：新增 `GET /api/payment/records`，按当前用户分页返回支付方式、脱敏卡号、订单金额、状态与支付时间
 - 退款审核列表接口：新增 `GET /api/merchant/refunds`（商家仅见自己商品）与 `GET /api/admin/refunds`（管理员见全平台），支持状态筛选与分页

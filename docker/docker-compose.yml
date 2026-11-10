@@ -9,6 +9,7 @@
 #   01-schema.sql    —— schema.sql，建库建表（20 张表）
 #   02-data.sql      —— data.sql，初始数据（管理员、分类、规格、秒杀券）
 #   03-migration.sql —— migration-2026-11-09.sql，增量字段（可重复执行）
+#   04-demo-data.sql —— demo-data.sql，演示商家/商品/订单/评论（可重复执行）
 # 注意：初始化脚本只在数据卷为空时执行；修改脚本后需 down -v 再启动。
 # 已有数据卷升级：手动执行 initial/migration-*.sql，无需删除数据卷。
 # ============================================================
@@ -34,6 +35,7 @@ services:
       - ../initial/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ../initial/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
       - ../initial/migration-2026-11-09.sql:/docker-entrypoint-initdb.d/03-migration.sql:ro
+      - ../initial/demo-data.sql:/docker-entrypoint-initdb.d/04-demo-data.sql:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci

@@ -100,7 +100,8 @@ chrono-bbs/
 ├── initial/                          # 🗄 数据库初始化脚本
 │   ├── schema.sql                    # 建表语句（含最新字段）
 │   ├── data.sql                      # 初始数据
-│   └── migration-2026-11-09.sql      # 已有库增量迁移（可重复执行）
+│   ├── migration-2026-11-09.sql      # 已有库增量迁移（可重复执行）
+│   └── demo-data.sql                 # 演示商家/商品/订单/评论（可重复执行）
 │
 ├── AGENTS.md                         # 🤖 AI 助手行为规范
 ├── CHANGELOG.md                      # 📝 变更日志
@@ -166,21 +167,25 @@ Bash / Git Bash / macOS / Linux：
 ```bash
 mysql -u root -p < initial/schema.sql
 mysql -u root -p < initial/data.sql
+mysql -u root -p < initial/demo-data.sql
 ```
 
-脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`。
+脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`，演示商家与用户见下方测试账号。
 
-> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行）。
-> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
+> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行）；需要演示数据时再执行 `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql`（可重复执行）。
+> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
 > 图片上传依赖阿里云 OSS，可复制 `script/.env.example` 为根目录 `.env` 并填写密钥；未配置时后端仍可启动，仅上传功能不可用。
 
 ### 4. 默认测试账号
 
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 管理员 | `admin` | `admin123` |
+| 角色 | 用户名 | 密码 | 说明 |
+|------|--------|------|------|
+| 管理员 | `admin` | `admin123` | 初始管理员 |
+| 商家 | `merchant1` | `admin123` | 鲜果直供旗舰店（已审核） |
+| 商家 | `merchant2` | `admin123` | 数码优选专营店（已审核） |
+| 普通用户 | `user1` | `admin123` | 含地址、购物车、订单、退款与评论 |
 
-> 普通用户可通过前端注册功能自行创建。
+> 演示账号由 `initial/demo-data.sql` 创建；普通用户也可通过前端注册功能自行创建。
 
 ### 5. 生产部署（Nginx）
 

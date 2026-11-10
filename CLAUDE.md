@@ -18,7 +18,7 @@ Chrono BBS 是一个 B2B2C 网上超市系统（课程设计项目），前后�
 cd docker && docker-compose up -d    # 启动中间件；down 停止
 ```
 
-数据库初始化脚本在 `initial/schema.sql`（建表，含最新字段）与 `initial/data.sql`（初始数据，含管理员账号 `admin` / `admin123`）。已有数据库升级执行 `initial/migration-2026-11-09.sql`（幂等）；Docker 首次初始化会按 schema → data → migration 顺序执行。
+数据库初始化脚本在 `initial/schema.sql`（建表，含最新字段）与 `initial/data.sql`（基础数据，含管理员账号 `admin` / `admin123`），`initial/demo-data.sql` 提供演示商家/商品/订单/评论（幂等）。已有数据库升级执行 `initial/migration-2026-11-09.sql`（幂等）；Docker 首次初始化会按 schema → data → migration → demo-data 顺序执行。
 
 ### 后端（chrono-bbs-server，Maven 多模块）
 

@@ -100,7 +100,8 @@ chrono-bbs/
 ├── initial/                          # 🗄 Database initialization scripts
 │   ├── schema.sql                    # DDL (latest schema)
 │   ├── data.sql                      # Seed data
-│   └── migration-2026-11-09.sql      # Incremental migration (idempotent)
+│   ├── migration-2026-11-09.sql      # Incremental migration (idempotent)
+│   └── demo-data.sql                 # Demo merchants/products/orders/comments (idempotent)
 │
 ├── deploy/                           # 🚀 Deployment configuration
 │   └── nginx.conf                    # Nginx static site + API proxy
@@ -170,21 +171,25 @@ When using `--local` for the first time, initialize the database:
 ```bash
 mysql -u root -p < initial/schema.sql
 mysql -u root -p < initial/data.sql
+mysql -u root -p < initial/demo-data.sql
 ```
 
-The scripts are in `initial/` and create the `chrono_bbs_dev` database. The default administrator is `admin` / `admin123`.
+The scripts are in `initial/` and create the `chrono_bbs_dev` database. The default administrator is `admin` / `admin123`; demo merchants and users are listed below.
 
-> To upgrade an existing database, run `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql` (idempotent).
-> In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
+> To upgrade an existing database, run `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql` (idempotent); for demo data, also run `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql` (idempotent).
+> In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
 > Image upload requires Aliyun OSS. Copy `script/.env.example` to `.env` in the repository root and fill in the keys; the backend still starts without them, but uploads are unavailable.
 
 ### 4. Default test account
 
-| Role | Username | Password |
-|------|----------|----------|
-| Administrator | `admin` | `admin123` |
+| Role | Username | Password | Notes |
+|------|----------|----------|-------|
+| Administrator | `admin` | `admin123` | Initial administrator |
+| Merchant | `merchant1` | `admin123` | Fresh fruit flagship store (approved) |
+| Merchant | `merchant2` | `admin123` | Digital products store (approved) |
+| Regular user | `user1` | `admin123` | Address, cart, orders, refund and comments included |
 
-> Regular users can register through the frontend.
+> Demo accounts are created by `initial/demo-data.sql`; regular users can also register through the frontend.
 
 ### 5. Production deployment (Nginx)
 
