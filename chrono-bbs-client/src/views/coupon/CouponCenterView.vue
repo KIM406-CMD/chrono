@@ -107,8 +107,19 @@ const handleClaim = async (coupon: SeckillCoupon) => {
     await claimSeckillCoupon(coupon.id)
     ElMessage.success(`已领取「${coupon.name}」`)
     await Promise.all([loadCenter(), loadMine()])
+    // 领取成功后直接切到“我的优惠券”，便于确认到账
+    activeTab.value = 'mine'
   } catch {
     // 错误提示由拦截器统一处理
+  }
+}
+
+// 每次切换标签页都重新拉取，避免登录/领取后仍展示旧数据
+const handleTabChange = (name: string | number) => {
+  if (name === 'center') {
+    loadCenter()
+  } else if (name === 'mine' && userStore.isLoggedIn) {
+    loadMine()
   }
 }
 
@@ -122,7 +133,7 @@ onMounted(() => {
 
 <template>
   <div class="cc-page">
-    <el-tabs v-model="activeTab" class="cc-tabs">
+    <el-tabs v-model="activeTab" class="cc-tabs" @tab-change="handleTabChange">
       <el-tab-pane label="领券中心" name="center">
         <div v-loading="centerLoading" class="cc-grid">
           <div v-for="coupon in coupons" :key="coupon.id" class="cc-card">
