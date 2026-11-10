@@ -11,6 +11,23 @@
 
 ### Added
 - 启动脚本新增 `--docker-frontend`：`start-all` 可一次性启动中间件、Nginx 容器与后端，不启动 Vite；`stop-middleware` 同步停止 Nginx 容器
+- 响应式布局：领券中心与商城布局补充窄屏媒体查询，卡片、搜索栏、导航与页脚在 768px / 480px 下自适应排列
+- 管理员搜索索引重建接口 `POST /api/admin/search-index/rebuild`，用于批量导入商品后全量覆盖写入 Elasticsearch
+- 账户设置支持单独修改邮箱与手机号：新增两个修改弹窗，`UpdateProfileRequest` 增加 `phone` 字段
+- 收货地址改为省/市/区级联选择，新增 `src/utils/region.ts` 地区数据，提交前校验省市区完整性
+- 演示数据补充 `initial/batch-products.sql`（批量商品）与 `initial/rename-products.sql`（商品命名）
+
+### Changed
+- 秒杀券列表/详情接口新增可选登录态：携带令牌时回填 `claimed` 与 `userClaimCount`，游客访问保持默认值
+- 演示商品图片迁移至阿里云 OSS，新增 `initial/update-product-images-oss.sql` 供已初始化数据库升级
+- 搜索结果页移除独立搜索栏，统一使用商城顶部搜索入口
+
+### Fixed
+- 领券中心重复领取：已领且达到每人限领的券直接禁用按钮并显示“已领取”，不再点击后才提示；Mock 数据同步回填领取状态
+
+### Removed
+- 拆分启动脚本：删除 `start-middleware`、`start-backend`、`start-frontend` 独立脚本，中间件、后端、前端启动逻辑统一并入 `start-all`，仅保留整体启动脚本与 `stop-middleware`
+- 移除仓库根目录 `img/` 原始图片目录，商品图片改用 OSS 地址
 
 ---
 
