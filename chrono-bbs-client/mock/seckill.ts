@@ -133,6 +133,14 @@ function getCouponInfo(couponId: number) {
   return seckillCoupons.find(c => c.id === couponId)
 }
 
+// 与后端一致：回填当前登录用户（Mock 固定为 100）的领取状态
+function withClaimState<T extends { id: number }>(coupon: T) {
+  const claimedCount = userCoupons.filter(
+    uc => uc.userId === 100 && uc.couponId === coupon.id,
+  ).length
+  return { ...coupon, claimed: claimedCount > 0, userClaimCount: claimedCount }
+}
+
 const mockMethods: MockMethod[] = [
   {
     url: '/api/seckill/list',
@@ -146,7 +154,7 @@ const mockMethods: MockMethod[] = [
       }
       const total = list.length
       const start = (Number(page) - 1) * Number(size)
-      const pagedList = list.slice(start, start + Number(size))
+      const pagedList = list.slice(start, start + Number(size)).map(withClaimState)
 
       return {
         code: 200,
@@ -181,7 +189,7 @@ const mockMethods: MockMethod[] = [
       return {
         code: 200,
         message: 'success',
-        data: coupon,
+        data: withClaimState(coupon),
         timestamp: Date.now(),
       }
     },

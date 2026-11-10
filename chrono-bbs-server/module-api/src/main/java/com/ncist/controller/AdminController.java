@@ -285,4 +285,15 @@ public class AdminController {
             @RequestParam(required = false, defaultValue = "day") String groupBy) {
         return Result.success(adminService.getReport(startDate, endDate, groupBy));
     }
+
+    /**
+     * 全量重建商品搜索索引。
+     *
+     * @return 同步的商品数量
+     */
+    @Operation(summary = "全量重建商品搜索索引")
+    @PostMapping("/search-index/rebuild")
+    public Result<Integer> rebuildSearchIndex() {
+        return Result.success(adminService.rebuildSearchIndex());
+    }
 }

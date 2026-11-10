@@ -12,7 +12,7 @@
 | 本地 | `--local` | `localhost:3306` | `localhost:6379` | `localhost:9200` |
 
 > Docker 模式下 MySQL 映射到宿主机 **3307**（避免与本机 3306 冲突），
-> 后端脚本会通过 `SPRING_DATASOURCE_URL` 自动覆盖 `application-dev.yml` 中的 3306。
+> 启动后端时会通过 `SPRING_DATASOURCE_URL` 自动覆盖 `application-dev.yml` 中的 3306。
 >
 > 若旧数据卷中的中文显示为乱码（历史版本初始化时客户端字符集为 latin1），
 > 执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）
@@ -38,13 +38,10 @@ script\start-all.bat --local    :: 本机中间件 + 后端 + 前端
 
 后端在后台运行，日志写入 `logs/backend.log`；前端在前台运行，`Ctrl+C` 会同时停止前后端。
 
-## 分步启动
+## 停止中间件
 
-| 步骤 | Bash | Windows |
+| 操作 | Bash | Windows |
 |------|------|---------|
-| 启动中间件 | `./script/start-middleware.sh` | `script\start-middleware.bat` |
-| 启动后端 | `./script/start-backend.sh` | `script\start-backend.bat` |
-| 启动前端 | `./script/start-frontend.sh` | `script\start-frontend.bat` |
 | 停止中间件 | `./script/stop-middleware.sh` | `script\stop-middleware.bat` |
 
 常用参数：
@@ -52,7 +49,6 @@ script\start-all.bat --local    :: 本机中间件 + 后端 + 前端
 - `--local`：使用本机中间件（默认 Docker）
 - `--skip-build`：跳过后端 `mvn clean install`，适用于已构建过、只改了少量代码的场景
 - `--docker-frontend`：`start-all` 使用 Docker Nginx 容器（`http://localhost:3000`）代替 Vite 开发服务器
-- `--install`：前端强制重新执行 `npm install`
 - `--volumes`：停止中间件时同时删除数据卷（会清空数据库，下次启动重新执行 `initial/` 初始化脚本）
 
 推荐（前端使用 Nginx 容器，不启动 Vite）：

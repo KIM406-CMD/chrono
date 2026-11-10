@@ -1453,6 +1453,18 @@ PUT /api/admin/products/{id}
 
 ---
 
+### 12.10 重建商品搜索索引
+
+> 权限：管理员。将数据库中所有上架商品全量覆盖写入 Elasticsearch，可重复执行。
+
+```
+POST /api/admin/search-index/rebuild
+```
+
+**返回**：同步的商品数量，如 `{ "code": 200, "data": 12 }`。
+
+---
+
 ## 13. 文件上传 `/api/upload`
 
 **Controller**：`UploadController`  
@@ -1729,6 +1741,8 @@ GET /api/seckill/list
 | size | Integer | 否 | 每页大小，默认 10 |
 | status | Integer | 否 | 券状态：0=未开始，1=进行中，2=已结束 |
 
+> 公开接口。携带有效 `Authorization: Bearer <token>` 时返回当前用户的领取状态；游客访问时 `claimed=false`、`userClaimCount=0`。
+
 **返回**：
 
 ```json
@@ -1751,7 +1765,9 @@ GET /api/seckill/list
         "startTime": "2024-01-01 00:00:00",
         "endTime": "2026-12-31 23:59:59",
         "perUserLimit": 1,
-        "status": 1
+        "status": 1,
+        "claimed": true,
+        "userClaimCount": 1
       }
     ]
   }
@@ -1766,7 +1782,7 @@ GET /api/seckill/list
 GET /api/seckill/detail/{id}
 ```
 
-**返回**：单个 `SeckillCoupon` 对象（结构同 16.1 列表项）。
+**返回**：单个 `SeckillCoupon` 对象（结构同 16.1 列表项）。携带有效登录令牌时同样回填 `claimed` 与 `userClaimCount`。
 
 ---
 

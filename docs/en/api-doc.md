@@ -1452,6 +1452,18 @@ Parameters are the same as 4.3 (`name`, `description`, `images`, `brand`, `categ
 
 ---
 
+### 12.10 Rebuild Product Search Index
+
+> Permission: administrator. Overwrites the Elasticsearch index with all on-sale products from the database; can be called repeatedly.
+
+```
+POST /api/admin/search-index/rebuild
+```
+
+**Return**: The number of synchronized products, e.g. `{ "code": 200, "data": 12 }`.
+
+---
+
 ## 13. File Upload `/api/upload`
 
 **Controller**: `UploadController`  
@@ -1726,6 +1738,8 @@ GET /api/seckill/list
 | size | Integer | No | Page size, default 10 |
 | status | Integer | No | Coupon status: 0=Not Started, 1=Ongoing, 2=Ended |
 
+> Public endpoint. When a valid `Authorization: Bearer <token>` is present, the current user's claim state is returned; for guests `claimed=false` and `userClaimCount=0`.
+
 **Return**:
 
 ```json
@@ -1748,7 +1762,9 @@ GET /api/seckill/list
         "startTime": "2024-01-01 00:00:00",
         "endTime": "2026-12-31 23:59:59",
         "perUserLimit": 1,
-        "status": 1
+        "status": 1,
+        "claimed": true,
+        "userClaimCount": 1
       }
     ]
   }
@@ -1763,7 +1779,7 @@ GET /api/seckill/list
 GET /api/seckill/detail/{id}
 ```
 
-**Return**: A single `SeckillCoupon` object (same structure as the list item in 16.1).
+**Return**: A single `SeckillCoupon` object (same structure as the list item in 16.1). When a valid login token is present, `claimed` and `userClaimCount` are filled in as well.
 
 ---
 

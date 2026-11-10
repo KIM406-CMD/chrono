@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSeckillList, getSeckillDetail, getMyCoupons, claimSeckillCoupon } from '@/api/seckill'
@@ -72,17 +72,41 @@ const openDetail = async (coupon: SeckillCoupon) => {
   }
 }
 
+// 本地“我的优惠券”领取数量兜底：后端未回填 claimed 时也能判断领取上限
+const myClaimedCountMap = computed(() => {
+  const map = new Map<number, number>()
+  for (const item of myCoupons.value) {
+    map.set(item.couponId, (map.get(item.couponId) ?? 0) + 1)
+  }
+  return map
+})
+
+const claimedCountOf = (coupon: SeckillCoupon) => {
+  return Math.max(coupon.userClaimCount ?? 0, myClaimedCountMap.value.get(coupon.id) ?? 0)
+}
+
+const hasClaimed = (coupon: SeckillCoupon) => {
+  return coupon.claimed === true || claimedCountOf(coupon) > 0
+}
+
+const isFullyClaimed = (coupon: SeckillCoupon) => {
+  return hasClaimed(coupon) && claimedCountOf(coupon) >= (coupon.perUserLimit ?? 1)
+}
+
 const handleClaim = async (coupon: SeckillCoupon) => {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录后再领取优惠券')
     router.push({ path: '/login', query: { redirect: '/coupons' } })
     return
   }
+  if (isFullyClaimed(coupon)) {
+    ElMessage.warning('该优惠券已达领取上限')
+    return
+  }
   try {
     await claimSeckillCoupon(coupon.id)
     ElMessage.success(`已领取「${coupon.name}」`)
-    loadCenter()
-    loadMine()
+    await Promise.all([loadCenter(), loadMine()])
   } catch {
     // 错误提示由拦截器统一处理
   }
@@ -105,7 +129,12 @@ onMounted(() => {
             <div class="cc-card-left">
               <p class="cc-name">{{ coupon.name }}</p>
               <p class="cc-desc">{{ coupon.description || '暂无描述' }}</p>
-              <p class="cc-meta">剩余 {{ coupon.remainCount }}/{{ coupon.totalCount }} · 每人限领 {{ coupon.perUserLimit }} 张</p>
+              <p class="cc-meta">
+                剩余 {{ coupon.remainCount }}/{{ coupon.totalCount }} · 每人限领 {{ coupon.perUserLimit }} 张
+                <span v-if="userStore.isLoggedIn && hasClaimed(coupon)" class="cc-claimed">
+                  （已领 {{ claimedCountOf(coupon) }} 张）
+                </span>
+              </p>
               <p class="cc-meta">{{ coupon.startTime }} ~ {{ coupon.endTime }}</p>
             </div>
             <div class="cc-card-right">
@@ -114,10 +143,14 @@ onMounted(() => {
                 type="danger"
                 round
                 size="small"
-                :disabled="coupon.status !== CouponStatus.ACTIVE"
+                :disabled="coupon.status !== CouponStatus.ACTIVE || isFullyClaimed(coupon)"
                 @click="handleClaim(coupon)"
               >
-                {{ coupon.status === CouponStatus.ACTIVE ? '立即领取' : coupon.status === CouponStatus.NOT_STARTED ? '未开始' : '已结束' }}
+                <template v-if="coupon.status !== CouponStatus.ACTIVE">
+                  {{ coupon.status === CouponStatus.NOT_STARTED ? '未开始' : '已结束' }}
+                </template>
+                <template v-else-if="isFullyClaimed(coupon)">已领取</template>
+                <template v-else>立即领取</template>
               </el-button>
               <el-button text size="small" @click="openDetail(coupon)">详情</el-button>
             </div>
@@ -151,7 +184,7 @@ onMounted(() => {
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="detailVisible" title="优惠券详情" width="480px">
+    <el-dialog v-model="detailVisible" title="优惠券详情" width="min(480px, 92vw)">
       <div v-loading="detailLoading">
         <el-descriptions v-if="detail" :column="1" border>
           <el-descriptions-item label="券名称">{{ detail.name }}</el-descriptions-item>
@@ -163,6 +196,9 @@ onMounted(() => {
           </el-descriptions-item>
           <el-descriptions-item label="发放数量">{{ detail.remainCount }} / {{ detail.totalCount }}</el-descriptions-item>
           <el-descriptions-item label="每人限领">{{ detail.perUserLimit }} 张</el-descriptions-item>
+          <el-descriptions-item v-if="userStore.isLoggedIn && hasClaimed(detail)" label="我的领取">
+            已领取 {{ claimedCountOf(detail) }} 张
+          </el-descriptions-item>
           <el-descriptions-item label="活动时间">{{ detail.startTime }} ~ {{ detail.endTime }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag
@@ -259,6 +295,10 @@ onMounted(() => {
   color: #e2231a;
 }
 
+.cc-claimed {
+  color: #e2231a;
+}
+
 .cc-list {
   min-height: 120px;
 }
@@ -292,5 +332,46 @@ onMounted(() => {
   text-align: center;
   padding: 48px 0;
   color: #999;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .cc-page {
+    padding: 12px;
+  }
+
+  .cc-tabs {
+    padding: 12px;
+  }
+
+  .cc-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cc-card {
+    flex-direction: column;
+  }
+
+  .cc-card-right {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .cc-mine-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cc-mine-right {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .cc-card-right {
+    flex-wrap: wrap;
+  }
 }
 </style>

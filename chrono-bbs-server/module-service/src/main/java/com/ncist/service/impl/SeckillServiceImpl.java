@@ -71,7 +71,7 @@ public class SeckillServiceImpl implements SeckillService {
      * <p>分页参数兜底：页码至少为 1，每页默认 10 条、上限 100 条。</p>
      */
     @Override
-    public PageResult<SeckillCouponVO> listCoupons(Integer status, Integer page, Integer size) {
+    public PageResult<SeckillCouponVO> listCoupons(Integer status, Integer page, Integer size, Long userId) {
         // 状态过滤：不传查全部可抢券（未开始+进行中）
         if (status != null && status != 0 && status != 1) {
             throw new BusinessException(SeckillErrorCode.STATUS_ILLEGAL);
@@ -80,14 +80,16 @@ public class SeckillServiceImpl implements SeckillService {
         int s = (size == null || size < 1) ? 10 : Math.min(size, 100);
         List<SeckillCoupon> coupons = seckillCouponMapper.selectListPage(status, (p - 1) * s, s);
         long total = seckillCouponMapper.countList(status);
-        List<SeckillCouponVO> list = coupons.stream().map(this::toCouponVO).collect(Collectors.toList());
+        List<SeckillCouponVO> list = coupons.stream()
+                .map(c -> toCouponVO(c, userId))
+                .collect(Collectors.toList());
         return PageResult.of(total, p, s, list);
     }
 
     /** {@inheritDoc} */
     @Override
-    public SeckillCouponVO getCouponDetail(Long id) {
-        return toCouponVO(requireCoupon(id));
+    public SeckillCouponVO getCouponDetail(Long id, Long userId) {
+        return toCouponVO(requireCoupon(id), userId);
     }
 
     /** {@inheritDoc} */
@@ -502,8 +504,8 @@ public class SeckillServiceImpl implements SeckillService {
      * @param coupon 秒杀券实体
      * @return 秒杀券视图对象
      */
-    private SeckillCouponVO toCouponVO(SeckillCoupon coupon) {
-        return SeckillCouponVO.builder()
+    private SeckillCouponVO toCouponVO(SeckillCoupon coupon, Long userId) {
+        SeckillCouponVO.SeckillCouponVOBuilder builder = SeckillCouponVO.builder()
                 .id(coupon.getId())
                 .name(coupon.getName())
                 .description(coupon.getDescription())
@@ -515,8 +517,15 @@ public class SeckillServiceImpl implements SeckillService {
                 .startTime(coupon.getStartTime())
                 .endTime(coupon.getEndTime())
                 .perUserLimit(coupon.getPerUserLimit())
-                .status(coupon.getStatus())
-                .build();
+                .status(coupon.getStatus());
+        if (userId != null) {
+            int claimedCount = userCouponMapper.countClaimed(userId, coupon.getId());
+            builder.claimed(claimedCount > 0)
+                    .userClaimCount(claimedCount);
+        } else {
+            builder.claimed(false).userClaimCount(0);
+        }
+        return builder.build();
     }
 
     /**

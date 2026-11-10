@@ -24,19 +24,21 @@ public interface SeckillService {
      * @param status 状态过滤：0-未开始，1-进行中；为空时查询全部可抢券（未开始与进行中）
      * @param page   页码，从 1 开始；为空或小于 1 时按 1 处理
      * @param size   每页条数；为空或小于 1 时按 10 处理，最大 100
+     * @param userId 当前登录用户 ID，可为空（游客）；非空时回填用户领取状态
      * @return 秒杀券分页结果
      * @throws BusinessException status 非法时抛出
      */
-    PageResult<SeckillCouponVO> listCoupons(Integer status, Integer page, Integer size);
+    PageResult<SeckillCouponVO> listCoupons(Integer status, Integer page, Integer size, Long userId);
 
     /**
      * 查询秒杀券详情（游客可访问）。
      *
-     * @param id 秒杀券 ID
+     * @param id     秒杀券 ID
+     * @param userId 当前登录用户 ID，可为空（游客）；非空时回填用户领取状态
      * @return 秒杀券详情
      * @throws BusinessException 秒杀券不存在时抛出
      */
-    SeckillCouponVO getCouponDetail(Long id);
+    SeckillCouponVO getCouponDetail(Long id, Long userId);
 
     /**
      * 抢领秒杀券。

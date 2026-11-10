@@ -2,9 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Plus, Edit, Delete, MapLocation } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Edit, Delete, Location } from '@element-plus/icons-vue'
 import { getAddressList, createAddress, updateAddress, deleteAddress, setDefaultAddress } from '@/api/address'
 import type { Address, CreateAddressRequest, UpdateAddressRequest } from '@/types/address'
+import { regionOptions } from '@/utils/region'
 
 const router = useRouter()
 const loading = ref(false)
@@ -24,16 +25,37 @@ const form = ref<CreateAddressRequest>({
   isDefault: 1,
 })
 
+const regionValue = ref<string[]>([])
+
+const syncRegionFromForm = () => {
+  const arr: string[] = []
+  if (form.value.province) arr.push(form.value.province)
+  if (form.value.city) arr.push(form.value.city)
+  if (form.value.district) arr.push(form.value.district)
+  regionValue.value = arr
+}
+
+const handleRegionChange = (val: string[]) => {
+  form.value.province = val[0] || ''
+  form.value.city = val[1] || ''
+  form.value.district = val[2] || ''
+}
+
 const formRules = {
   receiverName: [{ required: true, message: '请输入收件人姓名', trigger: 'blur' }],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
   ],
-  province: [{ required: true, message: '请输入省份', trigger: 'blur' }],
-  city: [{ required: true, message: '请输入城市', trigger: 'blur' }],
-  district: [{ required: true, message: '请输入区/县', trigger: 'blur' }],
   detail: [{ required: true, message: '请输入详细地址', trigger: 'blur' }],
+}
+
+const validateRegion = () => {
+  if (!form.value.province || !form.value.city || !form.value.district) {
+    ElMessage.warning('请选择所在地区')
+    return false
+  }
+  return true
 }
 
 const loadData = async () => {
@@ -59,6 +81,7 @@ const openCreate = () => {
     detail: '',
     isDefault: 1,
   }
+  regionValue.value = []
   dialogVisible.value = true
 }
 
@@ -73,10 +96,12 @@ const openEdit = (addr: Address) => {
     detail: addr.detail,
     isDefault: addr.isDefault,
   }
+  syncRegionFromForm()
   dialogVisible.value = true
 }
 
 const handleSubmit = async () => {
+  if (!validateRegion()) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitting.value = true
@@ -162,8 +187,8 @@ onMounted(() => {
             <el-tag v-if="addr.isDefault === 1" size="small" type="danger" class="ad-tag">默认</el-tag>
           </div>
           <div class="ad-card-body">
-            <MapLocation class="ad-loc-icon" />
-            {{ addr.province }}{{ addr.city }}{{ addr.district }} {{ addr.detail }}
+            <el-icon class="ad-loc-icon"><Location /></el-icon>
+            <span class="ad-addr-text">{{ addr.province }}{{ addr.city }}{{ addr.district }} {{ addr.detail }}</span>
           </div>
           <div class="ad-card-footer">
             <el-button
@@ -209,17 +234,15 @@ onMounted(() => {
           <el-input v-model="form.phone" placeholder="请输入手机号" maxlength="11" />
         </el-form-item>
         <el-form-item label="所在地区" required>
-          <div class="region-row">
-            <el-form-item prop="province" class="region-item">
-              <el-input v-model="form.province" placeholder="省" />
-            </el-form-item>
-            <el-form-item prop="city" class="region-item">
-              <el-input v-model="form.city" placeholder="市" />
-            </el-form-item>
-            <el-form-item prop="district" class="region-item">
-              <el-input v-model="form.district" placeholder="区/县" />
-            </el-form-item>
-          </div>
+          <el-cascader
+            v-model="regionValue"
+            :options="regionOptions"
+            :props="{ checkStrictly: false }"
+            placeholder="请选择省/市/区"
+            clearable
+            style="width: 100%"
+            @change="handleRegionChange"
+          />
         </el-form-item>
         <el-form-item label="详细地址" prop="detail">
           <el-input v-model="form.detail" placeholder="街道、门牌号等" />
@@ -315,16 +338,21 @@ onMounted(() => {
 .ad-card-body {
   display: flex;
   align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
   font-size: 14px;
   color: #666;
   line-height: 1.6;
 }
 
 .ad-loc-icon {
+  font-size: 16px;
   color: #e2231a;
-  margin-top: 2px;
+  margin-top: 3px;
   flex-shrink: 0;
+}
+
+.ad-addr-text {
+  word-break: break-all;
 }
 
 .ad-card-footer {
@@ -363,15 +391,5 @@ onMounted(() => {
 .ad-add-card:hover {
   border-color: #e2231a;
   color: #e2231a;
-}
-
-/* ========== 弹窗 ========== */
-.region-row {
-  display: flex;
-  gap: 8px;
-}
-.region-item {
-  flex: 1;
-  margin-bottom: 0;
 }
 </style>
