@@ -445,4 +445,21 @@ onMounted(() => {
   justify-content: center;
   margin-top: 20px;
 }
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .order-page {
+    padding: 12px;
+  }
+
+  .order-tabs {
+    overflow-x: auto;
+  }
+
+  .order-tab {
+    flex: 0 0 auto;
+    min-width: 84px;
+    padding: 12px 8px;
+  }
+}
 </style>

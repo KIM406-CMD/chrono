@@ -229,30 +229,44 @@ const emit = defineEmits<{
 
 ### 2.3 Responsive Implementation
 
+The content width and admin sidebar width are controlled by CSS variables in `src/styles/variables.css`:
+
 ```css
-/* Implement responsive layout with CSS variables */
 :root {
-  --content-max-width: 1200px;
-  --product-grid-columns: 3;
+  --content-width: 1200px;
   --sidebar-width: 200px;
 }
 
 @media (min-width: 1440px) {
   :root {
-    --content-max-width: 1440px;
-    --product-grid-columns: 4;
+    --content-width: 1440px;
     --sidebar-width: 220px;
   }
 }
 
 @media (min-width: 1920px) {
   :root {
-    --content-max-width: 1600px;
-    --product-grid-columns: 5;
+    --content-width: 1600px;
     --sidebar-width: 240px;
   }
 }
 ```
+
+The mall header, category bar, footer and all business pages use `max-width: var(--content-width)`,
+while the admin/merchant sidebar uses `width: var(--sidebar-width)`, so the content area expands on large screens.
+
+### 2.4 Narrow-Screen Adaptation
+
+| Breakpoint | Adaptation |
+|------------|------------|
+| ≤1400px | Product grids on the home and search pages drop from 5 to 4 columns |
+| ≤1200px | Product grids drop to 3 columns; product detail switches to stacked layout; login/register hide the decorative panel |
+| ≤900px | Cart, checkout, account settings, help center and chat switch from two columns to stacked; filter controls take a full row |
+| ≤768px | Mall header search wraps to a new row; product grids drop to 2 columns; coupon cards become a single column; footer becomes two columns |
+| ≤600px | Order/payment/refund/address pages tighten padding; order status bars and checkout bars wrap |
+| ≤480px | Footer becomes a single column; coupon card actions may wrap |
+
+Table-heavy pages (orders, products, refunds, user management) keep Element Plus horizontal scrolling instead of compressing columns.
 
 ---
 

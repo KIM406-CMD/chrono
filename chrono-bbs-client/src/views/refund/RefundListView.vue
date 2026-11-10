@@ -231,4 +231,19 @@ onMounted(() => {
   justify-content: flex-end;
   margin-top: 16px;
 }
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .rf-page {
+    padding: 12px;
+  }
+
+  .rf-header {
+    flex-wrap: wrap;
+  }
+
+  .rf-pagination {
+    justify-content: center;
+  }
+}
 </style>

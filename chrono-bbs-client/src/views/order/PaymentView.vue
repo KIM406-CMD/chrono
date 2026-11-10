@@ -492,4 +492,20 @@ onMounted(() => {
   font-size: 12px;
   color: #999;
 }
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .payment-page {
+    padding: 12px;
+  }
+
+  .success-actions {
+    flex-wrap: wrap;
+  }
+
+  .summary-body {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
 </style>

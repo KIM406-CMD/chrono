@@ -880,4 +880,19 @@ onMounted(() => {
   font-size: 12px;
   color: #999;
 }
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .order-detail-page {
+    padding: 12px;
+  }
+
+  .od-status-bar {
+    flex-wrap: wrap;
+  }
+
+  .od-section {
+    padding: 14px;
+  }
+}
 </style>

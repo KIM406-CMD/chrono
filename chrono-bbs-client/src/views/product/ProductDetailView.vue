@@ -466,7 +466,7 @@ onMounted(() => {
 }
 
 .breadcrumb-content {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 16px 24px;
   display: flex;
@@ -494,7 +494,7 @@ onMounted(() => {
 
 /* 商品详情容器 */
 .product-detail-container {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 24px auto;
   padding: 0 24px;
 }

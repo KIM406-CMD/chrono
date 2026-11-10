@@ -208,7 +208,7 @@ onMounted(() => {
         </div>
 
         <div class="ad-add-card" @click="openCreate">
-          <Plus />
+          <el-icon class="ad-add-icon"><Plus /></el-icon>
           <span>新增收货地址</span>
         </div>
       </div>
@@ -388,8 +388,24 @@ onMounted(() => {
   transition: border-color 0.2s, color 0.2s;
 }
 
+.ad-add-icon {
+  font-size: 28px;
+}
+
 .ad-add-card:hover {
   border-color: #e2231a;
   color: #e2231a;
+}
+
+/* 响应式 */
+@media (max-width: 700px) {
+  .address-page {
+    padding: 12px;
+  }
+
+  .ad-card,
+  .ad-add-card {
+    width: 100%;
+  }
 }
 </style>

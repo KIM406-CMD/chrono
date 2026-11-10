@@ -184,4 +184,11 @@ onMounted(() => {
 .ma-form {
   margin-top: 8px;
 }
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .ma-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

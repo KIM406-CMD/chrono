@@ -353,7 +353,7 @@ onMounted(() => {
 
 <style scoped>
 .checkout-page {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 20px;
 }
@@ -743,5 +743,30 @@ onMounted(() => {
 .submit-hint a {
   color: #409eff;
   text-decoration: none;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .checkout-container {
+    flex-direction: column;
+  }
+
+  .checkout-sidebar {
+    width: 100%;
+  }
+
+  .sidebar-card {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .checkout-page {
+    padding: 12px;
+  }
+
+  .section-card {
+    padding: 14px;
+  }
 }
 </style>

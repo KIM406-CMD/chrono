@@ -323,7 +323,7 @@ onMounted(() => {
 
 <style scoped>
 .cart-page {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 20px;
 }
@@ -666,5 +666,62 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   border-radius: 20px;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .cart-table-header {
+    display: none;
+  }
+
+  .cart-item {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+
+  .col-check {
+    width: 100%;
+  }
+
+  .col-product {
+    flex: 1 1 100%;
+  }
+
+  .col-price,
+  .col-quantity,
+  .col-subtotal {
+    width: 33.33%;
+    text-align: center;
+  }
+
+  .col-action {
+    width: 100%;
+    text-align: right;
+  }
+
+  .cart-footer {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .cart-page {
+    padding: 12px;
+  }
+
+  .cart-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .footer-right {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .product-name {
+    max-width: 100%;
+  }
 }
 </style>

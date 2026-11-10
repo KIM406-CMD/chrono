@@ -182,7 +182,7 @@ const currentGroup = computed(() => {
 
 <style scoped>
 .help-page {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 20px auto;
   padding: 0 20px;
 }
@@ -248,5 +248,33 @@ const currentGroup = computed(() => {
   color: #666;
   white-space: pre-line;
   margin: 0;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .help-container {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .help-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #eee;
+  }
+
+  .help-content {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .help-page {
+    padding: 0 12px;
+  }
+
+  .help-content {
+    padding: 16px;
+  }
 }
 </style>

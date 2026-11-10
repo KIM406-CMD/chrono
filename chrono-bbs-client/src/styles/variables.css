@@ -73,10 +73,27 @@
   /* ===== 布局 ===== */
   --header-height: 60px;
   --content-width: 1200px;
-  --sidebar-width: 240px;
+  --sidebar-width: 200px;
 
   /* ===== 过渡 ===== */
   --transition-fast: 0.15s ease;
   --transition-base: 0.25s ease;
   --transition-slow: 0.35s ease;
+}
+
+/* ========================================
+   响应式断点：内容区与后台侧边栏
+   ======================================== */
+@media (min-width: 1440px) {
+  :root {
+    --content-width: 1440px;
+    --sidebar-width: 220px;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --content-width: 1600px;
+    --sidebar-width: 240px;
+  }
 }
