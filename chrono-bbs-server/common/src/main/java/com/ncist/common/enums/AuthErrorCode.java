@@ -19,6 +19,9 @@ public enum AuthErrorCode implements ErrorCode {
     FORBIDDEN(403, "没有权限"),
     ACCOUNT_DISABLED(403, "账号已被禁用"),
 
+    REGISTER_ROLE_ILLEGAL(400, "注册角色不合法"),
+    MERCHANT_SHOP_NAME_REQUIRED(400, "商家注册需填写店铺名称"),
+
     ACCOUNT_NOT_FOUND(404, "账号不存在");
     private final Integer code;
     private final String message;

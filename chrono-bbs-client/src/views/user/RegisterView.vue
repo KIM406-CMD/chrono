@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { User, Lock, Key, Phone } from '@element-plus/icons-vue'
+import { User, Lock, Key, Phone, Shop } from '@element-plus/icons-vue'
 import { register, getCaptcha } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 import type { RegisterRequest } from '@/types/user'
@@ -73,9 +73,17 @@ const registerForm = reactive<RegisterRequest>({
   confirmPassword: '',
   phone: '',
   role: Role.USER,
+  shopName: '',
   captchaUuid: '',
   captchaCode: '',
 })
+
+// 切换买家/商家身份时清理店铺名称
+const handleRoleChange = () => {
+  if (registerForm.role !== Role.MERCHANT) {
+    registerForm.shopName = ''
+  }
+}
 
 const rules = reactive<FormRules>({
   username: [
@@ -103,6 +111,18 @@ const rules = reactive<FormRules>({
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
+  ],
+  shopName: [
+    {
+      validator: (_rule: any, value: string, callback: any) => {
+        if (registerForm.role === Role.MERCHANT && !value?.trim()) {
+          callback(new Error('请输入店铺名称'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
   ],
   captchaCode: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
@@ -142,8 +162,13 @@ const handleRegister = async () => {
       role: res.data.userInfo.role,
       status: 1,
     })
-    ElMessage.success('注册成功')
-    router.push('/')
+    if (res.data.userInfo.role === Role.MERCHANT) {
+      ElMessage.success('商家注册成功，请等待管理员审核')
+      router.push('/merchant/apply')
+    } else {
+      ElMessage.success('注册成功')
+      router.push('/')
+    }
   } catch (error: any) {
     ElMessage.error(error.message || '注册失败')
     fetchCaptcha()
@@ -310,6 +335,28 @@ onUnmounted(() => {
             class="register-form"
             @submit.prevent="handleRegister"
           >
+            <el-form-item prop="role">
+              <el-radio-group
+                v-model="registerForm.role"
+                class="role-group"
+                @change="handleRoleChange"
+              >
+                <el-radio-button :value="Role.USER">我是买家</el-radio-button>
+                <el-radio-button :value="Role.MERCHANT">我是商家</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+
+            <el-form-item v-if="registerForm.role === Role.MERCHANT" prop="shopName">
+              <el-input
+                v-model="registerForm.shopName"
+                placeholder="请输入店铺名称"
+                size="large"
+                :prefix-icon="Shop"
+                maxlength="100"
+                show-word-limit
+              />
+            </el-form-item>
+
             <el-form-item prop="username">
               <el-input
                 v-model="registerForm.username"
@@ -665,6 +712,19 @@ onUnmounted(() => {
 /* 表单样式 */
 .register-form {
   margin-top: 24px;
+}
+
+.role-group {
+  display: flex;
+  width: 100%;
+}
+
+.role-group :deep(.el-radio-button) {
+  flex: 1;
+}
+
+.role-group :deep(.el-radio-button__inner) {
+  width: 100%;
 }
 
 .register-form :deep(.el-form-item) {

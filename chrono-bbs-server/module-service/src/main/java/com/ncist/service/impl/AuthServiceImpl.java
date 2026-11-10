@@ -14,7 +14,9 @@ import com.ncist.dto.LoginDTO;
 import com.ncist.dto.RegisterDTO;
 import com.ncist.dto.ResetPasswordDTO;
 import com.ncist.dto.UpdateProfileDTO;
+import com.ncist.entity.Merchant;
 import com.ncist.entity.User;
+import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.UserMapper;
 import com.ncist.service.AuthService;
 import com.ncist.vo.CaptchaVO;
@@ -27,6 +29,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -46,6 +49,9 @@ public class AuthServiceImpl implements AuthService {
 
     /** 用户数据访问组件。 */
     private final UserMapper userMapper;
+
+    /** 商家数据访问组件，用于商家注册时创建待审核的商家记录。 */
+    private final MerchantMapper merchantMapper;
 
     /** Redis 字符串操作模板，用于验证码、Token 与重置验证码。 */
     private final StringRedisTemplate stringRedisTemplate;
@@ -92,11 +98,23 @@ public class AuthServiceImpl implements AuthService {
     /**
      * {@inheritDoc}
      *
-     * <p>验证码校验通过后立即删除，防止重复使用；注册成功后直接生成登录态并写入 Redis。</p>
+     * <p>验证码校验通过后立即删除，防止重复使用；注册成功后直接生成登录态并写入 Redis。
+     * 支持注册为普通用户或商家：商家注册需填写店铺名称，同时创建状态为待审核的商家记录，
+     * 审核通过后即可使用商家后台；管理员角色不允许注册。</p>
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public LoginVO register(RegisterDTO registerDTO) {
         validateAndDeleteCaptcha(registerDTO.getCaptchaUuid(), registerDTO.getCaptchaCode());
+
+        int role = resolveRegisterRole(registerDTO.getRole());
+        String shopName = null;
+        if (role == UserRoleEnum.MERCHANT.getCode()) {
+            shopName = registerDTO.getShopName() == null ? "" : registerDTO.getShopName().trim();
+            if (shopName.isEmpty()) {
+                throw new BusinessException(AuthErrorCode.MERCHANT_SHOP_NAME_REQUIRED);
+            }
+        }
 
         if (userMapper.selectByUsername(registerDTO.getUsername()) != null) {
             throw new BusinessException(AuthErrorCode.USERNAME_EXISTS);
@@ -109,8 +127,7 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(registerDTO.getPassword()))
                 .phone(registerDTO.getPhone())
                 .email(registerDTO.getEmail())
-                // 注册固定为普通用户，商家角色只能由入驻审核通过后升级
-                .role(UserRoleEnum.USER.getCode())
+                .role(role)
                 .nickname(registerDTO.getUsername())
                 .status(1)
                 .createdAt(LocalDateTime.now())
@@ -118,7 +135,34 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         userMapper.insert(user);
 
+        // 商家注册：同步创建待审核的商家记录，由管理员在后台审核
+        if (role == UserRoleEnum.MERCHANT.getCode()) {
+            merchantMapper.insertApply(Merchant.builder()
+                    .userId(user.getId())
+                    .shopName(shopName)
+                    .contactPhone(registerDTO.getPhone())
+                    .status(0)
+                    .build());
+        }
+
         return buildLoginVO(user);
+    }
+
+    /**
+     * 解析注册角色：未传或传 1 时为普通用户，传 2 时为商家；管理员等其它角色拒绝注册。
+     *
+     * @param role 请求中的角色编码
+     * @return 落库使用的角色编码（1 或 2）
+     * @throws BusinessException 角色不是 1 或 2 时抛出
+     */
+    private int resolveRegisterRole(Integer role) {
+        if (role == null || role == UserRoleEnum.USER.getCode()) {
+            return UserRoleEnum.USER.getCode();
+        }
+        if (role == UserRoleEnum.MERCHANT.getCode()) {
+            return UserRoleEnum.MERCHANT.getCode();
+        }
+        throw new BusinessException(AuthErrorCode.REGISTER_ROLE_ILLEGAL);
     }
 
     /**

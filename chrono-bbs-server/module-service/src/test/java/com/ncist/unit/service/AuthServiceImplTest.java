@@ -5,7 +5,9 @@ import com.ncist.common.enums.AuthErrorCode;
 import com.ncist.common.exception.BusinessException;
 import com.ncist.dto.LoginDTO;
 import com.ncist.dto.RegisterDTO;
+import com.ncist.entity.Merchant;
 import com.ncist.entity.User;
+import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.UserMapper;
 import com.ncist.service.impl.AuthServiceImpl;
 import com.ncist.vo.CaptchaVO;
@@ -37,6 +39,9 @@ class AuthServiceImplTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private MerchantMapper merchantMapper;
 
     @Mock
     private StringRedisTemplate stringRedisTemplate;
@@ -224,16 +229,52 @@ class AuthServiceImplTest {
     }
 
     @Test
-    @DisplayName("register 即使用户传入商家角色也应固定注册为普通用户")
-    void shouldForceUserRoleOnRegister() {
+    @DisplayName("register 注册商家应落库商家角色并创建待审核商家记录")
+    void shouldRegisterMerchantWithPendingRecord() {
         setupRegisterHappyPath();
-        RegisterDTO dto = buildRegisterDTO("testuser", "13800000001", "test@test.com", 2, TEST_UUID, TEST_CODE);
+        RegisterDTO dto = buildRegisterDTO("testmerchant", "13800000002", "merchant@test.com", 2, TEST_UUID, TEST_CODE);
+        dto.setShopName(" 品质生活馆 ");
         authService.register(dto);
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userMapper).insert(userCaptor.capture());
-        assertEquals(1, userCaptor.getValue().getRole());
-        log.info("注册角色防越权验证通过 -> 请求 role=2，落库 role=1");
+        assertEquals(2, userCaptor.getValue().getRole());
+
+        ArgumentCaptor<Merchant> merchantCaptor = ArgumentCaptor.forClass(Merchant.class);
+        verify(merchantMapper).insertApply(merchantCaptor.capture());
+        Merchant merchant = merchantCaptor.getValue();
+        assertEquals(1L, merchant.getUserId());
+        assertEquals("品质生活馆", merchant.getShopName());
+        assertEquals("13800000002", merchant.getContactPhone());
+        assertEquals(0, merchant.getStatus());
+        log.info("商家注册验证通过 -> role={}, shopName={}, status={}",
+                userCaptor.getValue().getRole(), merchant.getShopName(), merchant.getStatus());
+    }
+
+    @Test
+    @DisplayName("register 商家注册缺少店铺名称应被拒绝")
+    void shouldRejectMerchantWithoutShopName() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
+        RegisterDTO dto = buildRegisterDTO("testmerchant", "13800000002", "merchant@test.com", 2, TEST_UUID, TEST_CODE);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> authService.register(dto));
+        assertEquals(AuthErrorCode.MERCHANT_SHOP_NAME_REQUIRED.getCode(), ex.getCode());
+        verify(merchantMapper, never()).insertApply(any(Merchant.class));
+        log.info("商家注册缺少店铺名异常 -> code={}, message={}", ex.getCode(), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("register 不允许注册管理员角色")
+    void shouldRejectAdminRoleOnRegister() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
+        RegisterDTO dto = buildRegisterDTO("testadmin", "13800000003", "admin@test.com", 3, TEST_UUID, TEST_CODE);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> authService.register(dto));
+        assertEquals(AuthErrorCode.REGISTER_ROLE_ILLEGAL.getCode(), ex.getCode());
+        verify(userMapper, never()).insert(any(User.class));
+        log.info("管理员角色注册异常 -> code={}, message={}", ex.getCode(), ex.getMessage());
     }
 
     @Test

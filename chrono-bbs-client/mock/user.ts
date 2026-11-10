@@ -49,13 +49,14 @@ const mockMethods: MockMethod[] = [
     timeout: 500,
     response: ({ body }) => {
       const { username } = body
+      // 与后端一致：支持注册普通用户或商家，商家注册后进入待审核状态
+      const role = body.role === 2 ? 2 : 1
       currentUser = {
         ...currentUser,
         username,
-        nickname: username,
+        nickname: role === 2 && body.shopName ? body.shopName : username,
         phone: body.phone || '',
-        // 与后端一致：注册固定为普通用户，商家角色只能通过入驻审核升级
-        role: 1,
+        role,
       }
       return {
         code: 200,

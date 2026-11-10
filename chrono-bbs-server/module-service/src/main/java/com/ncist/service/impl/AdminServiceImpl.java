@@ -258,7 +258,8 @@ public class AdminServiceImpl implements AdminService {
      * {@inheritDoc}
      *
      * <p>使用“status=0”条件更新保证同一申请不会被重复审核；
-     * 审核通过后同步升级申请人角色，两个写操作在同一事务内完成。</p>
+     * 审核通过后同步升级申请人角色，驳回时降级为普通用户（自助注册商家），
+     * 两个写操作在同一事务内完成。</p>
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -273,9 +274,11 @@ public class AdminServiceImpl implements AdminService {
         if (merchantMapper.updateReview(id, newStatus, dto.getReviewReason()) == 0) {
             throw new BusinessException(AdminErrorCode.MERCHANT_ALREADY_REVIEWED);
         }
-        // 审核通过：申请人角色升级为商家
+        // 审核通过：申请人角色升级为商家；驳回：自助注册商家降级为普通用户
         if (newStatus == 1) {
             userMapper.updateRole(merchant.getUserId(), UserRoleEnum.MERCHANT.getCode());
+        } else {
+            userMapper.updateRole(merchant.getUserId(), UserRoleEnum.USER.getCode());
         }
     }
 
