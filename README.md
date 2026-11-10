@@ -145,6 +145,7 @@ Bash / Git Bash / macOS / Linux：
 | 后端 | <http://localhost:8080> |
 | Knife4j 文档 | <http://localhost:8080/doc.html> |
 
+> 若前端使用 Docker Nginx 容器（不启动 Vite），执行：`script\start-all.bat --docker-frontend --skip-build`（Bash：`./script/start-all.sh --docker-frontend --skip-build`），前端地址为 <http://localhost:3000>。
 > Windows 会为后端和前端各打开一个新命令行窗口，关闭窗口即停止服务。
 > Bash 下后端在后台运行，日志写入 `logs/backend.log`，`Ctrl+C` 同时停止前后端。
 > 更多参数（`--skip-build`、`--install`、`--volumes`）见 [script/README.md](script/README.md)。
