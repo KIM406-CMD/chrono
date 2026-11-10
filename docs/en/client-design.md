@@ -857,7 +857,7 @@ server {
 
 | Frontend Operation | HTTP Method | API Path | Request Body/Parameters |
 |----------|-----------|----------|-------------|
-| Register | POST | `/api/user/register` | `{ username, password, phone, email, role, captchaUuid, captchaCode }` |
+| Register | POST | `/api/user/register` | `{ username, password, phone, email, role, shopName, captchaUuid, captchaCode }` (`role=2` and `shopName` required for merchant registration) |
 | Login | POST | `/api/user/login` | `{ username, password, captchaUuid, captchaCode }` |
 | Get password reset verification code | POST | `/api/user/forgot-code` | `{ account, captchaUuid, captchaCode }` |
 | Reset password | POST | `/api/user/reset-password` | `{ uuid, code, newPassword }` |

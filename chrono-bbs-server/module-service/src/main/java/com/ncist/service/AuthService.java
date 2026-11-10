@@ -32,11 +32,13 @@ public interface AuthService {
      * 注册新用户并直接返回登录态。
      *
      * <p>注册前校验并消费图形验证码（一次性使用），用户名与手机号必须唯一，
-     * 密码以 BCrypt 加密后存储。</p>
+     * 密码以 BCrypt 加密后存储。支持注册为普通用户或商家：商家注册需填写店铺名称，
+     * 并创建待审核的商家记录；管理员角色不允许注册。</p>
      *
-     * @param registerDTO 注册参数，包含用户名、密码、手机号、邮箱、角色与验证码
+     * @param registerDTO 注册参数，包含用户名、密码、手机号、邮箱、角色、店铺名称与验证码
      * @return 登录结果，包含 Token 与新用户信息
-     * @throws BusinessException 验证码错误/过期、用户名或手机号已存在时抛出
+     * @throws BusinessException 验证码错误/过期、用户名或手机号已存在、
+     *                           角色非法或商家未填写店铺名称时抛出
      */
     LoginVO register(RegisterDTO registerDTO);
 

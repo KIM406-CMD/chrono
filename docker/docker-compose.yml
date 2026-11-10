@@ -11,6 +11,7 @@
 #   02-data.sql      —— data.sql，初始数据（管理员、分类、规格、秒杀券）
 #   03-migration.sql —— migration-2026-11-09.sql，增量字段（可重复执行）
 #   04-demo-data.sql —— demo-data.sql，演示商家/商品/订单/评论（可重复执行）
+#   05-rename.sql    —— rename-products.sql，商品名称/品牌/分类与图片对齐（可重复执行）
 # 注意：初始化脚本只在数据卷为空时执行；修改脚本后需 down -v 再启动。
 # 已有数据卷升级：手动执行 initial/migration-*.sql，无需删除数据卷。
 # ============================================================
@@ -37,6 +38,7 @@ services:
       - ../initial/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
       - ../initial/migration-2026-11-09.sql:/docker-entrypoint-initdb.d/03-migration.sql:ro
       - ../initial/demo-data.sql:/docker-entrypoint-initdb.d/04-demo-data.sql:ro
+      - ../initial/rename-products.sql:/docker-entrypoint-initdb.d/05-rename-products.sql:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -102,6 +104,8 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.frontend
+      args:
+        APP_VERSION: "1.1.0"
     container_name: chrono-nginx
     restart: unless-stopped
     profiles: ["frontend"]

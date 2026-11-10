@@ -9,15 +9,23 @@ participant "UserService" as Svc
 participant "Redis" as Redis
 database "MySQL" as DB
 
-== 注册 ==
-User -> Vue : 填写用户名/密码/手机号
+== 注册（买家/商家） ==
+User -> Vue : 选择身份（买家/商家）\n填写用户名/密码/手机号\n商家需填写店铺名称
 Vue -> Auth : POST /api/user/register
 Auth -> Auth : @Valid 校验 DTO
 Auth -> Svc : register(dto)
-Svc -> DB : SELECT COUNT(*) FROM user WHERE username=?
-DB --> Svc : 0(不存在)
-Svc -> DB : INSERT INTO user
-DB --> Svc : OK
+Svc -> Redis : GET captcha:{uuid}
+Redis --> Svc : 验证码
+Svc -> DB : SELECT username / phone 唯一性
+DB --> Svc : 可注册
+alt 角色 = 买家
+  Svc -> DB : INSERT INTO user (role=1)
+  DB --> Svc : OK
+else 角色 = 商家
+  Svc -> DB : INSERT INTO user (role=2)
+  Svc -> DB : INSERT INTO merchant (status=0 待审核)
+  DB --> Svc : OK
+end
 Svc -> Svc : 生成 JWT Token
 Svc -> Redis : SET token:{userId} = token
 Svc --> Auth : Result<TokenVO>

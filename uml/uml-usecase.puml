@@ -17,7 +17,8 @@ rectangle "网上超市系统" {
     usecase "查看商品详情" as UC02
     usecase "按分类筛选商品" as UC03
     usecase "关键词搜索商品" as UC04
-    usecase "注册账号" as UC05
+    usecase "注册账号（买家/商家）" as UC05
+    usecase "商家自助注册（填写店铺信息）" as UC42
     usecase "登录" as UC06
   }
 
@@ -75,6 +76,7 @@ visitor --> UC02
 visitor --> UC03
 visitor --> UC04
 visitor --> UC05
+visitor --> UC42
 visitor --> UC06
 
 user --> UC07
@@ -131,5 +133,8 @@ UC25 ..> UC24 : <<include>>
 
 ' 聊天扩展自查看商品
 UC19 ..> UC02 : <<extend>>
+
+' 商家自助注册扩展自注册账号
+UC42 ..> UC05 : <<extend>>
 
 @enduml

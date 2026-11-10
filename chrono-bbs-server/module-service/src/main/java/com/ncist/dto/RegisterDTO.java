@@ -46,13 +46,21 @@ public class RegisterDTO {
     private String email;
 
     /**
-     * 角色字段，保留用于兼容旧客户端。
+     * 注册角色：1-普通用户（默认），2-商家；管理员角色不允许注册。
      *
-     * <p>注册固定创建普通用户（role=1），该字段不再生效；商家角色只能通过
-     * 入驻申请并由管理员审核通过后升级。</p>
+     * <p>注册为商家时需同时填写店铺名称，注册后创建待审核的商家记录，
+     * 审核通过后才能使用商家后台完整功能。</p>
      */
-    @Schema(description = "保留字段，注册固定为普通用户（1）", example = "1", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "注册角色：1-普通用户（默认），2-商家", example = "1",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer role;
+
+    /**
+     * 店铺名称，角色为商家（2）时必填。
+     */
+    @Schema(description = "店铺名称，商家注册时必填", example = "品质生活馆")
+    @Size(max = 100, message = "店铺名称不能超过 100 个字符")
+    private String shopName;
 
     /** 图形验证码 UUID，必填，由图形验证码接口下发。 */
     @Schema(description = "图形验证码 UUID", requiredMode = Schema.RequiredMode.REQUIRED)

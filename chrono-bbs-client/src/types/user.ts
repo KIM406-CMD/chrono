@@ -39,6 +39,8 @@ export interface RegisterRequest {
   confirmPassword: string
   phone: string
   role: Role
+  /** 商家注册时必填的店铺名称 */
+  shopName?: string
   captchaUuid: string
   captchaCode: string
 }
