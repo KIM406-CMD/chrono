@@ -1408,9 +1408,9 @@ GET /api/admin/report
 
 ---
 
-### 12.7 Admin Product Status (Mock Extension)
+### 12.7 Admin Product Status
 
-> Permission: administrator. The backend does not provide this API yet; it is provided by Mock during development.
+> Permission: administrator. Merchant ownership is not checked; the Elasticsearch index is synchronized after the change.
 
 ```
 PUT /api/admin/products/{id}/status
@@ -1423,9 +1423,9 @@ PUT /api/admin/products/{id}/status
 
 ---
 
-### 12.8 Admin Delete Product (Mock Extension)
+### 12.8 Admin Delete Product
 
-> Permission: administrator. The backend does not provide this API yet; it is provided by Mock during development.
+> Permission: administrator. Deletion is rejected when the product is referenced by carts or orders; the search index is removed on success.
 
 ```
 DELETE /api/admin/products/{id}
@@ -1437,9 +1437,9 @@ DELETE /api/admin/products/{id}
 
 ---
 
-### 12.9 Admin Update Product (Mock Extension)
+### 12.9 Admin Update Product
 
-> Permission: administrator. The backend does not provide this API yet; it is provided by Mock during development.
+> Permission: administrator. Any merchant's product can be updated; the search index is synchronized after saving.
 
 ```
 PUT /api/admin/products/{id}

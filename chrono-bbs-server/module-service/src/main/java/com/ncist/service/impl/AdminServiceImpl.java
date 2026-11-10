@@ -27,10 +27,13 @@ import com.ncist.mapper.ProductMapper;
 import com.ncist.mapper.ProductSkuMapper;
 import com.ncist.mapper.UserMapper;
 import com.ncist.service.AdminService;
+import com.ncist.service.ProductSearchIndexService;
 import com.ncist.vo.AdminMerchantVO;
 import com.ncist.vo.AdminReportVO;
 import com.ncist.vo.AdminUserVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +48,7 @@ import java.util.Map;
  * 商家审核在事务中完成“更新审核状态 + 升级用户角色”；
  * 其余写操作多为单表单语句。分页参数在内部统一兜底，页码至少为 1、每页默认 10 条。</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminServiceImpl implements AdminService {
@@ -63,6 +67,8 @@ public class AdminServiceImpl implements AdminService {
     private final OrderMapper orderMapper;
     /** JSON 序列化组件，用于商品图片列表与 JSON 字符串互转。 */
     private final ObjectMapper objectMapper;
+    /** 商品搜索索引服务，管理员上下架/删除商品后同步 Elasticsearch。 */
+    private final ProductSearchIndexService productSearchIndexService;
 
     /** {@inheritDoc} */
     @Override
@@ -125,6 +131,44 @@ public class AdminServiceImpl implements AdminService {
                     .toList();
             productSkuMapper.insertBatch(skus);
         }
+        // 商品名称/价格等可能变化，同步搜索索引
+        productSearchIndexService.syncProduct(id);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void updateProductStatus(Long id, Integer status) {
+        requireAdmin();
+        if (status == null || (status != 0 && status != 1)) {
+            throw new BusinessException(ProductErrorCode.STATUS_ILLEGAL);
+        }
+        if (productMapper.selectById(id) == null) {
+            throw new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND);
+        }
+        productMapper.updateStatus(id, status);
+        productSearchIndexService.syncProduct(id);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>删除失败由外键约束触发时转换为“商品已被引用”的业务异常并回滚事务。</p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteProduct(Long id) {
+        requireAdmin();
+        if (productMapper.selectById(id) == null) {
+            throw new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND);
+        }
+        try {
+            productMapper.deleteById(id);
+            productSkuMapper.deleteByProductId(id);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("商品 {} 存在交易引用，管理员删除被拒绝", id);
+            throw new BusinessException(ProductErrorCode.PRODUCT_REFERENCED);
+        }
+        productSearchIndexService.deleteProduct(id);
     }
 
     /**

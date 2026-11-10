@@ -10,6 +10,7 @@
 ## [Unreleased]
 
 ### Added
+- 管理员商品操作接口：新增 `PUT /api/admin/products/{id}/status` 与 `DELETE /api/admin/products/{id}`，支持全平台商品上下架/删除并同步搜索索引
 - 支付记录接口：新增 `GET /api/payment/records`，按当前用户分页返回支付方式、脱敏卡号、订单金额、状态与支付时间
 - 退款审核列表接口：新增 `GET /api/merchant/refunds`（商家仅见自己商品）与 `GET /api/admin/refunds`（管理员见全平台），支持状态筛选与分页
 - 聊天前后端打通：新增 `utils/chatSocket.ts` 连接后端 WebSocket，聊天页实时收发、断线指数退避重连、未读角标实时刷新；Vite 与 Nginx 增加 `/chat/` WebSocket 代理

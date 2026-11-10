@@ -955,7 +955,7 @@ server {
 ### 15.10 管理员商品操作
 
 - 全平台商品列表支持上架/下架与删除，操作前二次确认。
-- Mock 扩展接口：`PUT /api/admin/products/{id}/status`、`DELETE /api/admin/products/{id}`。
+- 接口：`PUT /api/admin/products/{id}/status`、`DELETE /api/admin/products/{id}`，`dev:mock` 下由 Mock 提供同名接口。
 
 ### 15.11 搜索接口接入与降级
 
@@ -972,5 +972,5 @@ server {
 ### 15.13 退货寄回、管理员编辑与评论图片
 
 - 退货退款审核通过后进入“待寄回”，买家在退款/售后页填写快递公司与物流单号；商家/管理员在退款审核页确认收货后完成退款。
-- 管理员全平台商品列表支持编辑商品与 SKU 价格/库存，Mock 提供 `PUT /api/admin/products/{id}`。
+- 管理员全平台商品列表支持编辑商品与 SKU 价格/库存，后端提供 `PUT /api/admin/products/{id}`。
 - 发表评价支持上传最多 4 张图片，商品详情评论列表展示图片。

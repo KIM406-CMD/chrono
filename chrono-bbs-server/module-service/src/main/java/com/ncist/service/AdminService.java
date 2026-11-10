@@ -119,6 +119,28 @@ public interface AdminService {
     void updateProduct(Long id, com.ncist.dto.ProductCreateDTO dto);
 
     /**
+     * 管理员上架或下架任意商品。
+     *
+     * <p>不校验商品归属商家，操作后同步 Elasticsearch 索引（上架写入、下架移除）。</p>
+     *
+     * @param id     商品 ID
+     * @param status 商品状态：0-下架，1-上架
+     * @throws com.ncist.common.exception.BusinessException 商品不存在或状态非法时抛出
+     */
+    void updateProductStatus(Long id, Integer status);
+
+    /**
+     * 管理员删除任意商品。
+     *
+     * <p>商品与 SKU 在同一事务中删除；商品已被购物车或订单引用时拒绝删除。
+     * 删除成功后移除 Elasticsearch 索引。</p>
+     *
+     * @param id 商品 ID
+     * @throws com.ncist.common.exception.BusinessException 商品不存在或存在交易引用时抛出
+     */
+    void deleteProduct(Long id);
+
+    /**
      * 分页查询全平台订单。
      *
      * @param orderNo 订单号模糊查询关键字，可为空

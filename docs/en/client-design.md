@@ -954,7 +954,7 @@ All items below can be verified independently with `npm run dev:mock`, without t
 ### 15.10 Admin Product Operations
 
 - The global product list supports on/off-shelf toggling and deletion with confirmation prompts.
-- Mock extension APIs: `PUT /api/admin/products/{id}/status`, `DELETE /api/admin/products/{id}`.
+- APIs: `PUT /api/admin/products/{id}/status`, `DELETE /api/admin/products/{id}`; Mock provides the same paths in `dev:mock`.
 
 ### 15.11 Search API Integration and Fallback
 
@@ -971,5 +971,5 @@ All items below can be verified independently with `npm run dev:mock`, without t
 ### 15.13 Return Shipping, Admin Editing and Comment Images
 
 - After a return refund is approved, the buyer submits courier and tracking information on the refund page; the merchant/admin confirms receipt to complete the refund.
-- The admin global product list supports editing products and SKU price/stock; Mock provides `PUT /api/admin/products/{id}`.
+- The admin global product list supports editing products and SKU price/stock; the backend provides `PUT /api/admin/products/{id}`.
 - Posting a review supports up to 4 images, which are displayed in the product detail comment list.

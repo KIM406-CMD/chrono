@@ -6,6 +6,7 @@ import com.ncist.common.result.Result;
 import com.ncist.dto.CategoryUpsertDTO;
 import com.ncist.dto.MerchantReviewDTO;
 import com.ncist.dto.ProductCreateDTO;
+import com.ncist.dto.ProductStatusDTO;
 import com.ncist.service.AdminService;
 import com.ncist.service.RefundService;
 import com.ncist.vo.AdminMerchantVO;
@@ -194,6 +195,39 @@ public class AdminController {
     @PutMapping("/products/{id}")
     public Result<Void> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductCreateDTO dto) {
         adminService.updateProduct(id, dto);
+        return Result.success();
+    }
+
+    /**
+     * 管理员上架或下架任意商品。
+     *
+     * <p>不校验商品归属商家，上下架后同步 Elasticsearch 搜索索引。</p>
+     *
+     * @param id  商品 ID
+     * @param dto 状态参数，{@code status} 取值 0-下架 1-上架
+     * @return 无业务数据的成功响应
+     */
+    @Operation(summary = "管理员商品上下架")
+    @Parameter(name = "id", description = "商品 ID", example = "1")
+    @PutMapping("/products/{id}/status")
+    public Result<Void> updateProductStatus(@PathVariable Long id, @Valid @RequestBody ProductStatusDTO dto) {
+        adminService.updateProductStatus(id, dto.getStatus());
+        return Result.success();
+    }
+
+    /**
+     * 管理员删除任意商品。
+     *
+     * <p>商品已被购物车或订单引用时拒绝删除，删除成功后移除搜索索引。</p>
+     *
+     * @param id 商品 ID
+     * @return 无业务数据的成功响应
+     */
+    @Operation(summary = "管理员删除商品")
+    @Parameter(name = "id", description = "商品 ID", example = "1")
+    @DeleteMapping("/products/{id}")
+    public Result<Void> deleteProduct(@PathVariable Long id) {
+        adminService.deleteProduct(id);
         return Result.success();
     }
 

@@ -1409,9 +1409,9 @@ GET /api/admin/report
 
 ---
 
-### 12.7 管理员商品上下架（Mock 扩展）
+### 12.7 管理员商品上下架
 
-> 权限：管理员。正式后端尚未提供该接口，开发阶段由 Mock 实现。
+> 权限：管理员。不校验商品归属商家，操作后同步 Elasticsearch 索引。
 
 ```
 PUT /api/admin/products/{id}/status
@@ -1424,9 +1424,9 @@ PUT /api/admin/products/{id}/status
 
 ---
 
-### 12.8 管理员删除商品（Mock 扩展）
+### 12.8 管理员删除商品
 
-> 权限：管理员。正式后端尚未提供该接口，开发阶段由 Mock 实现。
+> 权限：管理员。商品被购物车或订单引用时拒绝删除；删除成功后移除搜索索引。
 
 ```
 DELETE /api/admin/products/{id}
@@ -1438,9 +1438,9 @@ DELETE /api/admin/products/{id}
 
 ---
 
-### 12.9 管理员修改商品（Mock 扩展）
+### 12.9 管理员修改商品
 
-> 权限：管理员。正式后端尚未提供该接口，开发阶段由 Mock 实现。
+> 权限：管理员。可修改任意商家的商品，保存后同步搜索索引。
 
 ```
 PUT /api/admin/products/{id}
