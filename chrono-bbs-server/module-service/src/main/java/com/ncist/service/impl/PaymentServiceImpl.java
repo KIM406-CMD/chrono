@@ -3,13 +3,16 @@ package com.ncist.service.impl;
 import com.ncist.common.enums.OrderErrorCode;
 import com.ncist.common.enums.PaymentErrorCode;
 import com.ncist.common.exception.BusinessException;
+import com.ncist.common.result.PageResult;
 import com.ncist.dto.CardPayDTO;
 import com.ncist.entity.Order;
 import com.ncist.entity.Payment;
+import com.ncist.entity.PaymentDetail;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.PaymentMapper;
 import com.ncist.service.PaymentService;
 import com.ncist.vo.PaymentQrVO;
+import com.ncist.vo.PaymentRecordVO;
 import com.ncist.vo.PayResultVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 支付服务实现（模拟支付）。
@@ -105,6 +109,30 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException(PaymentErrorCode.ORDER_NOT_PAYABLE);
         }
         return PayResultVO.builder().status(2).paidAt(paidAt).build();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public PageResult<PaymentRecordVO> myRecords(Long userId, Integer page, Integer size) {
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 10 : size;
+        long total = paymentMapper.countByUser(userId);
+        List<PaymentDetail> details = total == 0 ? List.of()
+                : paymentMapper.selectPageByUser(userId, (p - 1) * s, s);
+        List<PaymentRecordVO> records = details.stream()
+                .map(detail -> PaymentRecordVO.builder()
+                        .id(detail.getId())
+                        .orderId(detail.getOrderId())
+                        .orderNo(detail.getOrderNo())
+                        .payMethod(detail.getPayMethod())
+                        .cardNo(detail.getCardNo())
+                        .amount(detail.getAmount())
+                        .status(detail.getStatus())
+                        .paidAt(detail.getPaidAt())
+                        .createdAt(detail.getCreatedAt())
+                        .build())
+                .toList();
+        return PageResult.of(total, p, s, records);
     }
 
     // ================ 私有校验 ================

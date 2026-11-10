@@ -965,7 +965,7 @@ server {
 
 ### 15.12 支付记录与订单量趋势
 
-- 新增 `/payments` 支付记录页，展示支付方式、脱敏卡号、金额、状态与时间；Mock 提供 `GET /api/payment/records`。
+- 新增 `/payments` 支付记录页，展示支付方式、脱敏卡号、金额、状态与时间，后端提供 `GET /api/payment/records`。
 - 管理员销售报表新增“订单量趋势”折线图（下单量/支付量/完成量），后端 `AdminReportVO.orderTrend` 与 Mock 数据同步。
 - 搜索排序新增“上架时间”，分类导航优先渲染 `category.icon`。
 

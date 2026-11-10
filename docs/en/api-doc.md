@@ -804,9 +804,9 @@ POST /api/payment/confirm-qrcode
 
 ---
 
-### 7.4 My Payment Records (Mock Extension)
+### 7.4 My Payment Records
 
-> Permission: logged-in user. The backend does not provide a payment-record query API yet; this endpoint is provided by Mock during development.
+> Permission: logged-in user. Returns only payment records for the current user's orders, newest first.
 
 ```
 GET /api/payment/records

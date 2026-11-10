@@ -1,7 +1,9 @@
 package com.ncist.service;
 
+import com.ncist.common.result.PageResult;
 import com.ncist.dto.CardPayDTO;
 import com.ncist.vo.PaymentQrVO;
+import com.ncist.vo.PaymentRecordVO;
 import com.ncist.vo.PayResultVO;
 
 /**
@@ -47,4 +49,14 @@ public interface PaymentService {
      *                           或并发下订单已被支付时抛出
      */
     PayResultVO confirmQrcode(Long userId, Long orderId);
+
+    /**
+     * 分页查询当前用户的支付记录。
+     *
+     * @param userId 用户 ID，必须为当前登录用户
+     * @param page   页码，从 1 开始；为空或小于 1 时按 1 处理
+     * @param size   每页条数；为空或小于 1 时按 10 处理
+     * @return 支付记录分页结果，按支付时间倒序
+     */
+    PageResult<PaymentRecordVO> myRecords(Long userId, Integer page, Integer size);
 }

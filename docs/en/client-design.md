@@ -964,7 +964,7 @@ All items below can be verified independently with `npm run dev:mock`, without t
 
 ### 15.12 Payment Records and Order Trend
 
-- Added the `/payments` page showing payment method, masked card number, amount, status and time; Mock provides `GET /api/payment/records`.
+- Added the `/payments` page showing payment method, masked card number, amount, status and time; the backend provides `GET /api/payment/records`.
 - The admin sales report adds an order-count trend chart (created/paid/completed); `AdminReportVO.orderTrend` and Mock data are synchronized.
 - Search sorting adds "listing time"; category navigation renders `category.icon` when available.
 
