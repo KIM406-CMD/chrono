@@ -743,4 +743,50 @@ onMounted(() => {
   border-top: 1px solid #f0f0f0;
   margin-top: 8px;
 }
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .st-body {
+    flex-direction: column;
+  }
+
+  .st-sidebar {
+    width: 100%;
+  }
+
+  .st-menu {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .st-menu-item {
+    flex: 1 1 auto;
+    justify-content: center;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+
+  .st-menu-item.active {
+    border-left-color: transparent;
+    border-bottom-color: #e2231a;
+  }
+
+  .st-panel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .st-page {
+    padding: 12px;
+  }
+
+  .st-panel {
+    padding: 16px;
+  }
+
+  .st-field-row {
+    flex-wrap: wrap;
+  }
+}
 </style>

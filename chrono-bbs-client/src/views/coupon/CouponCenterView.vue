@@ -220,7 +220,7 @@ onMounted(() => {
 
 <style scoped>
 .cc-page {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 20px;
 }

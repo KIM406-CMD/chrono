@@ -392,4 +392,37 @@ onBeforeUnmount(() => {
   justify-content: center;
   flex: 1;
 }
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .chat-sidebar {
+    width: 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-page {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .chat-sidebar {
+    width: 100%;
+    max-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid #eee;
+  }
+
+  .chat-body {
+    min-height: 60vh;
+  }
+
+  .msg-bubble {
+    max-width: 80%;
+  }
+
+  .chat-input-bar {
+    padding: 10px 12px;
+  }
+}
 </style>

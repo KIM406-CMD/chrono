@@ -373,7 +373,7 @@ const handleUserCommand = (command: string) => {
 .header-inner {
   display: flex;
   align-items: center;
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 0 20px;
   height: 60px;
@@ -485,7 +485,7 @@ const handleUserCommand = (command: string) => {
 }
 
 .category-inner {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
@@ -543,7 +543,7 @@ const handleUserCommand = (command: string) => {
 }
 
 .footer-inner {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 0 20px;
   text-align: center;

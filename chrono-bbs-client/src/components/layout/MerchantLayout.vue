@@ -34,11 +34,12 @@ const router = useRouter()
 }
 
 .merchant-aside {
-  width: 220px;
+  width: var(--sidebar-width);
   border-right: 1px solid var(--el-border-color-light);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  transition: width 0.2s;
 }
 
 .panel-title {
@@ -59,7 +60,14 @@ const router = useRouter()
 
 .merchant-main {
   flex: 1;
+  min-width: 0;
   padding: 24px;
   box-sizing: border-box;
+}
+
+@media (max-width: 1280px) {
+  .merchant-main {
+    padding: 16px;
+  }
 }
 </style>

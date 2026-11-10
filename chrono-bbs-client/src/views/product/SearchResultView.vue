@@ -502,7 +502,7 @@ watch(
 
 <style scoped>
 .search-page {
-  max-width: 1200px;
+  max-width: var(--content-width);
   margin: 0 auto;
   padding: 20px;
 }
@@ -808,5 +808,62 @@ watch(
   display: flex;
   justify-content: center;
   margin-top: 24px;
+}
+
+/* 响应式 */
+@media (max-width: 1400px) {
+  .product-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .product-grid.compact {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .product-grid.compact {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .filter-category,
+  .filter-brand {
+    width: 100%;
+  }
+
+  .price-range {
+    width: 100%;
+  }
+
+  .price-input {
+    flex: 1;
+    width: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-page {
+    padding: 12px;
+  }
+
+  .product-grid,
+  .product-grid.compact {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .search-meta {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sort-bar {
+    flex-wrap: wrap;
+  }
 }
 </style>
