@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.ncist</groupId>
         <artifactId>chrono-bbs-server</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>module-api</artifactId>
@@ -31,9 +31,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <!-- springdoc 2.8.9 官方实现（适配 Boot 3.4）+ knife4j 纯 UI 资源包提供 doc.html 界面 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.github.xiaoymin</groupId>
-            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <artifactId>knife4j-openapi3-ui</artifactId>
         </dependency>
     </dependencies>
 

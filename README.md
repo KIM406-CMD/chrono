@@ -1,5 +1,7 @@
 # 🛒 网上超市系统 (Chrono BBS)
 
+> [English](./README.en.md) | 简体中文
+
 > 课程设计项目 — 基于 Spring Boot + Vue 3 的全栈电商系统
 
 ---
@@ -53,14 +55,15 @@
 | **ORM** | MyBatis | 3.0.4 |
 | **数据库** | MySQL | 8.0 |
 | **缓存** | Redis | 7.x |
-| **搜索引擎** | Elasticsearch | 7.17.x |
+| **搜索引擎** | Elasticsearch | 8.10.x |
 | **前端框架** | Vue 3 + Vite | Composition API |
 | **UI 组件库** | Element Plus | Vue 3 官方推荐 |
 | **状态管理** | Pinia | Vue 3 官方推荐 |
 | **构建工具** | Vite | 开发热更新 + Rollup 打包 |
-| **认证鉴权** | JWT + Redis + Spring AOP | RBAC 权限控制 |
+| **认证鉴权** | JWT + Redis | 拦截器认证 + Service 层角色/数据归属校验 |
 | **即时通讯** | WebSocket (JSR 356) | 用户与商家实时聊天 |
-| **接口文档** | Knife4j (OpenAPI 3.0) | 自动生成 API 文档 |
+| **接口文档** | springdoc-openapi + knife4j-ui | 自动生成 API 文档 |
+| **图片存储** | 本地目录 / 阿里云 OSS + Thumbnailator | 开发默认本地，支持 OSS，800px 压缩 |
 | **容器化** | Docker + Docker Compose | 中间件一键编排 |
 | **部署** | Nginx | 前后端分离 + 反向代理 |
 
@@ -81,16 +84,8 @@ chrono-bbs/
 ├── chrono-bbs-client/                # 前端（Vue 3 + Vite + TS + Element Plus）
 │
 ├── docs/                             # 📄 文档目录
-│   ├── prd.md                        # 产品需求文档
-│   ├── requirements-analysis.md      # 需求分析
-│   ├── feasibility-analysis.md       # 可行性分析
-│   ├── server-design.md              # 服务端概要设计
-│   ├── client-design.md              # 客户端概要设计
-│   ├── db-design.md                  # 数据库设计
-│   ├── detailed-design.md            # 详细设计（含流程图）
-│   ├── api-doc.md                    # API 接口文档
-│   ├── test-specification.md         # 测试规范
-│   └── git-commit-convention.md      # Git 提交规范
+│   ├── zh/                           # 中文文档（需求/设计/API/测试/HMI 等）
+│   └── en/                           # English documentation
 │
 ├── uml/                              # 📐 UML 图目录
 │   ├── uml-usecase.puml              # 用例图
@@ -103,8 +98,10 @@ chrono-bbs/
 │   └── docker-compose.yml            # MySQL + Redis + ES
 │
 ├── initial/                          # 🗄 数据库初始化脚本
-│   ├── schema.sql                    # 建表语句
-│   └── data.sql                      # 初始数据
+│   ├── schema.sql                    # 建表语句（含最新字段）
+│   ├── data.sql                      # 初始数据
+│   ├── migration-2026-11-09.sql      # 已有库增量迁移（可重复执行）
+│   └── demo-data.sql                 # 演示商家/商品/订单/评论（可重复执行）
 │
 ├── AGENTS.md                         # 🤖 AI 助手行为规范
 ├── CHANGELOG.md                      # 📝 变更日志
@@ -121,72 +118,129 @@ chrono-bbs/
 |------|----------|
 | JDK | 21+ |
 | Node.js | 18+ |
-| Docker Desktop | 最新版 |
 | Maven | 3.8+ |
+| Docker Desktop | 最新版（仅 Docker 模式需要） |
 
-### 1. 启动中间件
+### 1. 一键启动（推荐）
+
+Windows（cmd / PowerShell）：
+
+```bat
+script\start-all.bat            :: Docker 中间件（MySQL 3307）
+script\start-all.bat --local    :: 本机中间件（MySQL 3306）
+```
+
+Bash / Git Bash / macOS / Linux：
+
+```bash
+./script/start-all.sh           # Docker 中间件（MySQL 3307）
+./script/start-all.sh --local   # 本机中间件（MySQL 3306）
+```
+
+脚本会依次启动中间件、后端与前端：
+
+| 服务 | 地址 |
+|------|------|
+| 前端 | <http://localhost:5173> |
+| 后端 | <http://localhost:8080> |
+| Knife4j 文档 | <http://localhost:8080/doc.html> |
+
+> Windows 会为后端和前端各打开一个新命令行窗口，关闭窗口即停止服务。
+> Bash 下后端在后台运行，日志写入 `logs/backend.log`，`Ctrl+C` 同时停止前后端。
+> 更多参数（`--skip-build`、`--install`、`--volumes`）见 [script/README.md](script/README.md)。
+
+### 2. 分步启动（可选）
+
+| 步骤 | Windows | Bash |
+|------|---------|------|
+| 启动中间件 | `script\start-middleware.bat` | `./script/start-middleware.sh` |
+| 启动后端 | `script\start-backend.bat` | `./script/start-backend.sh` |
+| 启动前端 | `script\start-frontend.bat` | `./script/start-frontend.sh` |
+| 停止中间件 | `script\stop-middleware.bat` | `./script/stop-middleware.sh` |
+
+### 3. Docker 部署前端（可选）
+
+前端提供多阶段镜像（Node 构建 + Nginx 托管），后端仍运行在宿主机 `8080`：
 
 ```bash
 cd docker
-docker-compose up -d
+docker compose --profile frontend up -d --build nginx
 ```
 
-启动 MySQL、Redis、Elasticsearch。
+| 服务 | 地址 |
+|------|------|
+| 前端（Nginx 容器） | <http://localhost:3000> |
 
-### 2. 初始化数据库
+> 默认映射宿主机 `3000`，可用 `FRONTEND_PORT=3001` 覆盖；若本机已有 Nginx 占用 3000，请先停止本机 Nginx。
+> 容器通过 `host.docker.internal:8080` 访问后端；后端纳入 Compose 后可将 `deploy/nginx.docker.conf` 中的地址改为后端服务名。
+
+> 默认使用 Docker 中间件（MySQL 映射到宿主机 `3307`）；追加 `--local` 使用本机已启动的 MySQL / Redis / Elasticsearch（MySQL 按 `application-dev.yml` 使用 `3306`）。
+
+### 4. 本机中间件数据库初始化（可选）
+
+使用 `--local` 且首次运行时，先初始化数据库：
 
 ```bash
-# 执行建表语句
 mysql -u root -p < initial/schema.sql
-# 导入初始数据
 mysql -u root -p < initial/data.sql
+mysql -u root -p < initial/demo-data.sql
 ```
 
-### 3. 启动后端
+脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`，演示商家与用户见下方测试账号。
 
-```bash
-cd chrono-bbs-server
-mvn clean install -DskipTests
-cd module-start
-mvn spring-boot:run
-```
-
-后端运行在 `http://localhost:8080`，Knife4j 文档在 `http://localhost:8080/doc.html`。
-
-### 4. 启动前端
-
-```bash
-cd chrono-bbs-client
-npm install
-npm run dev
-```
-
-前端运行在 `http://localhost:5173`。
+> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行）；需要演示数据时再执行 `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql`（可重复执行）。
+> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
+> 开发环境默认将图片写入后端本地 `uploads/` 目录（`upload.mode=local`），无需配置 OSS 即可上传；需要对象存储时，复制 `script/.env.example` 为根目录 `.env` 填写密钥并设置 `UPLOAD_MODE=oss`。
 
 ### 5. 默认测试账号
 
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 管理员 | `admin` | `admin123` |
+| 角色 | 用户名 | 密码 | 说明 |
+|------|--------|------|------|
+| 管理员 | `admin` | `admin123` | 初始管理员 |
+| 商家 | `merchant1` | `admin123` | 鲜果直供旗舰店（已审核） |
+| 商家 | `merchant2` | `admin123` | 数码优选专营店（已审核） |
+| 普通用户 | `user1` | `admin123` | 含地址、购物车、订单、退款与评论 |
 
-> 普通用户可通过前端注册功能自行创建。
+> 演示账号由 `initial/demo-data.sql` 创建；普通用户也可通过前端注册功能自行创建。
+
+### 6. 生产部署（Nginx）
+
+```bash
+cd chrono-bbs-client
+npm run build
+# 将 dist/ 下的内容部署到 Nginx 静态目录
+```
+
+将 `deploy/nginx.conf` 放入 Nginx 配置目录并重新加载。配置已包含：
+
+- History 路由回退 `try_files $uri $uri/ /index.html`；
+- `/api/` 反向代理到后端 `8080`；
+- `client_max_body_size 10m`，满足商品图片上传；
+- `/assets/` 静态资源长缓存与 gzip。
+
+> 若 Nginx 运行在容器中，请把 `proxy_pass` 中的 `127.0.0.1` 改为后端服务名或 `host.docker.internal`。
+
+生产环境启动后端前必须配置：`DB_PASSWORD`（数据库密码）、`JWT_SECRET`（至少 32 字节随机字符串）以及 OSS 密钥（如启用 OSS）。仓库中的 `application-dev.yml`、`application-test.yml` 和 `docker-compose.yml` 中的数据库口令仅用于本地开发/测试，请勿用于生产。
 
 ---
 
 ## 📖 文档索引
 
+> 中文文档位于 `docs/zh/`，英文文档位于 `docs/en/`；每篇文档顶部提供语言切换。
+
 | 文档 | 内容 |
 |------|------|
-| [prd.md](./docs/prd.md) | 产品需求文档 — 业务背景、角色权限、核心业务规则 |
-| [requirements-analysis.md](./docs/requirements-analysis.md) | 需求分析 — 48 项功能需求（F-01~F-48）+ 优先级 + 业务流程 + 数据需求 |
-| [feasibility-analysis.md](./docs/feasibility-analysis.md) | 可行性分析 — 技术/进度/经济/运行四维度 |
-| [server-design.md](./docs/server-design.md) | 服务端概要设计 — Maven 模块 / 认证 / 异常体系 |
-| [client-design.md](./docs/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
-| [db-design.md](./docs/db-design.md) | 数据库设计 — 表结构 / 字段 / 索引 |
-| [detailed-design.md](./docs/detailed-design.md) | 详细设计 — Mermaid 流程图 / 时序图 / 部署架构 |
-| [api-doc.md](./docs/api-doc.md) | API 接口文档 — 接口列表与请求响应示例 |
-| [test-specification.md](./docs/test-specification.md) | 测试规范 — 单元/集成/E2E 测试要求 |
-| [git-commit-convention.md](./docs/git-commit-convention.md) | Git 提交规范 — Conventional Commits + 分支模型 |
+| [requirements-analysis.md](./docs/zh/requirements-analysis.md) | 需求分析 — 业务背景、核心业务规则、48 项功能需求（F-01~F-48）、优先级、业务流程与数据需求 |
+| [object-oriented-development.md](./docs/zh/object-oriented-development.md) | 面向对象开发 — 需求与用例、领域分析、职责分配、架构设计与详细设计步骤 |
+| [feasibility-analysis.md](./docs/zh/feasibility-analysis.md) | 可行性分析 — 技术/进度/经济/运行四维度 |
+| [server-design.md](./docs/zh/server-design.md) | 服务端概要设计 — Maven 模块 / 认证 / 异常体系 |
+| [client-design.md](./docs/zh/client-design.md) | 客户端概要设计 — 目录结构 / 路由 / 状态管理 |
+| [db-design.md](./docs/zh/db-design.md) | 数据库设计 — 表结构 / 字段 / 索引 |
+| [detailed-design.md](./docs/zh/detailed-design.md) | 详细设计 — Mermaid 流程图 / 时序图 / 部署架构 |
+| [api-doc.md](./docs/zh/api-doc.md) | API 接口文档 — 接口列表与请求响应示例 |
+| [test-specification.md](./docs/zh/test-specification.md) | 测试规范 — 单元/集成/E2E 测试要求 |
+| [hmi-design.md](./docs/zh/hmi-design.md) | 人机界面设计 — 页面原型与交互 |
+| [git-commit-convention.md](./docs/zh/git-commit-convention.md) | Git 提交规范 — Conventional Commits + 分支模型 |
 | [CHANGELOG.md](./CHANGELOG.md) | 变更日志 — 版本发布记录 |
 | [AGENTS.md](./AGENTS.md) | AI 助手规范 — 编码与提交行为约束 |
 
@@ -196,7 +250,7 @@ npm run dev
 |----|------|------|
 | [uml-usecase.puml](./uml/uml-usecase.puml) | PlantUML | 用例图 — 游客/用户/商家/管理员 4 角色 |
 | [uml-component.puml](./uml/uml-component.puml) | PlantUML | 组件图 — Maven 模块 + 外部依赖 |
-| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 14 张表关联关系 |
+| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 20 张表关联关系 |
 | [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | 时序图 — 注册登录 / 购物下单 / 支付 / WebSocket |
 | [uml-activity.puml](./uml/uml-activity.puml) | PlantUML | 活动图 — 订单状态流转 / 商家入驻 / 退款退货 |
 
@@ -212,6 +266,7 @@ npm run dev
 | 🛒 购物车 | 登录态购物车（数据库存储）、数量修改、库存校验 |
 | 📦 订单模块 | 下单（防重 Token + 分布式锁）、订单状态流转 |
 | 💳 支付模块 | 模拟支付（Luhn 算法卡号校验 + 二维码支付） |
+| 🎟 秒杀券 | 管理员创建/编辑/删除券，用户抢领（Redis 防超卖）、我的券、下单优惠计算 |
 | 🔄 退款/退货 | 申请 → 审核 → 退货寄回 → 退款 → 恢复库存 |
 | 🏬 商家后台 | 入驻审核、商品/库存管理、发货、退款审核、销售统计 |
 | 🛡 管理员后台 | 用户管理、商家审核、分类管理、全局报表（6 类） |
@@ -223,7 +278,7 @@ npm run dev
 
 - 密码 BCrypt 加密存储
 - JWT + Redis 双校验认证（支持主动踢人）
-- Spring AOP + `@RequireRole` RBAC 权限控制
+- Service 层角色与数据归属校验（管理员角色、商家资质、商品/订单/退款归属）
 - 下单防重 Token（Redis 原子 DEL）
 - 库存扣减乐观锁（`WHERE stock >= ?`）
 - 支付幂等（基于 `order_id` 去重）
@@ -245,7 +300,7 @@ npm run dev
 
 本项目为课程设计团队项目，开发前请务必阅读以下规范：
 
-- [Git 提交规范](./docs/git-commit-convention.md) — 提交信息格式与分支模型
+- [Git 提交规范](./docs/zh/git-commit-convention.md) — 提交信息格式与分支模型
 - [AGENTS.md](./AGENTS.md) — AI 助手行为规范（编码风格与提交约束）
 
 开发流程：从 `dev` 分支拉取 → 创建 `feature/*` 分支 → 开发 → PR 合并到 `dev` → 稳定后合并到 `main`。

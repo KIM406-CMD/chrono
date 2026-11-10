@@ -2,4 +2,176 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ncist.mapper.MerchantMapper">
 
+    <!-- 商家商品分页（status 不传查全部） -->
+    <select id="selectMerchantProducts" resultType="java.util.Map">
+        SELECT id, name, description, images, brand, category_id AS categoryId,
+               merchant_id AS merchantId, status, sales,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM product
+        WHERE merchant_id = #{merchantId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countMerchantProducts" resultType="long">
+        SELECT COUNT(*) FROM product
+        WHERE merchant_id = #{merchantId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <!-- 商家订单 ID 列表：通过 order_item JOIN product 找到包含该商家商品的订单 -->
+    <select id="selectMerchantOrderIds" resultType="long">
+        SELECT DISTINCT o.id
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE o.status IN (2, 3, 4, 5, 6, 7)
+        <if test="status != null">
+            AND o.status = #{status}
+        </if>
+        ORDER BY o.created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countMerchantOrders" resultType="long">
+        SELECT COUNT(DISTINCT o.id)
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE o.status IN (2, 3, 4, 5, 6, 7)
+        <if test="status != null">
+            AND o.status = #{status}
+        </if>
+    </select>
+
+    <!-- 商家订单详情（基础字段 + 该商家商品数量） -->
+    <select id="selectMerchantOrders" resultType="java.util.Map">
+        SELECT o.id, o.order_no AS orderNo, o.user_id AS userId,
+               o.address_snapshot AS addressSnapshot,
+               o.total_amount AS totalAmount, o.status,
+               o.paid_at AS paidAt, o.shipped_at AS shippedAt,
+               o.created_at AS createdAt,
+               COUNT(oi.id) AS itemCount
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE o.id IN
+        <foreach collection="orderIds" item="oid" open="(" separator="," close=")"> #{oid} </foreach>
+        GROUP BY o.id
+        ORDER BY o.created_at DESC
+    </select>
+
+    <!-- 某订单中属于该商家的商品明细 -->
+    <select id="selectMerchantOrderItems" resultType="java.util.Map">
+        SELECT oi.product_id AS productId,
+               p.name AS productName,
+               LEFT(p.images, 200) AS productImages,
+               oi.quantity, oi.unit_price AS unitPrice, oi.subtotal
+        FROM order_item oi
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE oi.order_id = #{orderId}
+        ORDER BY oi.id
+    </select>
+
+    <!-- 校验订单商品是否全部属于该商家（返回 0 表示全部属于，允许发货） -->
+    <select id="countOrderItemsNotBelongTo" resultType="int">
+        SELECT COUNT(*)
+        FROM order_item oi
+        INNER JOIN product p ON p.id = oi.product_id
+        WHERE oi.order_id = #{orderId} AND p.merchant_id != #{merchantId}
+    </select>
+
+    <!-- 销售统计：总销售额 -->
+    <select id="sumSales" resultType="long">
+        SELECT COALESCE(SUM(oi.subtotal), 0)
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''">
+            AND DATE(o.created_at) &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(o.created_at) &lt;= #{endDate}
+        </if>
+    </select>
+
+    <select id="countOrders" resultType="long">
+        SELECT COUNT(DISTINCT o.id)
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''">
+            AND DATE(o.created_at) &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(o.created_at) &lt;= #{endDate}
+        </if>
+    </select>
+
+    <!-- Top 商品 -->
+    <select id="selectTopProducts" resultType="java.util.Map">
+        SELECT oi.product_id AS productId,
+               p.name AS productName,
+               SUM(oi.quantity) AS salesCount,
+               SUM(oi.subtotal) AS totalAmount
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''">
+            AND DATE(o.created_at) &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(o.created_at) &lt;= #{endDate}
+        </if>
+        GROUP BY oi.product_id, p.name
+        ORDER BY totalAmount DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 按分类销售额 -->
+    <select id="selectSalesByCategory" resultType="java.util.Map">
+        SELECT p.category_id AS categoryId,
+               c.name AS categoryName,
+               SUM(oi.subtotal) AS totalAmount
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        LEFT JOIN category c ON c.id = p.category_id
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''">
+            AND DATE(o.created_at) &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(o.created_at) &lt;= #{endDate}
+        </if>
+        GROUP BY p.category_id, c.name
+        ORDER BY totalAmount DESC
+    </select>
+
+    <!-- 销售趋势（按天） -->
+    <select id="selectSalesTrend" resultType="java.util.Map">
+        SELECT DATE(o.created_at) AS date,
+               SUM(oi.subtotal) AS amount
+        FROM `order` o
+        INNER JOIN order_item oi ON oi.order_id = o.id
+        INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
+        WHERE o.status IN (2, 3, 4)
+        <if test="startDate != null and startDate != ''">
+            AND DATE(o.created_at) &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(o.created_at) &lt;= #{endDate}
+        </if>
+        GROUP BY DATE(o.created_at)
+        ORDER BY date ASC
+    </select>
+
 </mapper>

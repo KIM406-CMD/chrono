@@ -4,6 +4,10 @@ server:
 spring:
   profiles:
     active: dev
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 10MB
 
 mybatis:
   mapper-locations: classpath*:mapper/*.xml
@@ -15,13 +19,16 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     enabled: true
-  group-configs:
-    - group: default
-      display-name: default
-      paths-to-match: /**
-      packages-to-scan: com.ncist.controller
+  packages-to-scan: com.ncist.controller
 
 knife4j:
   enable: true
   setting:
     language: zh_cn
+
+aliyun:
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:chrono-bbs}

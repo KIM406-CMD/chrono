@@ -53,6 +53,8 @@ build/
 # Node / Frontend
 node_modules/
 dist/
+# vite-plugin-mock 临时打包文件
+_*.bundled_*.mjs
 dist-ssr/
 *.local
 npm-debug.log*
@@ -64,3 +66,6 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Local image uploads (upload.mode=local)
+uploads/

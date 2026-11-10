@@ -2,6 +2,9 @@ package com.ncist.common.enums;
 
 import lombok.Getter;
 
+/**
+ * 通用错误码。
+ */
 @Getter
 public enum CommonErrorCode implements ErrorCode {
 

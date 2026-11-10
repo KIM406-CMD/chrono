@@ -49,6 +49,10 @@ package "chrono-bbs-server (父项目)" {
     [ChatController\n(即时通讯)] as Chat
     [AdminController\n(管理员)] as Admin
     [MerchantController\n(商家)] as Mc
+    [CategoryController\n(分类)] as Category
+    [AddressController\n(收货地址)] as Addr
+    [SearchController\n(搜索)] as Search
+    [SeckillController\n(秒杀券)] as Seckill
 
     ' 横切面
     [JwtInterceptor\n(JWT鉴权拦截器)] as Jwt
@@ -69,6 +73,7 @@ package "chrono-bbs-server (父项目)" {
     interface "RefundService\n(退款服务接口)" as RS
     interface "ChatService\n(聊天服务接口)" as ChS
     interface "SearchService\n(搜索服务接口)" as SS
+    interface "SeckillService\n(秒杀券服务接口)" as SeckS
 
     [UserServiceImpl] as USI
     [ProductServiceImpl] as PSI
@@ -79,6 +84,7 @@ package "chrono-bbs-server (父项目)" {
     [RefundServiceImpl] as RSI
     [ChatServiceImpl] as ChI
     [SearchServiceImpl] as SSI
+    [SeckillServiceImpl] as SeckSI
 
     ' DTO
     [LoginDTO / RegisterDTO\nCreateOrderDTO] as DTO
@@ -94,6 +100,7 @@ package "chrono-bbs-server (父项目)" {
     [RefundMapper] as RM
     [ChatMapper] as ChM
     [OperationLogMapper] as OLM
+    [SeckillMapper] as SeckM
 
     ' Entity
     [user / product / order\n(Entity 实体类)] as Entity
@@ -130,6 +137,7 @@ CmtS <|.. CmtI
 RS <|.. RSI
 ChS <|.. ChI
 SS <|.. SSI
+SeckS <|.. SeckSI
 
 ' ===== Controller 依赖 Service =====
 Auth --> USF
@@ -137,8 +145,10 @@ Product --> PSF
 Order --> OSF
 Pay --> PyS
 Cart --> CSF
-Comment --> CmtF
+Comment --> CmtS
 Chat --> ChS
+Search --> SS
+Seckill --> SeckS
 Admin --> USF
 
 ' ===== 外部依赖 =====

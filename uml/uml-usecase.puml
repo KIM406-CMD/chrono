@@ -36,6 +36,8 @@ rectangle "网上超市系统" {
     usecase "发表商品评论" as UC17
     usecase "追加评论" as UC18
     usecase "与商家聊天" as UC19
+    usecase "抢领秒杀券" as UC39
+    usecase "查看我的优惠券" as UC40
   }
 
   ' ===== 商家用例 =====
@@ -63,6 +65,7 @@ rectangle "网上超市系统" {
     usecase "管理所有评论" as UC36
     usecase "查看全局销售报表" as UC37
     usecase "查看操作日志" as UC38
+    usecase "管理秒杀券" as UC41
   }
 }
 
@@ -87,6 +90,8 @@ user --> UC16
 user --> UC17
 user --> UC18
 user --> UC19
+user --> UC39
+user --> UC40
 
 merchant --> UC20
 merchant --> UC21
@@ -108,6 +113,7 @@ admin --> UC35
 admin --> UC36
 admin --> UC37
 admin --> UC38
+admin --> UC41
 
 ' 用户继承游客
 user --|> visitor

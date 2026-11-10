@@ -74,7 +74,7 @@ class AuthServiceImplTest {
     private void setupLoginHappyPath() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
-        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 0));
+        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 1));
         when(passwordEncoder.matches("123456", TEST_ENCODED_PASSWORD)).thenReturn(true);
     }
 
@@ -221,6 +221,19 @@ class AuthServiceImplTest {
         assertNotNull(captured.getUpdatedAt());
         log.info("用户字段验证 -> username={}, role={}, status={}, nickname={}",
                 captured.getUsername(), captured.getRole(), captured.getStatus(), captured.getNickname());
+    }
+
+    @Test
+    @DisplayName("register 即使用户传入商家角色也应固定注册为普通用户")
+    void shouldForceUserRoleOnRegister() {
+        setupRegisterHappyPath();
+        RegisterDTO dto = buildRegisterDTO("testuser", "13800000001", "test@test.com", 2, TEST_UUID, TEST_CODE);
+        authService.register(dto);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(userCaptor.capture());
+        assertEquals(1, userCaptor.getValue().getRole());
+        log.info("注册角色防越权验证通过 -> 请求 role=2，落库 role=1");
     }
 
     @Test
@@ -404,7 +417,7 @@ class AuthServiceImplTest {
     void shouldThrowWhenAccountDisabled() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
-        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 1));
+        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 0));
 
         LoginDTO dto = buildLoginDTO("testuser", "123456", TEST_UUID, TEST_CODE);
 
@@ -418,7 +431,7 @@ class AuthServiceImplTest {
     void shouldThrowWhenPasswordWrong() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("captcha:" + TEST_UUID)).thenReturn(TEST_CODE);
-        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 0));
+        when(userMapper.selectByUsername("testuser")).thenReturn(buildUser(1L, "testuser", TEST_ENCODED_PASSWORD, 1, 1));
         when(passwordEncoder.matches("wrongpass", TEST_ENCODED_PASSWORD)).thenReturn(false);
 
         LoginDTO dto = buildLoginDTO("testuser", "wrongpass", TEST_UUID, TEST_CODE);

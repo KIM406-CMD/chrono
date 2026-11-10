@@ -1,0 +1,584 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { Role } from '@/types/common'
+import { getCategoryTree } from '@/api/product'
+import { getCartList } from '@/api/cart'
+import { getUnreadCount } from '@/api/chat'
+import { CHAT_ENABLED } from '@/config/features'
+import { chatSocket } from '@/utils/chatSocket'
+import CategoryFlyout from '@/components/category/CategoryFlyout.vue'
+import type { Category } from '@/types/product'
+
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+const keyword = ref('')
+const categories = ref<Category[]>([])
+
+const displayName = computed(() => userStore.userInfo?.nickname || userStore.userInfo?.username || '我的账户')
+
+const isUser = computed(() => userStore.role === Role.USER)
+const isMerchant = computed(() => userStore.role === Role.MERCHANT)
+const isAdmin = computed(() => userStore.role === Role.ADMIN)
+
+const onSearch = () => {
+  const kw = keyword.value.trim()
+  if (kw) {
+    router.push({ path: '/search', query: { keyword: kw } })
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    const res = await getCategoryTree()
+    categories.value = res.data || []
+  } catch {
+    categories.value = []
+  }
+}
+
+const activeCategoryId = computed(() => {
+  if (route.path !== '/search') return 0
+  const id = Number(route.query.categoryId)
+  return Number.isFinite(id) && id > 0 ? id : 0
+})
+
+// 当前悬浮的一级分类，保证同一时间只展开一个浮层
+const hoveredCategoryId = ref(0)
+
+const onCategoryClick = (cat: Category) => {
+  hoveredCategoryId.value = 0
+  router.push({ path: '/search', query: { categoryId: String(cat.id) } })
+}
+
+const isMockMode = import.meta.env.MODE === 'mock'
+let unsubscribeChatFrame: (() => void) | null = null
+
+// 未读消息数
+const unreadMsgCount = ref(0)
+
+const loadUnreadCount = () => {
+  getUnreadCount()
+    .then((res) => {
+      unreadMsgCount.value = res.data?.count || 0
+    })
+    .catch(() => {
+      unreadMsgCount.value = 0
+    })
+}
+
+// 购物车商品数量
+const cartCount = ref(0)
+
+const loadCartCount = async () => {
+  if (!userStore.isLoggedIn) {
+    cartCount.value = 0
+    return
+  }
+  try {
+    const res = await getCartList()
+    cartCount.value = (res.data || []).reduce((sum, item) => sum + item.quantity, 0)
+  } catch {
+    cartCount.value = 0
+  }
+}
+
+const onUnreadChanged = () => {
+  if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+}
+
+// 商城布局持有全局聊天连接，未读角标可随实时消息刷新
+const syncChatConnection = () => {
+  if (!CHAT_ENABLED || isMockMode) return
+  if (userStore.isLoggedIn && userStore.userInfo?.id && userStore.token) {
+    chatSocket.connect(userStore.userInfo.id, userStore.token)
+  } else {
+    chatSocket.disconnect()
+  }
+}
+
+onMounted(() => {
+  loadCategories()
+  window.addEventListener('chat-unread-changed', onUnreadChanged)
+  unsubscribeChatFrame = chatSocket.onFrame((frame) => {
+    if (frame.type !== 'ERROR') loadUnreadCount()
+  })
+  syncChatConnection()
+  if (userStore.isLoggedIn) {
+    if (CHAT_ENABLED) loadUnreadCount()
+    loadCartCount()
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('chat-unread-changed', onUnreadChanged)
+  unsubscribeChatFrame?.()
+  unsubscribeChatFrame = null
+  chatSocket.disconnect()
+})
+
+watch(() => route.fullPath, () => {
+  loadCartCount()
+  if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+})
+watch(() => [userStore.token, userStore.userInfo?.id], () => {
+  syncChatConnection()
+  loadCartCount()
+  if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+})
+
+const handleUserCommand = (command: string) => {
+  switch (command) {
+    case 'orders':
+        router.push('/orders')
+        break
+    case 'payments':
+      router.push('/payments')
+      break
+    case 'refunds':
+      router.push('/refunds')
+      break
+      case 'chat':
+        router.push('/chat')
+        break
+      case 'address':
+      router.push('/address')
+      break
+    case 'merchant-apply':
+      router.push('/merchant/apply')
+      break
+    case 'settings':
+      router.push('/settings')
+      break
+    case 'merchant':
+      router.push('/merchant/products')
+      break
+    case 'admin':
+      router.push('/admin/dashboard')
+      break
+    case 'logout':
+      userStore.logout()
+      router.push('/home')
+      break
+  }
+}
+</script>
+
+<template>
+  <div class="mall-layout">
+    <!-- 顶部导航栏 -->
+    <header class="mall-header">
+      <div class="header-inner">
+        <div class="logo" @click="router.push('/home')">
+          <span class="logo-icon">🛒</span>
+          <span class="logo-text">网上商城</span>
+        </div>
+
+        <el-input
+          v-model="keyword"
+          placeholder="搜索商品"
+          class="search-input"
+          @keyup.enter="onSearch"
+        >
+          <template #append>
+            <el-button @click="onSearch">搜索</el-button>
+          </template>
+        </el-input>
+
+        <div class="header-actions">
+          <!-- 购物车 -->
+          <el-badge :value="cartCount" :hidden="cartCount === 0" class="cart-badge">
+            <el-button text class="nav-btn" @click="router.push('/cart')">
+              🛒 购物车
+            </el-button>
+          </el-badge>
+
+          <el-button text class="nav-btn" @click="router.push('/coupons')">
+            🎫 领券
+          </el-button>
+
+          <!-- 已登录 -->
+          <template v-if="userStore.isLoggedIn">
+            <!-- 消息 -->
+            <el-badge v-if="CHAT_ENABLED" :value="unreadMsgCount" :hidden="unreadMsgCount === 0" class="cart-badge">
+              <el-button text class="nav-btn" @click="router.push('/chat')">
+                💬 消息
+              </el-button>
+            </el-badge>
+
+            <!-- 商家入口 -->
+            <el-button
+              v-if="isMerchant"
+              text
+              class="nav-btn role-btn"
+              @click="router.push('/merchant/products')"
+            >
+              🏪 卖家中心
+            </el-button>
+
+            <!-- 管理员入口 -->
+            <el-button
+              v-if="isAdmin"
+              text
+              class="nav-btn role-btn"
+              @click="router.push('/admin/dashboard')"
+            >
+              ⚙ 管理后台
+            </el-button>
+
+            <!-- 用户菜单 -->
+            <el-dropdown trigger="hover" @command="handleUserCommand">
+              <span class="user-name">
+                <span class="role-badge" :class="{
+                  'badge-user': isUser,
+                  'badge-merchant': isMerchant,
+                  'badge-admin': isAdmin,
+                }">
+                  {{ isUser ? '买家' : isMerchant ? '商家' : '管理员' }}
+                </span>
+                {{ displayName }}
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="orders">📋 我的订单</el-dropdown-item>
+                  <el-dropdown-item command="payments">💳 支付记录</el-dropdown-item>
+                  <el-dropdown-item command="refunds">🧾 退款/售后</el-dropdown-item>
+                    <el-dropdown-item v-if="CHAT_ENABLED" command="chat">💬 我的消息</el-dropdown-item>
+                    <el-dropdown-item command="address">📍 收货地址</el-dropdown-item>
+                  <el-dropdown-item v-if="isUser" command="merchant-apply">🏪 申请入驻</el-dropdown-item>
+                  <el-dropdown-item command="settings">⚙ 账户设置</el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="isMerchant"
+                    command="merchant"
+                    divided
+                  >
+                    🏪 卖家中心
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="isAdmin"
+                    command="admin"
+                    divided
+                  >
+                    ⚙ 管理后台
+                  </el-dropdown-item>
+                  <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </template>
+
+          <!-- 未登录 -->
+          <div v-else class="auth-links">
+            <el-button text class="nav-btn" @click="router.push('/login')">登录</el-button>
+            <el-button type="primary" size="small" class="register-btn" @click="router.push('/register')">
+              免费注册
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 分类导航栏 -->
+    <nav class="category-bar">
+      <div class="category-inner">
+        <span
+          class="category-item"
+          :class="{ active: activeCategoryId === 0 }"
+          @click="router.push('/home')"
+        >全部商品</span>
+        <div
+          v-for="cat in categories"
+          :key="cat.id"
+          class="category-wrap"
+          @mouseenter="hoveredCategoryId = cat.id"
+          @mouseleave="hoveredCategoryId = 0"
+        >
+          <span
+            class="category-item"
+            :class="{ active: activeCategoryId === cat.id }"
+            @click="onCategoryClick(cat)"
+          >
+            <img v-if="cat.icon" :src="cat.icon" class="nav-cat-icon" alt="" />
+            {{ cat.name }}
+          </span>
+          <CategoryFlyout
+            v-if="hoveredCategoryId === cat.id"
+            :category="cat"
+            placement="bottom"
+            @select="onCategoryClick"
+          />
+        </div>
+      </div>
+    </nav>
+
+    <!-- 页面内容 -->
+    <main class="mall-content">
+      <router-view />
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="mall-footer">
+      <div class="footer-inner">
+        <div class="footer-columns">
+          <div class="footer-col">
+            <h4 class="footer-col-title">购物指南</h4>
+            <p class="footer-link" @click="router.push('/help/shopping')">购物流程</p>
+            <p class="footer-link" @click="router.push('/help/shopping')">会员介绍</p>
+            <p class="footer-link" @click="router.push('/help/shopping')">常见问题</p>
+          </div>
+          <div class="footer-col">
+            <h4 class="footer-col-title">配送方式</h4>
+            <p class="footer-link" @click="router.push('/help/delivery')">配送范围</p>
+            <p class="footer-link" @click="router.push('/help/delivery')">配送时间</p>
+            <p class="footer-link" @click="router.push('/help/delivery')">验货与签收</p>
+          </div>
+          <div class="footer-col">
+            <h4 class="footer-col-title">支付方式</h4>
+            <p class="footer-link" @click="router.push('/help/payment')">在线支付</p>
+            <p class="footer-link" @click="router.push('/help/payment')">分期付款</p>
+            <p class="footer-link" @click="router.push('/help/payment')">发票制度</p>
+          </div>
+          <div class="footer-col">
+            <h4 class="footer-col-title">售后服务</h4>
+            <p class="footer-link" @click="router.push('/help/after-sale')">退换货政策</p>
+            <p class="footer-link" @click="router.push('/help/after-sale')">退换货流程</p>
+            <p class="footer-link" @click="router.push('/help/after-sale')">价格保护</p>
+          </div>
+        </div>
+        <p class="footer-copy">© 2026 网上商城 版权所有 - 课程设计项目</p>
+      </div>
+    </footer>
+  </div>
+</template>
+
+<style scoped>
+.mall-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+/* ========== 顶部导航栏 ========== */
+.mall-header {
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 60px;
+  gap: 24px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.logo-icon {
+  font-size: 22px;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e2231a;
+  letter-spacing: 1px;
+}
+
+.search-input {
+  flex: 1;
+  max-width: 500px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nav-btn {
+  font-size: 14px;
+  color: #333;
+}
+
+.role-btn {
+  color: #e6a23c;
+}
+
+.role-btn:hover {
+  color: #cf9236 !important;
+  background: #fdf6ec !important;
+}
+
+.cart-badge {
+  margin-right: 4px;
+}
+
+/* ========== 用户区域 ========== */
+.user-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.user-name:hover {
+  background: #f5f5f5;
+}
+
+.role-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.badge-user {
+  background: #67c23a;
+}
+
+.badge-merchant {
+  background: #e6a23c;
+}
+
+.badge-admin {
+  background: #f56c6c;
+}
+
+/* ========== 未登录 ========== */
+.auth-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.register-btn {
+  border-radius: 16px;
+}
+
+/* ========== 分类导航栏 ========== */
+.category-bar {
+  background: #fff;
+  border-bottom: 2px solid #e2231a;
+}
+
+.category-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 24px;
+}
+
+.category-wrap {
+  position: relative;
+  height: 40px;
+}
+
+.category-item {
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 0 4px;
+  height: 40px;
+  line-height: 40px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s;
+}
+
+.category-item:hover,
+.category-item.active,
+.category-wrap:hover > .category-item {
+  color: #e2231a;
+  border-bottom-color: #e2231a;
+}
+
+.nav-cat-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  border-radius: 2px;
+  object-fit: cover;
+  vertical-align: -2px;
+}
+
+/* ========== 内容区域 ========== */
+.mall-content {
+  flex: 1;
+  min-height: 400px;
+}
+
+/* ========== 页脚 ========== */
+.mall-footer {
+  background: #333;
+  color: #999;
+  padding: 30px 0;
+  margin-top: 40px;
+}
+
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.footer-col-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 12px;
+}
+
+.footer-link {
+  font-size: 13px;
+  margin: 0 0 8px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.footer-link:hover {
+  color: #e2231a;
+}
+
+.footer-copy {
+  font-size: 12px;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 1px solid #444;
+}
+</style>

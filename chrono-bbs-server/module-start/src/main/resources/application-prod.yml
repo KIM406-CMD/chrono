@@ -2,12 +2,25 @@ spring:
   datasource:
     url: jdbc:mysql://prod-host:3306/chrono_bbs_prod?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: ${DB_USERNAME:chrono}
-    password: ${DB_PASSWORD:chrono123}
+    # 生产环境必须通过环境变量提供，不设置明文默认值
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
       host: ${REDIS_HOST:prod-host}
       port: ${REDIS_PORT:6379}
-    elasticsearch:
-      client:
-        uris: ${ES_URIS:http://prod-host:9200}
+  elasticsearch:
+    uris: ${ES_URIS:http://prod-host:9200}
+
+aliyun:
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:chrono-bbs}
+
+# 生产默认使用 OSS，也可通过 UPLOAD_MODE=local 改用本地目录
+upload:
+  mode: ${UPLOAD_MODE:oss}
+  local-dir: ${UPLOAD_LOCAL_DIR:./uploads}
+  public-prefix: /uploads

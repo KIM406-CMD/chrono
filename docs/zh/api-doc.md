@@ -1,0 +1,2056 @@
+# 网上超市系统 — API 接口文档
+
+> [English](../en/api-doc.md) | 简体中文
+
+
+> 基础路径：`http://localhost:8080`
+>
+> 在线调试：启动项目后访问 `http://localhost:8080/doc.html`（Knife4j）
+>
+> **通用说明**：除公开接口外，所有请求需在 Header 中携带 Token：
+> ```
+> Authorization: Bearer <token>
+> ```
+
+---
+
+## 目录
+
+- [1. 通用规范](#1-通用规范)
+- [2. 用户认证](#2-用户认证-apiuser)
+- [3. 分类管理](#3-分类管理-apicategory)
+- [4. 商品管理](#4-商品管理-apiproduct)
+- [5. 购物车](#5-购物车-apicart)
+- [6. 订单管理](#6-订单管理-apiorder)
+- [7. 支付管理](#7-支付管理-apipayment)
+- [8. 收货地址](#8-收货地址-apiaddress)
+- [9. 评论管理](#9-评论管理-apicomment)
+- [10. 退款管理](#10-退款管理-apirefund)
+- [11. 商家管理](#11-商家管理-apimerchant)
+- [12. 管理后台](#12-管理后台-apiadmin)
+- [13. 文件上传](#13-文件上传-apiupload)
+- [14. 即时通讯](#14-即时通讯-apichat)
+- [15. 商品搜索](#15-商品搜索-apisearch)
+- [16. 秒杀券](#16-秒杀券-apiseckill)
+- [17. WebSocket 通信](#17-websocket-通信)
+- [18. 错误码说明](#18-错误码说明)
+- [19. 接口权限总览](#19-接口权限总览)
+
+---
+
+## 1. 通用规范
+
+### 1.1 统一返回格式 `Result<T>`
+
+所有接口返回以下 JSON 结构：
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": { ... },
+  "timestamp": 1700000000000
+}
+```
+
+### 1.2 分页返回格式 `PageResult<T>`
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "total": 100,
+    "page": 1,
+    "size": 20,
+    "list": [ ... ]
+  },
+  "timestamp": 1700000000000
+}
+```
+
+### 1.3 请求/响应统一后缀
+
+| 类别 | 后缀 | 说明 | 所在模块 |
+|------|------|------|----------|
+| 入参 | `DTO` | 前端传给后端的参数 | `module-api` 或 `module-service` |
+| 出参 | `VO` | 后端返回给前端的数据 | `module-api` |
+
+### 1.4 认证方式
+
+采用 **JWT + Redis 双校验**：
+1. 登录成功后返回 `token`
+2. 后续请求在 Header 中携带：`Authorization: Bearer <token>`
+3. 后端拦截器解析 JWT → 从 Redis 校验 Token 有效性 → 放行/拒绝
+
+### 1.5 角色说明
+
+| 角色 | 值 | 说明 |
+|------|-----|------|
+| 游客 | — | 未登录，仅可浏览商品 |
+| 注册用户 | `1` | 已登录，可加购、下单、支付 |
+| 商家 | `2` | 可管理自己的商品和订单 |
+| 管理员 | `3` | 全局管理 |
+
+---
+
+## 2. 用户认证 `/api/user`
+
+**Controller**：`AuthController`  
+**Swagger 分组**：用户认证
+
+### 2.1 发送验证码
+
+> 生成图形验证码，返回验证码图片的 UUID
+
+```
+GET /api/user/captcha
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| — | — | — | 无参数 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "image": "data:image/png;base64,iVBORw0KGgo..."
+  }
+}
+```
+
+---
+
+### 2.2 用户注册
+
+```
+POST /api/user/register
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | String | 是 | 用户名，长度 3-20 |
+| password | String | 是 | 密码，长度 6-20 |
+| phone | String | 是 | 手机号，格式 `1[3-9]\d{9}` |
+| email | String | 否 | 邮箱 |
+| role | Integer | 否 | 保留字段，注册固定为普通用户（1）；商家角色只能通过入驻审核升级 |
+| captchaUuid | String | 是 | 验证码 UUID（来自 2.1） |
+| captchaCode | String | 是 | 验证码输入值 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "userInfo": {
+      "id": 2,
+      "username": "testuser",
+      "nickname": "测试用户",
+      "phone": "13800138000",
+      "role": 1
+    }
+  }
+}
+```
+
+---
+
+### 2.3 用户登录
+
+```
+POST /api/user/login
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | String | 是 | 用户名 |
+| password | String | 是 | 密码 |
+| captchaUuid | String | 是 | 验证码 UUID |
+| captchaCode | String | 是 | 验证码输入值 |
+
+**返回**：同注册，包含 `token` + `userInfo`
+
+---
+
+### 2.4 获取当前用户信息
+
+```
+GET /api/user/info
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| 无 | — | — | 用户 ID 从 Header `Authorization: Bearer <token>` 的 JWT 中解析，无需传入参数 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "id": 2,
+    "username": "testuser",
+    "nickname": "测试用户",
+    "phone": "13800138000",
+    "email": "test@example.com",
+    "avatar": "https://oss.example.com/avatar/uuid.jpg",
+    "role": 1,
+    "status": 1
+  }
+}
+```
+
+---
+
+### 2.5 修改个人信息
+
+```
+PUT /api/user/profile
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| nickname | String | 否 | 昵称 |
+| phone | String | 否 | 手机号 |
+| email | String | 否 | 邮箱 |
+| avatar | String | 否 | 头像 URL（先调上传接口获取） |
+
+---
+
+### 2.6 修改密码
+
+```
+PUT /api/user/password
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| oldPassword | String | 是 | 旧密码 |
+| newPassword | String | 是 | 新密码，长度 6-20 |
+
+---
+
+### 2.7 退出登录
+
+```
+POST /api/user/logout
+```
+
+无请求体。后端删除 Redis 中的 Token，使当前 Token 立即失效。
+
+---
+
+### 2.8 发送重置密码验证码
+
+> 用户忘记密码时，输入注册时的手机号或邮箱，后端发送短信/邮件验证码
+
+```
+POST /api/user/forgot-code
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| account | String | 是 | 手机号 或 邮箱 |
+| captchaUuid | String | 是 | 图形验证码 UUID（来自 2.1） |
+| captchaCode | String | 是 | 图形验证码输入值 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "uuid": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "maskAccount": "138****8000"
+  }
+}
+```
+
+> 验证码有效期 5 分钟，存入 Redis：`reset:code:{uuid}`
+>
+> 课程设计阶段，验证码直接返回在响应中（模拟短信/邮件），生产环境应真正发送
+
+---
+
+### 2.9 忘记密码 — 重置
+
+> 用户输入验证码和新密码，完成密码重置
+
+```
+POST /api/user/reset-password
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| uuid | String | 是 | 验证码 UUID（来自 2.8） |
+| code | String | 是 | 短信/邮箱验证码 |
+| newPassword | String | 是 | 新密码，长度 6-20 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "message": "密码重置成功，请重新登录"
+}
+```
+
+> 验证码校验通过后立即删除 Redis 中的验证码，保证一次性有效
+
+
+## 3. 分类管理 `/api/category`
+
+**Controller**：`CategoryController`  
+**Swagger 分组**：分类管理  
+**权限**：公开
+
+### 3.1 获取分类树（三级）
+
+```
+GET /api/category/tree
+```
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 1,
+      "name": "电子产品",
+      "level": 1,
+      "children": [
+        {
+          "id": 2,
+          "name": "手机通讯",
+          "level": 2,
+          "children": [
+            { "id": 3, "name": "智能手机", "level": 3 },
+            { "id": 4, "name": "功能手机", "level": 3 }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### 3.2 获取子分类列表
+
+```
+GET /api/category/children?parentId=0
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| parentId | Long | 否 | 父分类 ID，默认 0（查一级分类） |
+
+---
+
+## 4. 商品管理 `/api/product`
+
+**Controller**：`ProductController`  
+**Swagger 分组**：商品管理
+
+### 4.1 分页查询商品列表
+
+> 公开接口
+
+```
+GET /api/product/list
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| categoryId | Long | 否 | 分类 ID |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 20 |
+
+**返回**：`PageResult<ProductVO>`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 商品 ID |
+| name | String | 商品名称 |
+| image | String | 商品首图 URL（单图） |
+| brand | String | 品牌 |
+| categoryId | Long | 分类 ID |
+| minPrice | Integer | 最低 SKU 价格（分） |
+| sales | Integer | 销量 |
+
+---
+
+### 4.2 商品详情
+
+> 公开接口
+
+```
+GET /api/product/{id}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 商品 ID（路径参数） |
+
+**返回**：`ProductDetailVO`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 商品 ID |
+| name | String | 商品名称 |
+| description | String | 商品描述 |
+| images | List&lt;String&gt; | 商品图片 URL 数组 |
+| brand | String | 品牌 |
+| categoryId | Long | 分类 ID |
+| categoryName | String | 分类名称 |
+| merchantId | Long | 商家表主键，用于后台筛选 |
+| merchantUserId | Long | 商家用户 ID，创建聊天会话时使用 |
+| shopName | String | 店铺名称 |
+| status | Integer | 状态：0-下架，1-上架 |
+| sales | Integer | 销量 |
+| skuList | List&lt;ProductSkuVO&gt; | SKU 列表 |
+
+**SKU 项（ProductSkuVO）**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | SKU ID |
+| specIds | String | 规格 ID 组合，如 `"1,3"` |
+| specText | String | 规格文本，如 `"红色 / 64GB"` |
+| price | Integer | 价格（分） |
+| stock | Integer | 库存数量 |
+
+---
+
+### 4.3 添加商品
+
+> 权限：商家
+
+```
+POST /api/product
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | String | 是 | 商品名称 |
+| description | String | 否 | 商品描述 |
+| images | List&lt;String&gt; | 否 | 商品图片 URL 数组（最多 4 张），如 `["https://.../a.jpg"]`。注意：实现为 JSON 数组而非字符串 |
+| brand | String | 否 | 品牌 |
+| categoryId | Long | 是 | 三级分类 ID |
+| skuList | List | 是 | SKU 列表，至少一项；修改时非空则全量替换原有 SKU |
+
+**SKU 项**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| specIds | String | 否 | 规格值 ID 组合，JSON 数组字符串，如 `"[1,3]"`；前端按规格组顺序生成 |
+| specText | String | 是 | 规格展示文本，多级用 `/` 分隔，如 `"红色/64GB"` |
+| price | Integer | 是 | 价格（分），必须大于 0 |
+| stock | Integer | 是 | 库存数量，不能为负 |
+
+---
+
+### 4.4 修改商品
+
+```
+PUT /api/product/{id}
+```
+
+参数同 4.3。
+
+---
+
+### 4.5 商品上下架
+
+```
+PUT /api/product/{id}/status
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | Integer | 是 | 1=上架，0=下架 |
+
+---
+
+### 4.6 删除商品
+
+> 仅商品所属商家可操作；商品被购物车或订单引用时返回 409，建议改为下架。
+
+```
+DELETE /api/product/{id}
+```
+
+---
+
+## 5. 购物车 `/api/cart`
+
+**Controller**：`CartController`  
+**Swagger 分组**：购物车  
+**权限**：需登录
+
+### 5.1 获取购物车列表
+
+```
+GET /api/cart/list
+```
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 1,
+      "productId": 100,
+      "productName": "iPhone 15",
+      "productImage": "https://oss.example.com/p1.jpg",
+      "skuId": 10,
+      "specText": "红色 / 64GB",
+      "price": 599900,
+      "quantity": 2,
+      "stock": 99,
+      "selected": 1,
+      "skuSpecText": "红色 / 64GB",
+      "skuPrice": 599900,
+      "skuStock": 99
+    }
+  ]
+}
+```
+
+> `specText/price/stock` 为文档命名，`skuSpecText/skuPrice/skuStock` 为前端命名，两者值相同；`productImage` 取商品首图。
+
+---
+
+### 5.2 加入购物车
+
+```
+POST /api/cart/add
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| skuId | Long | 是 | SKU ID |
+| quantity | Integer | 是 | 数量，≥1 |
+
+> 若同一 SKU 已在购物车中，则累加数量
+
+---
+
+### 5.3 修改数量
+
+```
+PUT /api/cart/update
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| cartItemId | Long | 是 | 购物车项 ID |
+| quantity | Integer | 是 | 新数量 |
+
+---
+
+### 5.4 选中/取消选中
+
+```
+PUT /api/cart/select
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| cartItemId | Long | 否 | 购物车项 ID（文档命名，单个操作） |
+| selected | Integer \| Boolean | 否 | 1/0 或 true/false |
+| cartItemIds | List\<Long\> | 否 | 购物车项 ID 列表（前端命名，批量操作） |
+
+> 两种传参方式兼容：`cartItemIds` 批量优先，`cartItemId` 单个次之；两者均未传时视为对当前用户全部购物车项操作。
+
+---
+
+### 5.5 删除购物车项
+
+```
+DELETE /api/cart/{id}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 购物车项 ID（路径参数） |
+
+---
+
+### 5.6 全选/取消全选
+
+```
+PUT /api/cart/select-all
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| selected | Integer | 是 | 1=全选，0=取消全选 |
+
+---
+
+### 5.7 清空购物车（前端扩展）
+
+```
+DELETE /api/cart/clear
+```
+
+> 删除当前用户购物车全部项，无参数。
+
+---
+
+## 6. 订单管理 `/api/order`
+
+**Controller**：`OrderController`  
+**Swagger 分组**：订单管理  
+**权限**：需登录
+
+### 6.1 获取防重复提交 Token
+
+> 下单前必须先调此接口
+
+```
+GET /api/order/submit-token
+```
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": { "token": "uuid-string-5min-valid" }
+}
+```
+
+> Token 有效期 5 分钟，使用后立即删除，防止重复提交
+
+---
+
+### 6.2 创建订单
+
+```
+POST /api/order/create
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| token | String | 是 | 防重复提交 Token（来自 6.1） |
+| addressId | Long | 是 | 收货地址 ID |
+| cartItemIds | List\<Long\> | 是 | 购物车选中项的 ID 列表 |
+| remark | String | 否 | 订单备注 |
+| userCouponId | Long | 否 | 用户优惠券 ID（用户券记录 id，即 `/api/seckill/calculate` 的入参 `userCouponId`），不传则不用券 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "orderId": 20241022001,
+    "orderNo": "202410221530001234",
+    "totalAmount": 1199800,
+    "status": 1,
+    "createdAt": "2024-10-22T15:30:00"
+  }
+}
+```
+
+---
+
+### 6.3 订单列表
+
+```
+GET /api/order/list
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | Integer | 否 | 订单状态（见下方），不传查全部 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+
+**订单状态枚举**：
+
+| 状态码 | 含义 |
+|--------|------|
+| 1 | 待支付 |
+| 2 | 已支付（待发货） |
+| 3 | 已发货（待收货） |
+| 4 | 已收货（待评价） / 已完成 |
+| 5 | 已取消 |
+| 6 | 退款中 |
+| 7 | 已退款 |
+
+---
+
+### 6.4 订单详情
+
+```
+GET /api/order/{id}
+```
+
+**返回**：订单全量信息 + 订单项列表 + 物流信息（如有）
+
+---
+
+### 6.5 取消订单
+
+```
+PUT /api/order/{id}/cancel
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 订单 ID（路径参数） |
+| reason | String | 否 | 取消原因 |
+
+> 仅「待支付」状态可取消，取消后恢复库存
+
+---
+
+### 6.6 确认收货
+
+```
+PUT /api/order/{id}/receive
+```
+
+> 仅「已发货」状态可确认收货
+
+---
+
+### 6.7 删除订单
+
+```
+DELETE /api/order/{id}
+```
+
+> 仅「已完成」或「已取消」状态可删除
+
+---
+
+## 7. 支付管理 `/api/payment`
+
+**Controller**：`PaymentController`（或在 OrderController 中）  
+**Swagger 分组**：支付管理  
+**权限**：需登录
+
+### 7.1 卡号支付
+
+```
+POST /api/payment/card
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| orderId | Long | 是 | 订单 ID |
+| cardNo | String | 是 | 卡号（16-19 位数字） |
+| expireDate | String | 是 | 有效期，格式 `MM/YY` |
+| cvv | String | 是 | 安全码，3-4 位 |
+
+> 前端先做 Luhn 算法校验，后端模拟支付成功
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": { "status": 2, "paidAt": "2024-10-22T15:32:00" }
+}
+```
+
+---
+
+### 7.2 获取支付二维码
+
+```
+POST /api/payment/qrcode
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| orderId | Long | 是 | 订单 ID |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "orderId": 20241022001,
+    "totalAmount": 1199800,
+    "qrcodeUrl": "https://api.qrserver.com/v1/create-qr-code/?data=..."
+  }
+}
+```
+
+---
+
+### 7.3 确认二维码支付
+
+```
+POST /api/payment/confirm-qrcode
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| orderId | Long | 是 | 订单 ID |
+
+---
+
+### 7.4 我的支付记录
+
+> 权限：登录用户。仅返回当前用户订单对应的支付流水，按创建时间倒序。
+
+```
+GET /api/payment/records
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+
+**返回**：`PageResult<PaymentRecord>`，字段：`id`、`orderId`、`orderNo`、`payMethod`（1=银行卡，2=二维码）、`cardNo`（脱敏）、`amount`（分）、`status`（0=处理中，1=成功，2=失败）、`paidAt`、`createdAt`。
+
+---
+
+## 8. 收货地址 `/api/address`
+
+**Controller**：`AddressController`  
+**Swagger 分组**：收货地址  
+**权限**：需登录
+
+### 8.1 地址列表
+
+```
+GET /api/address/list
+```
+
+> 默认地址排在最前，其余按创建时间倒序。
+
+---
+
+### 8.2 地址详情
+
+```
+GET /api/address/{id}
+```
+
+---
+
+### 8.3 新增地址
+
+```
+POST /api/address
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| receiverName | String | 是 | 收货人姓名 |
+| phone | String | 是 | 手机号 |
+| province | String | 是 | 省 |
+| city | String | 是 | 市 |
+| district | String | 是 | 区 |
+| detail | String | 是 | 详细地址 |
+| isDefault | Integer | 否 | 1=默认地址 |
+
+> 每用户最多 20 条地址，超出返回错误；未显式指定默认时，第一条地址自动设为默认。
+
+---
+
+### 8.4 修改地址
+
+```
+PUT /api/address/{id}
+```
+
+参数同 8.3。
+
+> 设为默认时自动清除原默认地址；全部字段带属主校验。
+
+---
+
+### 8.5 设置默认地址
+
+```
+PUT /api/address/{id}/default
+```
+
+---
+
+### 8.6 删除地址
+
+```
+DELETE /api/address/{id}
+```
+
+---
+
+## 9. 评论管理 `/api/comment`
+
+**Controller**：`CommentController`  
+**Swagger 分组**：评论管理
+
+> 说明：本模块已实现。评论数据模型：一级评论（`parent_id IS NULL` 且 `is_append=0`，含星级）、追评（`parent_id=一级评论ID` 且 `is_append=1`）、商家回复（`parent_id=一级评论ID` 且 `is_append=0`）。规则：仅订单状态=已收货(4)可评价、每个订单明细仅一条首次评价、每条一级评论仅一次追评、商家仅可回复自己商品的评论。
+
+### 9.1 商品评论列表（公开）
+
+```
+GET /api/comment/list/{productId}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| productId | Long | 是 | 商品 ID（路径参数） |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+| star | Integer | 否 | 按星级筛选（1-5） |
+
+**返回**：`PageResult<CommentVO>`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 评论 ID |
+| productId | Long | 商品 ID |
+| userId | Long | 用户 ID |
+| username | String | 用户名 |
+| nickname | String | 昵称 |
+| avatar | String | 头像 |
+| orderItemId | Long | 订单明细 ID |
+| content | String | 评论内容 |
+| images | List&lt;String&gt; | 评论图片 URL 列表（最多 4 张） |
+| star | Integer | 星级（1-5） |
+| createdAt | LocalDateTime | 评论时间 |
+| append | CommentVO | 追评（仅一级评论可能返回，结构同本表） |
+| replies | List&lt;CommentVO&gt; | 商家回复列表（结构同本表） |
+
+---
+
+### 9.2 发表评论
+
+> 权限：需登录，仅已收货用户可评价
+
+```
+POST /api/comment
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| productId | Long | 是 | 商品 ID |
+| orderItemId | Long | 是 | 订单明细 ID |
+| content | String | 是 | 评论内容 |
+| star | Integer | 是 | 星级（1-5） |
+| images | List&lt;String&gt; | 否 | 评论图片 URL 列表，最多 4 张（先调用 13.1 上传） |
+
+---
+
+### 9.3 追加评论
+
+```
+POST /api/comment/append
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| commentId | Long | 是 | 原评论 ID |
+| content | String | 是 | 追评内容 |
+
+---
+
+### 9.4 商家回复
+
+> 权限：商家（仅可回复自己商品的评论）
+
+```
+POST /api/comment/reply
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| parentId | Long | 是 | 被回复的评论 ID |
+| content | String | 是 | 回复内容 |
+
+---
+
+## 10. 退款管理 `/api/refund`
+
+**Controller**：`RefundController`  
+**Swagger 分组**：退款管理  
+**权限**：需登录
+
+> 说明：本模块已实现。规则：订单状态为已支付(2)/已发货(3)/已收货(4)可申请退款，申请后订单进入退款中(6)；每个订单明细仅一条退款申请，退款金额须大于 0 且不超过明细小计；审核通过 → 订单已退款(7)，拒绝 → 订单恢复已收货(4)。错误码：404 退款单/订单明细不存在；403 无权操作/仅商家或管理员可审核；400 订单状态不可退款/金额非法；409 已存在退款申请/已审核。
+
+### 10.1 申请退款/退货
+
+```
+POST /api/refund
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| orderItemId | Long | 是 | 订单明细 ID |
+| type | Integer | 是 | 1=仅退款，2=退款+退货 |
+| reason | String | 是 | 退款原因 |
+| amount | Integer | 是 | 退款金额（分） |
+
+**返回**：`Result<Long>`，退款单 ID。
+
+---
+
+### 10.2 退款列表（我的）
+
+```
+GET /api/refund/my
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码 |
+| size | Integer | 否 | 每页大小 |
+
+**返回**：`PageResult<RefundVO>`。
+
+---
+
+### 10.3 退款详情
+
+```
+GET /api/refund/{id}
+```
+
+**返回**：`RefundVO`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 退款单 ID |
+| orderId | Long | 订单 ID |
+| orderItemId | Long | 订单明细 ID |
+| userId | Long | 申请人 ID |
+| merchantId | Long | 商家 ID |
+| productId | Long | 商品 ID |
+| productName | String | 商品名称 |
+| type | Integer | 1=仅退款，2=退货退款 |
+| reason | String | 退款原因 |
+| amount | Integer | 退款金额（分） |
+| status | Integer | 0=待审核，1=已通过，2=已拒绝，3=待寄回，4=待商家收货，5=退货完成 |
+| reviewerId | Long | 审核人 ID |
+| reviewReason | String | 审核意见 |
+| reviewedAt | LocalDateTime | 审核时间 |
+| returnCompany | String | 退货快递公司 |
+| returnLogisticsNo | String | 退货物流单号 |
+| returnedAt | LocalDateTime | 买家寄回时间 |
+| returnReceivedAt | LocalDateTime | 商家确认收货时间 |
+| createdAt | LocalDateTime | 申请时间 |
+
+---
+
+### 10.4 审核退款/退货
+
+> 权限：商家或管理员
+
+```
+PUT /api/refund/{id}/review
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 退款单 ID（路径参数） |
+| approved | Integer | 是 | 1=同意，0=拒绝 |
+| reviewReason | String | 否 | 审核意见 |
+
+> 仅退款（type=1）通过后状态变为 1（已通过）且订单标记已退款；退货退款（type=2）通过后状态变为 3（待寄回），订单保持退款中，等待买家填写物流。
+
+---
+
+### 10.5 退款列表（商家）
+
+> 权限：审核通过（status=1）的商家。仅返回自己商品产生的退款单，支持按状态筛选。
+
+```
+GET /api/merchant/refunds
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+| status | Integer | 否 | 0=待审核，1=已通过，2=已拒绝，3=待寄回，4=待商家收货，5=退货完成 |
+
+**返回**：`PageResult<RefundVO>`，字段同 10.3，仅包含当前商家的退款单。
+
+---
+
+### 10.6 退款列表（管理员）
+
+> 权限：管理员。返回全平台所有商家的退款单，支持按状态筛选。
+
+```
+GET /api/admin/refunds
+```
+
+参数与返回同 10.5，范围包含所有商家的退款单。
+
+---
+
+### 10.7 填写退货物流（买家）
+
+> 权限：退款申请人。仅退货类型（type=2）且状态为待寄回（3）时可操作。
+
+```
+PUT /api/refund/{id}/return
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 退款单 ID（路径参数） |
+| returnCompany | String | 是 | 退货快递公司，最长 50 字 |
+| returnLogisticsNo | String | 是 | 退货物流单号，最长 50 字 |
+
+> 提交后状态变为 4（待商家收货），记录 `returnedAt`。
+
+---
+
+### 10.8 确认收到退货（商家/管理员）
+
+> 权限：商家或管理员。仅退货类型且状态为待商家收货（4）时可操作。
+
+```
+PUT /api/refund/{id}/return-received
+```
+
+> 确认后状态变为 5（退货完成），订单标记为已退款，记录 `returnReceivedAt`。
+
+---
+
+## 11. 商家管理 `/api/merchant`
+
+**Controller**：`MerchantController`  
+**Swagger 分组**：商家管理  
+**权限**：需登录（部分接口需商家角色）
+
+> 说明：本模块已实现。6 个接口全部可用，发货接口（§11.5）打通真实订单闭环：校验订单商品全部属于该商家 → 订单状态从已支付(2)流转到已发货(3)。
+
+### 11.1 商家入驻申请
+
+```
+POST /api/merchant/apply
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| shopName | String | 是 | 店铺名称 |
+| businessLicense | String | 是 | 营业执照图片 URL |
+| contactPhone | String | 是 | 联系电话 |
+
+---
+
+### 11.2 获取商家信息
+
+```
+GET /api/merchant/info
+```
+
+---
+
+### 11.3 商家商品列表
+
+```
+GET /api/merchant/products
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码 |
+| size | Integer | 否 | 每页大小 |
+| status | Integer | 否 | 状态筛选 |
+
+**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、createdAt、updatedAt`；不返回 `minPrice`、`merchantName`。
+
+---
+
+### 11.4 商家订单列表
+
+```
+GET /api/merchant/orders
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | Integer | 否 | 订单状态筛选 |
+| page | Integer | 否 | 页码 |
+| size | Integer | 否 | 每页大小 |
+
+**返回**：`PageResult<MerchantOrderVO>`，列表项含 `id、orderNo、userId、receiverName、receiverPhone、receiverAddress、totalAmount、status、paidAt、shippedAt、createdAt、itemCount、items[]`；`items` 含 `productId、productName、productImage、quantity、unitPrice、subtotal`。
+
+---
+
+### 11.5 发货
+
+```
+PUT /api/merchant/ship/{orderId}
+```
+
+---
+
+### 11.6 商家销售统计
+
+```
+GET /api/merchant/stats
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| startDate | String | 否 | 开始日期 `yyyy-MM-dd` |
+| endDate | String | 否 | 结束日期 `yyyy-MM-dd` |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "totalSales": 5000000,
+    "orderCount": 120,
+    "topProducts": [ ... ],
+    "salesByCategory": [ ... ],
+    "salesTrend": [ ... ]
+  }
+}
+```
+
+---
+
+## 12. 管理后台 `/api/admin`
+
+**Controller**：`AdminController`  
+**Swagger 分组**：管理后台  
+**权限**：仅管理员
+
+> 说明：本模块已实现。10 个接口全部可用，统一在 Service 层校验管理员角色（role=3）。商家审核通过时自动将申请人角色升级为商家；分类删除有保护规则（见 §12.3）。
+
+### 12.1 用户管理
+
+#### 用户列表
+
+```
+GET /api/admin/users
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | String | 否 | 搜索用户名/手机号 |
+| role | Integer | 否 | 按角色筛选 |
+| status | Integer | 否 | 按状态筛选 |
+| page | Integer | 否 | 页码 |
+| size | Integer | 否 | 每页大小 |
+
+#### 启用/禁用用户
+
+```
+PUT /api/admin/users/{id}/status
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | Integer | 是 | 1=启用，0=禁用 |
+
+---
+
+### 12.2 商家审核
+
+#### 商家申请列表
+
+```
+GET /api/admin/merchants
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | Integer | 否 | 0=待审核，1=已通过，2=已拒绝 |
+
+**返回**：`PageResult<AdminMerchantVO>`，列表项含 `id、userId、applicantUsername、shopName、contactPhone、status、reviewReason、reviewedAt、createdAt`。
+
+#### 审核商家
+
+```
+PUT /api/admin/merchants/{id}/review
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| approved | Integer | 是 | 1=通过，0=拒绝 |
+| reviewReason | String | 否 | 审核意见 |
+
+---
+
+### 12.3 分类管理
+
+#### 新增分类
+
+```
+POST /api/admin/categories
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | String | 是 | 分类名称 |
+| parentId | Long | 否 | 父分类 ID（一级分类不传或传 0） |
+| level | Integer | 是 | 层级：1/2/3 |
+| sortOrder | Integer | 否 | 排序值 |
+| icon | String | 否 | 图标 |
+
+#### 修改分类
+
+```
+PUT /api/admin/categories/{id}
+```
+
+> 仅支持修改名称/排序/图标；parentId 与 level 不允许变更（防止打乱树结构）。
+
+#### 删除分类
+
+```
+DELETE /api/admin/categories/{id}
+```
+
+> 删除保护规则：该分类存在子分类时拒绝删除（4053）；该分类下存在商品引用时拒绝删除（4054）。需先清空子分类与商品挂载后才能删除。
+
+---
+
+### 12.4 全平台商品管理
+
+```
+GET /api/admin/products
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | String | 否 | 搜索 |
+| categoryId | Long | 否 | 按分类筛选 |
+| merchantId | Long | 否 | 按商家筛选 |
+| status | Integer | 否 | 0=下架，1=上架 |
+| page | Integer | 否 | 页码 |
+| size | Integer | 否 | 每页大小 |
+
+**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、createdAt、updatedAt`；不返回 `minPrice`、`merchantName`。
+
+---
+
+### 12.5 全平台订单管理
+
+```
+GET /api/admin/orders
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| orderNo | String | 否 | 订单号搜索 |
+| status | Integer | 否 | 状态筛选 |
+| page | Integer | 否 | 页码 |
+| size | Integer | 否 | 每页大小 |
+
+---
+
+### 12.6 全局销售报表
+
+```
+GET /api/admin/report
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| startDate | String | 否 | 开始日期 |
+| endDate | String | 否 | 结束日期 |
+| groupBy | String | 否 | `day` / `week` / `month` |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "totalSales": 50000000,
+    "totalOrders": 1200,
+    "avgOrderAmount": 41666,
+    "topProducts": [
+      { "productId": 1, "productName": "...", "salesCount": 200, "totalAmount": 8000000 }
+    ],
+    "salesByCategory": [
+      { "categoryId": 1, "categoryName": "电子产品", "totalAmount": 20000000 }
+    ],
+    "salesByMerchant": [
+      { "merchantId": 1, "shopName": "官方旗舰店", "totalAmount": 30000000 }
+    ],
+    "salesTrend": [
+      { "date": "2024-10-01", "amount": 1500000 },
+      { "date": "2024-10-02", "amount": 2300000 }
+    ],
+    "orderTrend": [
+      { "date": "2024-10-01", "createdCount": 120, "paidCount": 100, "completedCount": 80 }
+    ],
+    "orderStatusDistribution": {
+      "pending": 50,
+      "paid": 30,
+      "shipped": 200,
+      "completed": 900,
+      "cancelled": 20
+    }
+  }
+}
+```
+
+---
+
+### 12.7 管理员商品上下架
+
+> 权限：管理员。不校验商品归属商家，操作后同步 Elasticsearch 索引。
+
+```
+PUT /api/admin/products/{id}/status
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 商品 ID（路径参数） |
+| status | Integer | 是 | 0=下架，1=上架 |
+
+---
+
+### 12.8 管理员删除商品
+
+> 权限：管理员。商品被购物车或订单引用时拒绝删除；删除成功后移除搜索索引。
+
+```
+DELETE /api/admin/products/{id}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Long | 是 | 商品 ID（路径参数） |
+
+---
+
+### 12.9 管理员修改商品
+
+> 权限：管理员。可修改任意商家的商品，保存后同步搜索索引。
+
+```
+PUT /api/admin/products/{id}
+```
+
+参数同 4.3（`name`、`description`、`images`、`brand`、`categoryId`、`skuList`）；SKU 列表非空时全量替换。
+
+---
+
+## 13. 文件上传 `/api/upload`
+
+**Controller**：`UploadController`  
+**Swagger 分组**：文件上传  
+**权限**：需登录
+
+> 说明：本模块已实现。校验顺序：非空 → 大小(≤2MB) → 扩展名 → ImageIO 真实图片内容校验；宽 > 800px 时等比缩放，≤800px 原样直传。开发环境默认写入本地 `uploads/` 目录（`upload.mode=local`，通过 `/uploads/**` 访问），配置 OSS 密钥后可设置 `UPLOAD_MODE=oss` 切换为对象存储。
+> 特别说明：webp 格式 JDK 原生不支持解码，改用 RIFF/WEBP 魔数头校验文件真实性，通过后原样直传（不做缩放）。超过 multipart 限制的文件由全局异常处理器返回 4062。
+
+### 13.1 上传图片
+
+```
+POST /api/upload/image
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file | MultipartFile | 是 | 图片文件（form-data） |
+
+**校验规则**：
+
+| 规则 | 值 |
+|------|-----|
+| 允许格式 | `jpg`、`jpeg`、`png`、`webp` |
+| 单张最大 | 2MB |
+| 一次最多 | 4 张 |
+| 压缩宽度 | 800px（等比缩放） |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": { "url": "https://oss.example.com/product/20241022/uuid.jpg" }
+}
+```
+
+---
+
+## 14. 即时通讯 `/api/chat`
+
+**Controller**：`ChatController`  
+**Swagger 分组**：即时通讯  
+**权限**：需登录
+
+> 说明：本模块已实现。会话参与者为买家用户 ID（`userId`）与商家用户 ID（`merchantId`），同一对用户+商家仅一条会话（唯一索引防并发）。拉取历史消息时自动将对方发来的消息标记为已读并清零当前用户一侧的未读数；所有接口均校验当前用户属于该会话（防越权）。
+
+### 14.1 会话列表
+
+```
+GET /api/chat/conversations
+```
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 1,
+      "userId": 2,
+      "merchantId": 5,
+      "merchantName": "数码旗舰店",
+      "merchantAvatar": "https://...",
+      "productId": 100,
+      "productName": "iPhone 15",
+      "lastMessage": "好的，今天发货",
+      "lastMessageTime": "2024-10-22T15:00:00",
+      "unreadCount": 2
+    }
+  ]
+}
+```
+
+---
+
+### 14.2 历史消息
+
+```
+GET /api/chat/history/{conversationId}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| conversationId | Long | 是 | 会话 ID（路径参数） |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 20 |
+
+**返回**：消息列表（从新到旧），每条含发送者信息、内容、类型、时间、已读状态
+
+---
+
+### 14.3 创建/获取会话
+
+```
+POST /api/chat/conversation
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| merchantId | Long | 是 | 商家用户 ID（商品详情返回的 `merchantUserId`） |
+| productId | Long | 否 | 商品 ID（关联商品） |
+
+> 若已有同用户+同商家的会话则直接返回，否则新建
+
+---
+
+### 14.4 标记已读
+
+```
+PUT /api/chat/read/{conversationId}
+```
+
+---
+
+### 14.5 未读消息总数
+
+```
+GET /api/chat/unread-count
+```
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": { "count": 5 }
+}
+```
+
+---
+
+### 14.6 发送消息（仅 dev:mock）
+
+> 正式后端通过 WebSocket 发送消息（见第 17 节）。前端聊天页在 `npm run dev` / 生产环境直接连接 WebSocket 实时收发；仅 `npm run dev:mock` 演示模式使用本 HTTP 接口。
+
+```
+POST /api/chat/message
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| conversationId | Long | 是 | 会话 ID |
+| content | String | 是 | 消息内容 |
+| type | String | 否 | text/image，默认 text |
+
+**返回**：`Result<ChatMessage>`，字段同 14.2。
+
+---
+
+## 15. 商品搜索 `/api/search`
+
+**Controller**：`SearchController`  
+**Swagger 分组**：商品搜索  
+**权限**：公开
+
+> 说明：本模块已实现。检索与搜索建议走 Elasticsearch 索引 `chrono_product`（`name`/`description` 分词，`brand`/`categoryId`/`status` 过滤，`minPrice`/`sales`/`createdAt` 排序），搜索历史与热搜榜走 MySQL `search_history` 表。索引在应用启动时自动创建，为空时自动全量同步上架商品（按 id 覆盖写）；商家修改/上下架/删除商品时增量同步（新建商品默认下架，上架时才写入索引），ES 异常只记日志、不回滚商品主业务。`keyword` 与 `categoryId` 至少提供一个，均为空时返回空分页；关键词分词后要求所有词项命中（避免部分匹配），默认综合排序为“有关键词按相关性、否则按销量”；`page*size` 超过 ES 深分页上限（10000）时返回空分页。登录用户检索时自动记录搜索历史（同关键词去重，仅保留最近一次）。
+
+### 15.1 全文检索
+
+```
+GET /api/search
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | String | 否 | 搜索关键词（与 `categoryId` 至少提供一个） |
+| categoryId | Long | 否 | 分类筛选（仅传分类时为分类浏览） |
+| brand | String | 否 | 品牌筛选（精确匹配） |
+| minPrice | Integer | 否 | 最低价（分） |
+| maxPrice | Integer | 否 | 最高价（分） |
+| sort | String | 否 | `sales_desc` / `price_asc` / `price_desc` / `time_desc`，不传为综合排序 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 20，上限 100 |
+
+> 前端统一走后端中转路径 `/api/search`，由后端 `SearchController` 内部使用 Elasticsearch 检索。
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 156,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": 1,
+        "name": "iPhone 15",
+        "description": "...",
+        "brand": "Apple",
+        "categoryId": 1,
+        "minPrice": 599900,
+        "sales": 2000,
+        "image": "https://..."
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 15.2 搜索建议（自动补全）
+
+```
+GET /api/search/suggest?keyword=iph
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | String | 是 | 前缀关键词 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": ["iPhone 15", "iPhone 15 Pro", "iPhone 14", "iPhone充电器"]
+}
+```
+
+---
+
+### 15.3 搜索历史
+
+```
+GET /api/search/history
+```
+
+> 仅登录用户（未登录返回 401），返回最近 20 条，`data` 为 `string[]`，同关键词只保留最近一次
+
+---
+
+### 15.4 清除搜索历史
+
+```
+DELETE /api/search/history
+```
+
+> 仅登录用户，按 `userId` 删除全部记录
+
+---
+
+### 15.5 热搜榜
+
+```
+GET /api/search/hot
+```
+
+> 公开接口，基于近 7 天搜索频率，返回 TOP 10，`data` 为 `string[]`
+
+---
+
+## 16. 秒杀券 `/api/seckill`
+
+**Controller**：`SeckillController`  
+**Swagger 分组**：秒杀券  
+**权限**：列表/详情公开（`@Public` 注解），抢领/我的券/计算需登录，创建/编辑/删除仅商家或管理员
+
+> 说明：本模块已实现，接口路径与字段和前端 Mock 完全一致。
+
+### 16.1 秒杀券列表
+
+```
+GET /api/seckill/list
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+| status | Integer | 否 | 券状态：0=未开始，1=进行中，2=已结束 |
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 5,
+    "page": 1,
+    "size": 10,
+    "list": [
+      {
+        "id": 1,
+        "name": "新人满减券",
+        "description": "新用户专享，满50减10元",
+        "discountType": 1,
+        "discountValue": 1000,
+        "minAmount": 5000,
+        "totalCount": 1000,
+        "remainCount": 987,
+        "startTime": "2024-01-01 00:00:00",
+        "endTime": "2026-12-31 23:59:59",
+        "perUserLimit": 1,
+        "status": 1
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 16.2 秒杀券详情
+
+```
+GET /api/seckill/detail/{id}
+```
+
+**返回**：单个 `SeckillCoupon` 对象（结构同 16.1 列表项）。
+
+---
+
+### 16.3 抢领秒杀券
+
+```
+POST /api/seckill/claim/{couponId}
+```
+
+> 登录用户。校验：券为进行中状态、未过有效期、剩余数量 > 0、每人限领未超。
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "userCouponId": 6,
+    "couponName": "新人满减券",
+    "discountType": 1,
+    "discountValue": 1000,
+    "minAmount": 5000,
+    "endTime": "2026-12-31 23:59:59"
+  }
+}
+```
+
+---
+
+### 16.4 我的优惠券
+
+```
+GET /api/seckill/my-coupons
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页大小，默认 10 |
+| status | Integer | 否 | 用户券状态：0=未使用，1=已使用，2=已过期 |
+
+**返回**：`PageResult<UserCoupon>`，列表项字段见 16.9。
+
+---
+
+### 16.5 创建秒杀券（商家/管理员）
+
+```
+POST /api/seckill/create
+```
+
+请求体：
+
+```json
+{
+  "name": "周末满减券",
+  "description": "周末特惠，满100减20",
+  "discountType": 1,
+  "discountValue": 2000,
+  "minAmount": 10000,
+  "totalCount": 300,
+  "startTime": "2026-11-01 00:00:00",
+  "endTime": "2026-11-30 23:59:59",
+  "perUserLimit": 2
+}
+```
+
+**返回**：`{ "code": 200, "data": { "id": 6 } }`
+
+---
+
+### 16.6 编辑秒杀券（商家/管理员）
+
+```
+PUT /api/seckill/update/{id}
+```
+
+请求体同 16.5。若 `totalCount` 增加，剩余数量相应增加。
+
+---
+
+### 16.7 删除秒杀券（商家/管理员）
+
+```
+DELETE /api/seckill/{id}
+```
+
+> 仅未开始（status=0）状态的券可删除。
+
+---
+
+### 16.8 下单优惠计算
+
+```
+POST /api/seckill/calculate
+```
+
+请求体：
+
+```json
+{
+  "userCouponId": 6,
+  "totalAmount": 15000
+}
+```
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "originalAmount": 15000,
+    "discountAmount": 1000,
+    "finalAmount": 14000,
+    "couponName": "新人满减券"
+  }
+}
+```
+
+---
+
+### 16.9 数据结构
+
+#### SeckillCoupon
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 券 ID |
+| name | String | 券名称 |
+| description | String | 描述 |
+| discountType | Integer | 券类型：1=满减，2=折扣 |
+| discountValue | Integer | 满减时为优惠金额（分）；折扣时为百分比（85=8.5 折） |
+| minAmount | Integer | 最低消费门槛（分） |
+| totalCount | Integer | 发行总量 |
+| remainCount | Integer | 剩余数量 |
+| startTime | String | 开始时间 |
+| endTime | String | 结束时间 |
+| perUserLimit | Integer | 每人限领数量 |
+| status | Integer | 0=未开始，1=进行中，2=已结束 |
+
+#### UserCoupon
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 用户券 ID |
+| couponId | Long | 券 ID |
+| couponName | String | 券名称 |
+| discountType | Integer | 券类型 |
+| discountValue | Integer | 优惠值 |
+| minAmount | Integer | 最低门槛（分） |
+| status | Integer | 0=未使用，1=已使用，2=已过期 |
+| endTime | String | 有效期截止 |
+| claimTime | String | 领取时间 |
+
+---
+
+### 16.10 错误码
+
+秒杀券模块复用 HTTP 状态码作为 `code`，具体错误通过 `message` 区分：
+
+| 错误码 | 含义 |
+|--------|------|
+| 404 | 秒杀券不存在 / 优惠券不存在 |
+| 409 | 秒杀券已被抢光 / 已领取过该秒杀券 / 优惠券已过期或已使用 |
+| 400 | 活动未开始或已结束 / 不满足最低消费门槛 / 仅未开始的券可删除 / 时间格式非法 / 结束时间须晚于开始时间 / 优惠类型非法 / 优惠值非法 / 状态参数非法 |
+| 403 | 仅商家或管理员可管理秒杀券 |
+
+---
+
+## 17. WebSocket 通信
+
+**端点**：`ws://localhost:8080/chat/{userId}?token=<jwt_token>`  
+**协议**：JSR 356 原生 WebSocket（后端 `@OnOpen` / `@OnMessage` / `@OnClose`）
+
+> 说明：本模块已实现。`@OnOpen` 校验 JWT 且 token 中的 userId 必须与路径一致、并与 Redis 记录的 `token:{userId}` 一致（防冒连），通过后写 `online:{userId}` 并补推离线未读消息；`@OnMessage` 校验会话归属 → 落库 MySQL → 更新会话最后消息与对方未读数 → 对方在线则实时推送，同时回显发送方；`@OnClose` 仅在无其他连接时删除 `online:{userId}`；`@OnError` 记录日志并关闭连接。鉴权失败以 1008（VIOLATED_POLICY）关闭。
+
+### 17.1 连接
+
+```typescript
+const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
+```
+
+### 17.2 发送消息（JSON 格式）
+
+```json
+{
+  "type": "TEXT",
+  "conversationId": 123,
+  "content": "你好，这个商品有货吗？",
+  "productId": 456,
+  "timestamp": 1700000000000
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| type | String | `TEXT`（文本） |
+| conversationId | Long | 会话 ID |
+| content | String | 消息内容 |
+| productId | Long | 关联商品 ID（可选） |
+| timestamp | Long | 客户端时间戳（毫秒） |
+
+### 17.3 接收消息
+
+```json
+{
+  "type": "TEXT",
+  "conversationId": 123,
+  "senderId": 5,
+  "senderRole": 2,
+  "content": "有货的，今天可以发出",
+  "productId": 456,
+  "isRead": 0,
+  "timestamp": 1700000010000
+}
+```
+
+### 17.4 连接生命周期
+
+| 事件 | `@OnOpen` | 校验 JWT Token，记录 `online:{userId}` 到 Redis |
+|------|-----------|------|
+| | | 推送离线期间未读消息 |
+| 事件 | `@OnClose` | 删除 `online:{userId}` |
+| 事件 | `@OnMessage` | 校验权限 → 存入 MySQL → 推送给接收方 |
+| 事件 | `@OnError` | 记录日志 → 关闭连接 |
+
+---
+
+## 18. 错误码说明
+
+| 错误码 | 含义 |
+|--------|------|
+| 200 | 操作成功 |
+| 400 | 参数错误 / 业务校验不通过（各模块消息见下） |
+| 401 | 未登录或 Token 过期 |
+| 403 | 无权限访问 |
+| 404 | 资源不存在 |
+| 409 | 资源状态冲突 |
+| 500 | 系统内部异常 |
+
+**各模块业务错误码**（定义于 common 模块对应 ErrorCode 枚举，均为 HTTP 语义码）：
+
+| 模块 | 枚举 | 码值与消息 |
+|------|------|-----------|
+| 用户认证 | AuthErrorCode | 401 未登录或登录已过期 / token已过期 / token无效；400 验证码错误；409 用户名已存在 / 手机号已被注册 / 用户名不存在 / 密码错误；403 没有权限 / 账号已被禁用；404 账号不存在 |
+| 分类管理 | CategoryErrorCode | 404 分类不存在 |
+| 商品管理 | ProductErrorCode | 404 商品不存在；403 仅商家可操作 / 商家入驻审核未通过 / 无权操作他人商品；400 SKU列表不能为空 / SKU价格必须大于0 / SKU库存不能为负数 / 商品状态值非法；409 商品已被交易引用，无法删除 |
+| 秒杀券 | SeckillErrorCode | 404 秒杀券不存在 / 优惠券不存在；409 秒杀券已被抢光 / 已领取过该秒杀券 / 优惠券已过期或已使用；400 活动未开始或已结束 / 不满足最低消费门槛 / 仅未开始的秒杀券可删除 / 时间或优惠参数非法；403 仅商家或管理员可管理秒杀券 |
+| 购物车 | CartErrorCode | 404 SKU 不存在 / 购物车项不存在；400 商品已下架，无法加入购物车 / 库存不足 / selected 取值非法；403 无权操作他人购物车 |
+| 收货地址 | AddressErrorCode | 404 收货地址不存在；403 无权操作他人地址；400 地址数量已达上限（最多 20 条） |
+| 商家管理 | MerchantErrorCode | 4041 商家不存在；4042 商家状态不允许此操作；4043 您已提交过入驻申请；4044 您不是商家，无权操作；4045 该订单不属于您的店铺；4046 订单状态不允许发货；4047 商家暂无商品 |
+| 管理后台 | AdminErrorCode | 4051 仅管理员可执行此操作；4052 不能禁用管理员账号；4053 该分类存在子分类，无法删除；4054 该分类下存在商品，无法删除；4055 父分类不存在或层级不合法；4056 该商家已完成审核，请勿重复操作 |
+| 文件上传 | UploadErrorCode | 4061 上传文件不能为空；4062 文件大小不能超过 2MB；4063 仅支持 jpg/jpeg/png/webp 格式；4064 文件上传失败 |
+| 即时通讯 | ChatErrorCode | 404 会话不存在 / 商家不存在；403 无权访问该会话 / 商家资质无效；400 不能与自己发起会话 / 消息内容不能为空 / 消息类型非法 / 消息内容超过 2000 字 |
+| 商品搜索 | SearchErrorCode | 503 搜索服务暂不可用 |
+
+---
+
+## 19. 接口权限总览
+
+| 模块 | 路径前缀 | 游客 | 注册用户 | 商家 | 管理员 |
+|------|----------|------|----------|------|--------|
+| 用户认证 | `/api/user` | 注册/登录/验证码 | 信息/修改密码/登出 | ← | ← |
+| 分类管理 | `/api/category` | ✅ 查看 | ✅ | ✅ | ✅ |
+| 商品管理 | `/api/product` | ✅ 查看 | ✅ 查看 | ✅ 管理自己的 | ✅ 全部管理 |
+| 购物车 | `/api/cart` | ❌ | ✅ | ✅ | — |
+| 订单管理 | `/api/order` | ❌ | ✅ 自己的 | ✅ 自己商品的 | ✅ 全部 |
+| 支付管理 | `/api/payment` | ❌ | ✅ | ✅ | — |
+| 收货地址 | `/api/address` | ❌ | ✅ | ✅ | — |
+| 评论管理 | `/api/comment` | ✅ 查看 | ✅ 发表/追评 | ✅ 回复 | ✅ 管理 |
+| 退款管理 | `/api/refund` | ❌ | ✅ 申请 | ✅ 审核 | ✅ 审核 |
+| 商家管理 | `/api/merchant` | ❌ | ✅ 入驻 | ✅ 商品/订单/统计 | — |
+| 管理后台 | `/api/admin` | ❌ | ❌ | ❌ | ✅ 全部 |
+| 文件上传 | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
+| 即时通讯 | `/api/chat` | ❌ | ✅ | ✅ | — |
+| 商品搜索 | `/api/search` | ✅ 检索/建议/热搜 | ✅ + 搜索历史/清空 | ✅ | ✅ |
+| 秒杀券 | `/api/seckill` | ✅ 查看 | ✅ 抢领/我的券/计算 | ✅ 创建/编辑/删除 | ✅ 创建/编辑/删除 |
+| WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
+
+> ✅ = 可访问，❌ = 不可访问，← = 同左
+
+---
+
+> **文档更新日期**：2026-11-10
+>
+> **对应版本**：v1.0.0

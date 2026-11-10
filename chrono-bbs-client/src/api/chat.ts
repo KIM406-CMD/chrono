@@ -1,0 +1,59 @@
+import service from '@/api'
+import type { PageResult } from '@/types/common'
+
+export interface Conversation {
+  id: number
+  userId: number
+  merchantId: number
+  merchantName: string
+  merchantAvatar: string
+  productId?: number
+  productName?: string
+  lastMessage: string
+  lastMessageTime: string
+  unreadCount: number
+}
+
+export interface ChatMessage {
+  id: number
+  conversationId: number
+  senderId: number
+  senderName: string
+  content: string
+  type: 'text' | 'image'
+  createdAt: string
+}
+
+export interface SendMessageRequest {
+  conversationId: number
+  content: string
+  type: 'text' | 'image'
+}
+
+export const getConversations = () => {
+  return service.get<any, { code: number; message: string; data: Conversation[]; timestamp: number }>('/chat/conversations')
+}
+
+export const getMessages = (conversationId: number, params?: { page?: number; size?: number }) => {
+  return service.get<any, { code: number; message: string; data: PageResult<ChatMessage>; timestamp: number }>(
+    `/chat/history/${conversationId}`,
+    { params }
+  )
+}
+
+// 后端发送消息走 WebSocket（见 api-doc 16.2），此处 HTTP 接口仅用于 Mock 联调
+export const sendMessage = (data: SendMessageRequest) => {
+  return service.post<any, { code: number; message: string; data: ChatMessage; timestamp: number }>('/chat/message', data)
+}
+
+export const createConversation = (data: { merchantId: number; productId?: number }) => {
+  return service.post<any, { code: number; message: string; data: Conversation; timestamp: number }>('/chat/conversation', data)
+}
+
+export const markConversationRead = (conversationId: number) => {
+  return service.put(`/chat/read/${conversationId}`)
+}
+
+export const getUnreadCount = () => {
+  return service.get<any, { code: number; message: string; data: { count: number }; timestamp: number }>('/chat/unread-count')
+}

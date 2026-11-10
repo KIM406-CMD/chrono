@@ -7,6 +7,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 发送重置密码验证码请求参数。
+ *
+ * <p>用户忘记密码时先校验图形验证码，再向已注册的手机号或邮箱发送重置验证码。</p>
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,14 +19,17 @@ import lombok.NoArgsConstructor;
 @Schema(description = "发送重置密码验证码请求参数")
 public class ForgotCodeDTO {
 
+    /** 手机号或邮箱，必填，必须对应一个已注册账号。 */
     @Schema(description = "手机号或邮箱", example = "13800138000", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "手机号或邮箱不能为空")
     private String account;
 
+    /** 图形验证码 UUID，必填，由图形验证码接口下发。 */
     @Schema(description = "图形验证码 UUID", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "验证码 UUID 不能为空")
     private String captchaUuid;
 
+    /** 图形验证码输入值，必填，校验后立即失效。 */
     @Schema(description = "图形验证码输入值", example = "A3B7", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "验证码不能为空")
     private String captchaCode;

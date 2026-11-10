@@ -1,18 +1,19 @@
 -- =====================================================
 -- 网上超市系统 - 建表脚本
--- 数据库: chrono_bbs
+-- 数据库: chrono_bbs_dev
 -- =====================================================
 
-CREATE DATABASE IF NOT EXISTS chrono_bbs
+SET NAMES utf8mb4;
+CREATE DATABASE IF NOT EXISTS chrono_bbs_dev
     DEFAULT CHARACTER SET utf8mb4
     DEFAULT COLLATE utf8mb4_general_ci;
 
 -- 创建专用数据库用户（Docker 环境用 '%' 允许外部连接）
 CREATE USER IF NOT EXISTS 'chrono'@'%' IDENTIFIED BY 'chrono123';
-GRANT ALL PRIVILEGES ON chrono_bbs.* TO 'chrono'@'%';
+GRANT ALL PRIVILEGES ON chrono_bbs_dev.* TO 'chrono'@'%';
 FLUSH PRIVILEGES;
 
-USE chrono_bbs;
+USE chrono_bbs_dev;
 
 -- =====================================================
 -- 1. 用户表
@@ -27,8 +28,8 @@ CREATE TABLE `user`
     `phone`      VARCHAR(20)  DEFAULT NULL COMMENT '手机号',
     `email`      VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
     `avatar`     VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
-    `role`       TINYINT      NOT NULL DEFAULT 0 COMMENT '角色：0-普通用户，1-管理员',
-    `status`     TINYINT      NOT NULL DEFAULT 0 COMMENT '状态：0-正常，1-禁用',
+    `role`       TINYINT      NOT NULL DEFAULT 1 COMMENT '角色：1-普通用户，2-商家，3-管理员',
+    `status`     TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1-正常，0-禁用',
     `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
     `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
@@ -188,6 +189,7 @@ CREATE TABLE `order`
     `address_snapshot` VARCHAR(500) DEFAULT NULL COMMENT '收货地址快照（JSON）',
     `total_amount`     INT          NOT NULL COMMENT '实付金额（单位：分）',
     `status`           TINYINT      NOT NULL COMMENT '订单状态码',
+    `remark`           VARCHAR(500) DEFAULT NULL COMMENT '订单备注',
     `cancel_reason`    VARCHAR(500) DEFAULT NULL COMMENT '取消原因',
     `paid_at`          DATETIME     DEFAULT NULL COMMENT '支付时间',
     `shipped_at`       DATETIME     DEFAULT NULL COMMENT '发货时间',
@@ -252,13 +254,18 @@ CREATE TABLE `refund`
     `order_id`      BIGINT       NOT NULL COMMENT '关联order表',
     `order_item_id` BIGINT       NOT NULL COMMENT '关联order_item（支持部分退款）',
     `user_id`       BIGINT       NOT NULL COMMENT '申请人',
+    `merchant_id`   BIGINT       DEFAULT NULL COMMENT '关联merchant表主键',
     `type`          TINYINT      NOT NULL COMMENT '类型：1-退款，2-退货',
     `reason`        VARCHAR(500) NOT NULL COMMENT '申请原因',
     `amount`        INT          NOT NULL COMMENT '退款金额（分）',
-    `status`        TINYINT      NOT NULL DEFAULT 0 COMMENT '状态：0-待审核，1-已通过，2-已拒绝',
+    `status`        TINYINT      NOT NULL DEFAULT 0 COMMENT '状态：0-待审核，1-已通过，2-已拒绝，3-待寄回，4-待商家收货，5-退货完成',
     `reviewer_id`   BIGINT       DEFAULT NULL COMMENT '审核人',
     `review_reason` VARCHAR(500) DEFAULT NULL COMMENT '审核意见',
     `reviewed_at`   DATETIME     DEFAULT NULL COMMENT '审核时间',
+    `return_company` VARCHAR(50) DEFAULT NULL COMMENT '退货快递公司',
+    `return_logistics_no` VARCHAR(50) DEFAULT NULL COMMENT '退货物流单号',
+    `returned_at`   DATETIME     DEFAULT NULL COMMENT '买家寄回时间',
+    `return_received_at` DATETIME DEFAULT NULL COMMENT '商家确认收货时间',
     `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
     PRIMARY KEY (`id`),
     INDEX `idx_order_id` (`order_id`),
@@ -301,6 +308,7 @@ CREATE TABLE `comment`
     `order_item_id` BIGINT        DEFAULT NULL COMMENT '关联order_item',
     `parent_id`     BIGINT        DEFAULT NULL COMMENT '父评论ID，NULL表示一级评论',
     `content`       VARCHAR(1000) NOT NULL COMMENT '评论内容',
+    `images`        VARCHAR(2000) DEFAULT NULL COMMENT '图片URL数组（JSON，最多4张）',
     `star`          TINYINT       DEFAULT NULL COMMENT '星级评分（1-5），仅一级评论有值',
     `is_append`     TINYINT       NOT NULL DEFAULT 0 COMMENT '0-首次评价，1-追评',
     `status`        TINYINT       NOT NULL DEFAULT 0 COMMENT '状态：0-正常，1-已删除',
@@ -338,7 +346,7 @@ CREATE TABLE `conversation`
 (
     `id`                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id`           BIGINT       NOT NULL COMMENT '普通用户ID',
-    `merchant_id`       BIGINT       NOT NULL COMMENT '商家用户ID',
+    `merchant_id`       BIGINT       NOT NULL COMMENT '关联merchant表主键',
     `product_id`        BIGINT       DEFAULT NULL COMMENT '关联的商品ID',
     `last_message`      VARCHAR(500) DEFAULT NULL COMMENT '最后一条消息摘要',
     `last_message_time` DATETIME     DEFAULT NULL COMMENT '最后一条消息时间',
@@ -376,7 +384,58 @@ CREATE TABLE `message`
   DEFAULT CHARSET = utf8mb4 COMMENT ='消息表';
 
 -- =====================================================
--- 18. 操作日志表
+-- 18. 秒杀券表
+-- =====================================================
+DROP TABLE IF EXISTS `seckill_coupon`;
+CREATE TABLE `seckill_coupon`
+(
+    `id`             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `name`           VARCHAR(100) NOT NULL COMMENT '券名称',
+    `description`    VARCHAR(500) DEFAULT NULL COMMENT '券描述',
+    `discount_type`  TINYINT      NOT NULL COMMENT '优惠类型：1-满减券，2-折扣券',
+    `discount_value` INT          NOT NULL COMMENT '优惠值：满减券为减多少分，折扣券为打几折（如85表示8.5折）',
+    `min_amount`     INT          NOT NULL DEFAULT 0 COMMENT '最低消费金额（分），0表示无门槛',
+    `total_count`    INT          NOT NULL COMMENT '发放总量',
+    `remain_count`   INT          NOT NULL COMMENT '剩余数量',
+    `start_time`     DATETIME     NOT NULL COMMENT '开始时间',
+    `end_time`       DATETIME     NOT NULL COMMENT '结束时间',
+    `per_user_limit` INT          NOT NULL DEFAULT 1 COMMENT '每人限领数量',
+    `status`         TINYINT      NOT NULL DEFAULT 0 COMMENT '状态：0-未开始，1-进行中，2-已结束',
+    `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_start_time` (`start_time`),
+    INDEX `idx_end_time` (`end_time`),
+    INDEX `idx_status_time` (`status`, `start_time`, `end_time`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='秒杀券表';
+
+-- =====================================================
+-- 19. 用户领券表
+-- =====================================================
+DROP TABLE IF EXISTS `user_coupon`;
+CREATE TABLE `user_coupon`
+(
+    `id`            BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `user_id`       BIGINT   NOT NULL COMMENT '关联user表',
+    `coupon_id`     BIGINT   NOT NULL COMMENT '关联seckill_coupon表',
+    `status`        TINYINT  NOT NULL DEFAULT 0 COMMENT '状态：0-未使用，1-已使用，2-已过期',
+    `used_order_id` BIGINT   DEFAULT NULL COMMENT '使用的订单ID',
+    `claim_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '领取时间',
+    `used_time`     DATETIME DEFAULT NULL COMMENT '使用时间',
+    `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_coupon_id` (`coupon_id`),
+    INDEX `idx_user_coupon` (`user_id`, `coupon_id`),
+    INDEX `idx_user_status` (`user_id`, `status`),
+    INDEX `idx_status` (`status`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='用户领券表';
+
+-- =====================================================
+-- 20. 操作日志表
 -- =====================================================
 DROP TABLE IF EXISTS `operation_log`;
 CREATE TABLE `operation_log`
