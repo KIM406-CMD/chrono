@@ -950,7 +950,7 @@ server {
 
 - 商家后台“退款审核”与管理员后台“退款审核”复用同一页面 `RefundManageView.vue`，根据路由前缀选择数据源。
 - 列表支持按状态筛选，同意/拒绝退款并填写拒绝原因；审核后列表状态立即更新。
-- Mock 扩展接口：`GET /api/merchant/refunds`、`GET /api/admin/refunds`，审核复用 `PUT /api/refund/{id}/review`。
+- 列表接口：`GET /api/merchant/refunds`、`GET /api/admin/refunds`；审核复用 `PUT /api/refund/{id}/review`，`dev:mock` 下由 Mock 提供同名接口。
 
 ### 15.10 管理员商品操作
 

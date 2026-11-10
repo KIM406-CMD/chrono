@@ -5,7 +5,9 @@ import com.ncist.common.result.PageResult;
 import com.ncist.common.result.Result;
 import com.ncist.dto.MerchantApplyDTO;
 import com.ncist.service.MerchantService;
+import com.ncist.service.RefundService;
 import com.ncist.vo.MerchantInfoVO;
+import com.ncist.vo.RefundVO;
 import com.ncist.vo.MerchantOrderVO;
 import com.ncist.vo.MerchantStatsVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +40,7 @@ import java.util.Map;
 public class MerchantController {
 
     private final MerchantService merchantService;
+    private final RefundService refundService;
 
     /**
      * 提交商家入驻申请。
@@ -116,6 +119,26 @@ public class MerchantController {
     public Result<Void> ship(@PathVariable Long orderId) {
         merchantService.ship(UserContext.getUserId(), orderId);
         return Result.success();
+    }
+
+    /**
+     * 分页查询当前商家的退款/退货申请。
+     *
+     * <p>仅审核通过的商家可查看，数据范围限定为自己商品产生的退款单，
+     * 可按状态筛选，供商家审核与确认收货。</p>
+     *
+     * @param status 退款状态筛选，取值 0-5，可为 {@code null} 表示不限
+     * @param page   页码，从 1 开始，默认 1
+     * @param size   每页条数，默认 10
+     * @return 退款分页结果
+     */
+    @Operation(summary = "商家退款审核列表（分页，status 筛选）")
+    @GetMapping("/refunds")
+    public Result<PageResult<RefundVO>> refunds(
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "10") Integer size) {
+        return Result.success(refundService.merchantRefunds(UserContext.getUserId(), status, page, size));
     }
 
     /**

@@ -41,6 +41,32 @@ public interface RefundService {
     PageResult<RefundVO> myRefunds(Long userId, Integer page, Integer size);
 
     /**
+     * 分页查询当前商家收到的退款/退货申请。
+     *
+     * <p>仅审核通过的商家可查询，数据范围限定为该商家商品产生的退款单。</p>
+     *
+     * @param userId 商家用户 ID，必须为当前登录商家
+     * @param status 退款状态筛选，取值 0-5，可为 {@code null} 表示不限
+     * @param page   页码，从 1 开始；为空或小于 1 时按 1 处理
+     * @param size   每页条数；为空或小于 1 时按 10 处理
+     * @return 退款分页结果
+     * @throws BusinessException 当前用户不是有效商家时抛出
+     */
+    PageResult<RefundVO> merchantRefunds(Long userId, Integer status, Integer page, Integer size);
+
+    /**
+     * 分页查询全平台退款/退货申请。
+     *
+     * @param userId 管理员用户 ID，必须为当前登录管理员
+     * @param status 退款状态筛选，取值 0-5，可为 {@code null} 表示不限
+     * @param page   页码，从 1 开始；为空或小于 1 时按 1 处理
+     * @param size   每页条数；为空或小于 1 时按 10 处理
+     * @return 退款分页结果
+     * @throws BusinessException 当前用户不是管理员时抛出
+     */
+    PageResult<RefundVO> adminRefunds(Long userId, Integer status, Integer page, Integer size);
+
+    /**
      * 查询退款详情。
      *
      * @param userId 用户 ID，必须为退款申请人

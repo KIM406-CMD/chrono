@@ -1,14 +1,17 @@
 package com.ncist.controller;
 
+import com.ncist.common.context.UserContext;
 import com.ncist.common.result.PageResult;
 import com.ncist.common.result.Result;
 import com.ncist.dto.CategoryUpsertDTO;
 import com.ncist.dto.MerchantReviewDTO;
 import com.ncist.dto.ProductCreateDTO;
 import com.ncist.service.AdminService;
+import com.ncist.service.RefundService;
 import com.ncist.vo.AdminMerchantVO;
 import com.ncist.vo.AdminReportVO;
 import com.ncist.vo.AdminUserVO;
+import com.ncist.vo.RefundVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,6 +43,7 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminService adminService;
+    private final RefundService refundService;
 
     /**
      * 分页查询平台用户列表。
@@ -210,6 +214,25 @@ public class AdminController {
             @RequestParam(required = false, defaultValue = "1") Integer page,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
         return Result.success(adminService.listOrders(orderNo, status, page, size));
+    }
+
+    /**
+     * 分页查询全平台退款/退货申请。
+     *
+     * <p>管理员可查看所有商家的退款单，也可直接调用退款审核接口处理。</p>
+     *
+     * @param status 退款状态筛选，取值 0-5，可为 {@code null} 表示不限
+     * @param page   页码，从 1 开始，默认 1
+     * @param size   每页条数，默认 10
+     * @return 退款分页结果
+     */
+    @Operation(summary = "全平台退款审核列表（分页，status 筛选）")
+    @GetMapping("/refunds")
+    public Result<PageResult<RefundVO>> refunds(
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "10") Integer size) {
+        return Result.success(refundService.adminRefunds(UserContext.getUserId(), status, page, size));
     }
 
     /**

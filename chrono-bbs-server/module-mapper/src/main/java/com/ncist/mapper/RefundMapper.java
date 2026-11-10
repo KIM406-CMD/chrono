@@ -86,6 +86,62 @@ public interface RefundMapper {
     int existsByOrderItemId(Long orderItemId);
 
     /**
+     * 分页查询某商家的退款记录，并联查商品信息。
+     *
+     * @param merchantId 商家 ID
+     * @param status     退款状态筛选，可为 {@code null} 表示不限
+     * @param offset     偏移量，从 0 开始
+     * @param size       每页条数
+     * @return 退款详情列表，按申请时间倒序
+     */
+    @Select("<script>SELECT " + DETAIL_COLUMNS + " FROM refund r "
+            + "JOIN order_item oi ON r.order_item_id = oi.id "
+            + "JOIN product p ON oi.product_id = p.id "
+            + "WHERE r.merchant_id = #{merchantId} "
+            + "<if test='status != null'>AND r.status = #{status} </if>"
+            + "ORDER BY r.created_at DESC, r.id DESC LIMIT #{offset}, #{size}</script>")
+    List<RefundDetail> selectPageByMerchant(@Param("merchantId") Long merchantId,
+                                            @Param("status") Integer status,
+                                            @Param("offset") int offset, @Param("size") int size);
+
+    /**
+     * 统计某商家的退款记录数量，用于分页。
+     *
+     * @param merchantId 商家 ID
+     * @param status     退款状态筛选，可为 {@code null} 表示不限
+     * @return 退款记录总数
+     */
+    @Select("<script>SELECT COUNT(*) FROM refund WHERE merchant_id = #{merchantId} "
+            + "<if test='status != null'>AND status = #{status}</if></script>")
+    long countByMerchant(@Param("merchantId") Long merchantId, @Param("status") Integer status);
+
+    /**
+     * 分页查询全平台退款记录，并联查商品信息。
+     *
+     * @param status 退款状态筛选，可为 {@code null} 表示不限
+     * @param offset 偏移量，从 0 开始
+     * @param size   每页条数
+     * @return 退款详情列表，按申请时间倒序
+     */
+    @Select("<script>SELECT " + DETAIL_COLUMNS + " FROM refund r "
+            + "JOIN order_item oi ON r.order_item_id = oi.id "
+            + "JOIN product p ON oi.product_id = p.id "
+            + "<where><if test='status != null'>r.status = #{status}</if></where> "
+            + "ORDER BY r.created_at DESC, r.id DESC LIMIT #{offset}, #{size}</script>")
+    List<RefundDetail> selectPageAll(@Param("status") Integer status,
+                                     @Param("offset") int offset, @Param("size") int size);
+
+    /**
+     * 统计全平台退款记录数量，用于分页。
+     *
+     * @param status 退款状态筛选，可为 {@code null} 表示不限
+     * @return 退款记录总数
+     */
+    @Select("<script>SELECT COUNT(*) FROM refund "
+            + "<where><if test='status != null'>status = #{status}</if></where></script>")
+    long countAll(@Param("status") Integer status);
+
+    /**
      * 审核退款申请。
      *
      * <p>仅待审核（status=0）的申请可被更新，避免重复审核。</p>

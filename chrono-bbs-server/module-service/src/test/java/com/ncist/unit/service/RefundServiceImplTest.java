@@ -313,6 +313,62 @@ class RefundServiceImplTest {
         assertEquals(RefundErrorCode.REFUND_NOT_FOUND.getCode(), e.getCode());
     }
 
+    // ================ 审核列表 ================
+
+    @Test
+    @DisplayName("商家退款列表-审核通过的商家仅查询自己的退款单")
+    void merchantRefundsSuccess() {
+        UserContext.set(new UserContext.UserInfo(9L, "merchant", 2));
+        when(merchantMapper.selectByUserId(9L))
+                .thenReturn(Merchant.builder().id(3L).userId(9L).status(1).build());
+        when(refundMapper.countByMerchant(3L, 0)).thenReturn(1L);
+        when(refundMapper.selectPageByMerchant(3L, 0, 0, 10))
+                .thenReturn(List.of(refundDetail(1L, 8L, 1L, 11L, 100L, 0)));
+
+        PageResult<RefundVO> result = refundService.merchantRefunds(9L, 0, 1, 10);
+
+        assertEquals(1L, result.getTotal());
+        assertEquals(1, result.getList().size());
+        assertEquals(0, result.getList().get(0).getStatus());
+    }
+
+    @Test
+    @DisplayName("商家退款列表-未审核通过的商家返回403")
+    void merchantRefundsNotApproved() {
+        UserContext.set(new UserContext.UserInfo(9L, "merchant", 2));
+        when(merchantMapper.selectByUserId(9L))
+                .thenReturn(Merchant.builder().id(3L).userId(9L).status(0).build());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> refundService.merchantRefunds(9L, null, 1, 10));
+        assertEquals(RefundErrorCode.NO_PERMISSION_REVIEW.getCode(), e.getCode());
+    }
+
+    @Test
+    @DisplayName("管理员退款列表-查询全平台退款单")
+    void adminRefundsSuccess() {
+        UserContext.set(new UserContext.UserInfo(1L, "admin", 3));
+        when(refundMapper.countAll(null)).thenReturn(2L);
+        when(refundMapper.selectPageAll(null, 0, 10))
+                .thenReturn(List.of(refundDetail(1L, 8L, 1L, 11L, 100L, 0),
+                        refundDetail(2L, 9L, 2L, 12L, 101L, 2)));
+
+        PageResult<RefundVO> result = refundService.adminRefunds(1L, null, 1, 10);
+
+        assertEquals(2L, result.getTotal());
+        assertEquals(2, result.getList().size());
+    }
+
+    @Test
+    @DisplayName("管理员退款列表-非管理员返回403")
+    void adminRefundsForbidden() {
+        UserContext.set(new UserContext.UserInfo(9L, "merchant", 2));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> refundService.adminRefunds(9L, null, 1, 10));
+        assertEquals(RefundErrorCode.NO_PERMISSION_REVIEW.getCode(), e.getCode());
+    }
+
     private RefundReviewDTO reviewDTO(Integer approved, String reason) {
         RefundReviewDTO dto = new RefundReviewDTO();
         dto.setApproved(approved);

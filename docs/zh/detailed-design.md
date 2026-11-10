@@ -701,15 +701,15 @@ flowchart TD
     L --> M["返回成功"]
 ```
 
-### 9.2 退款列表 — `GET /api/refund/list`
+### 9.2 退款列表 — `GET /api/refund/my`、`GET /api/merchant/refunds`、`GET /api/admin/refunds`
 
 ```mermaid
 flowchart TD
-    A["GET /api/refund/list?page=&size="] --> B["解析 JWT → 获取 userId → 获取角色"]
+    A["退款列表请求（按角色选择对应路径）"] --> B["解析 JWT → 获取 userId → 获取角色"]
     B --> C{"角色?"}
-    C -->|普通用户| D["查询退款表: 按 userId 筛选"]
-    C -->|商家| E["查询退款表: 按商家ID筛选"]
-    C -->|管理员| F["查询退款表: 全部"]
+    C -->|普通用户| D["GET /api/refund/my：按 userId 筛选"]
+    C -->|商家| E["GET /api/merchant/refunds：按商家 ID 筛选"]
+    C -->|管理员| F["GET /api/admin/refunds：查询全部"]
     D --> G["组装分页结果"]
     E --> G
     F --> G

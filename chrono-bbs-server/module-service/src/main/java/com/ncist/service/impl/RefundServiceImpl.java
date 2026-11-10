@@ -1,5 +1,6 @@
 package com.ncist.service.impl;
 
+import com.ncist.common.context.UserContext;
 import com.ncist.common.enums.RefundErrorCode;
 import com.ncist.common.enums.UserRoleEnum;
 import com.ncist.common.exception.BusinessException;
@@ -109,7 +110,39 @@ public class RefundServiceImpl implements RefundService {
         long total = refundMapper.countByUser(userId);
         List<RefundDetail> details = total == 0 ? List.of()
                 : refundMapper.selectPageByUser(userId, (p - 1) * s, s);
-        return PageResult.of(total, p, s, details.stream().map(this::toVO).toList());
+        return toPage(total, p, s, details);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public PageResult<RefundVO> merchantRefunds(Long userId, Integer status, Integer page, Integer size) {
+        if (!UserRoleEnum.MERCHANT.getCode().equals(UserContext.getRole())) {
+            throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
+        }
+        Merchant merchant = merchantMapper.selectByUserId(userId);
+        if (merchant == null || !Integer.valueOf(1).equals(merchant.getStatus())) {
+            throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
+        }
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 10 : size;
+        long total = refundMapper.countByMerchant(merchant.getId(), status);
+        List<RefundDetail> details = total == 0 ? List.of()
+                : refundMapper.selectPageByMerchant(merchant.getId(), status, (p - 1) * s, s);
+        return toPage(total, p, s, details);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public PageResult<RefundVO> adminRefunds(Long userId, Integer status, Integer page, Integer size) {
+        if (!UserRoleEnum.ADMIN.getCode().equals(UserContext.getRole())) {
+            throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
+        }
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 10 : size;
+        long total = refundMapper.countAll(status);
+        List<RefundDetail> details = total == 0 ? List.of()
+                : refundMapper.selectPageAll(status, (p - 1) * s, s);
+        return toPage(total, p, s, details);
     }
 
     /** {@inheritDoc} */
@@ -218,6 +251,19 @@ public class RefundServiceImpl implements RefundService {
         if (product == null || !merchant.getId().equals(product.getMerchantId())) {
             throw new BusinessException(RefundErrorCode.NO_PERMISSION_REVIEW);
         }
+    }
+
+    /**
+     * 组装退款分页结果。
+     *
+     * @param total   总记录数
+     * @param page    页码
+     * @param size    每页条数
+     * @param details 当前页退款明细
+     * @return 退款分页结果
+     */
+    private PageResult<RefundVO> toPage(long total, int page, int size, List<RefundDetail> details) {
+        return PageResult.of(total, page, size, details.stream().map(this::toVO).toList());
     }
 
     /**

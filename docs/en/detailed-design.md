@@ -700,15 +700,15 @@ flowchart TD
     L --> M["Return success"]
 ```
 
-### 9.2 Refund List — `GET /api/refund/list`
+### 9.2 Refund List — `GET /api/refund/my`, `GET /api/merchant/refunds`, `GET /api/admin/refunds`
 
 ```mermaid
 flowchart TD
-    A["GET /api/refund/list?page=&size="] --> B["Parse JWT → obtain userId → obtain role"]
+    A["Refund list request (path selected by role)"] --> B["Parse JWT → obtain userId → obtain role"]
     B --> C{"Role?"}
-    C -->|Regular User| D["Query refund table: filter by userId"]
-    C -->|Merchant| E["Query refund table: filter by merchant ID"]
-    C -->|Administrator| F["Query refund table: all"]
+    C -->|Regular User| D["GET /api/refund/my: filter by userId"]
+    C -->|Merchant| E["GET /api/merchant/refunds: filter by merchant ID"]
+    C -->|Administrator| F["GET /api/admin/refunds: all refunds"]
     D --> G["Assemble paginated result"]
     E --> G
     F --> G

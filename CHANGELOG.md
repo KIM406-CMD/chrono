@@ -10,6 +10,7 @@
 ## [Unreleased]
 
 ### Added
+- 退款审核列表接口：新增 `GET /api/merchant/refunds`（商家仅见自己商品）与 `GET /api/admin/refunds`（管理员见全平台），支持状态筛选与分页
 - 聊天前后端打通：新增 `utils/chatSocket.ts` 连接后端 WebSocket，聊天页实时收发、断线指数退避重连、未读角标实时刷新；Vite 与 Nginx 增加 `/chat/` WebSocket 代理
 - 前端工程化：新增 ESLint（`npm run lint`）、Vitest 单元测试（`npm run test`，覆盖 Luhn 与富文本清洗）和 Playwright E2E 冒烟测试（`npm run test:e2e`）
 - 构建优化：Element Plus 改为按需引入，主包由约 833 kB 降至约 87 kB；ECharts 保持报表页懒加载

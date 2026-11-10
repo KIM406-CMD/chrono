@@ -523,7 +523,7 @@ export const useUserStore = defineStore('user', () => {
 
 ## 7. Instant Messaging
 
-> **Implementation status**: The chat entry is enabled (`CHAT_ENABLED = true`) and currently uses Mock HTTP APIs (`mock/chat.ts`) for frontend joint debugging. After the backend WebSocket API is complete, switch to the WebSocket solution below.
+> **Implementation status**: The chat entry is enabled (`CHAT_ENABLED = true`). `npm run dev` and production connect directly to the backend WebSocket through `src/utils/chatSocket.ts`, supporting real-time send/receive, live unread badges and automatic reconnection. Only `npm run dev:mock` uses the Mock HTTP APIs.
 
 ### 7.1 Backend WebSocket Contract
 
@@ -545,67 +545,16 @@ Message format (JSON):
 }
 ```
 
-### 7.2 Frontend Wrapper `composables/useWebSocket.ts`
+### 7.2 Frontend Wrapper `utils/chatSocket.ts`
 
-```typescript
-import { ref, onUnmounted } from 'vue'
-import { getToken } from '@/utils/token'
+A global `chatSocket` singleton is owned by the mall layout and shared with the chat page:
 
-interface WSMessage {
-  type: 'TEXT' | 'IMAGE'
-  conversationId: number
-  content: string
-  productId?: number
-  timestamp: number
-}
-
-export function useWebSocket(userId: number) {
-  const messages = ref<WSMessage[]>([])
-  const isConnected = ref(false)
-  let ws: WebSocket | null = null
-  let reconnectTimer: number | null = null
-
-  function connect() {
-    const token = getToken()
-    ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${token}`)
-
-    ws.onopen = () => {
-      isConnected.value = true
-      console.log('WebSocket connected')
-    }
-
-    ws.onmessage = (event) => {
-      const msg: WSMessage = JSON.parse(event.data)
-      messages.value.push(msg)
-    }
-
-    ws.onclose = () => {
-      isConnected.value = false
-      // Automatic reconnection (retry after 3 seconds)
-      reconnectTimer = window.setTimeout(connect, 3000)
-    }
-
-    ws.onerror = (err) => {
-      console.error('WebSocket error', err)
-    }
-  }
-
-  function send(msg: { type: string; conversationId: number; content: string; productId?: number }) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ ...msg, timestamp: Date.now() }))
-    }
-  }
-
-  function disconnect() {
-    if (reconnectTimer) clearTimeout(reconnectTimer)
-    ws?.close()
-  }
-
-  onUnmounted(disconnect)
-
-  return { messages, isConnected, connect, send, disconnect }
-}
-```
+- `connect(userId, token)` opens `/chat/{userId}?token=...` against the current origin and reuses an existing connection;
+- `send({ conversationId, content })` sends a `TEXT` frame when the connection is ready and returns `false` otherwise;
+- `onFrame(listener)` / `onStatus(listener)` subscribe to messages and connection state, returning an unsubscribe function;
+- `disconnect()` closes the connection on logout or when leaving the mall layout;
+- Reconnection uses exponential backoff (1s, 2s, 4s, ... capped at 30s); a 1008 (authentication failure) close stops reconnection until the user logs in again;
+- Vite and Nginx both proxy `/chat/` WebSocket traffic, so the frontend never hardcodes the backend port.
 
 ---
 
@@ -850,13 +799,14 @@ server {
         add_header Cache-Control "public, max-age=604800, immutable";
     }
 
-    # WebSocket proxy (enable after the chat feature is implemented)
-    location /ws/ {
+    # Chat WebSocket proxy
+    location /chat/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_read_timeout 3600s;
     }
 }
 ```
@@ -985,21 +935,21 @@ All items below can be verified independently with `npm run dev:mock`, without t
 - `npm run dev` uses the real backend; `npm run dev:mock` uses the `mock/` directory. They are independent.
 - Mock product create/edit persists multiple SKUs and recalculates min/max prices; the admin report fields match `AdminReportVO`.
 
-> Note: chat, merchant refund review, return-receipt confirmation, admin product operations, real full-text search and comment images are still blocked by backend APIs, and their entries remain disabled or degraded.
+> Note: admin product enable/disable and delete are still backed by Mock extension APIs; other listed capabilities are available against the real backend.
 
 
-### 15.8 Chat Integration (Mock HTTP)
+### 15.8 Chat Integration
 
 - The mall header message entry and "My Messages" menu item are enabled by default; the unread badge calls `GET /api/chat/unread-count`.
-- The chat page supports conversation list, history, sending messages and marking as read; sending uses the Mock `POST /api/chat/message` endpoint (the production backend uses WebSocket).
+- The chat page supports conversation list, history, real-time send/receive and marking as read; `npm run dev` and production connect through WebSocket, while `dev:mock` uses `POST /api/chat/message`.
 - The product detail shop card adds "Contact Support": after login it calls `POST /api/chat/conversation` to create or reuse a conversation and opens the chat page.
-- Mock implements conversation deduplication, aggregated unread counts and read clearing.
+- The unread badge refreshes on real-time WebSocket messages and clears automatically when a conversation is opened.
 
 ### 15.9 Refund Review (Merchant/Admin)
 
 - The merchant "Refund Review" and admin "Refund Review" pages reuse `RefundManageView.vue` and select the data source by route prefix.
 - The list supports status filtering, approve/reject actions and a rejection reason; rows update immediately after review.
-- Mock extension APIs: `GET /api/merchant/refunds`, `GET /api/admin/refunds`; review reuses `PUT /api/refund/{id}/review`.
+- List APIs: `GET /api/merchant/refunds`, `GET /api/admin/refunds`; review reuses `PUT /api/refund/{id}/review`. Mock provides the same paths in `dev:mock`.
 
 ### 15.10 Admin Product Operations
 

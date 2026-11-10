@@ -1069,9 +1069,9 @@ PUT /api/refund/{id}/review
 
 ---
 
-### 10.5 Refund List (Merchant, Mock Extension)
+### 10.5 Refund List (Merchant)
 
-> Permission: merchant. The backend does not provide a merchant refund list yet; this endpoint is provided by Mock during development.
+> Permission: approved merchant (status=1). Returns only refunds for this merchant's products; supports status filtering.
 
 ```
 GET /api/merchant/refunds
@@ -1087,9 +1087,9 @@ GET /api/merchant/refunds
 
 ---
 
-### 10.6 Refund List (Admin, Mock Extension)
+### 10.6 Refund List (Admin)
 
-> Permission: administrator. The backend does not provide an admin refund list yet; this endpoint is provided by Mock during development.
+> Permission: administrator. Returns refunds from all merchants; supports status filtering.
 
 ```
 GET /api/admin/refunds
@@ -1584,7 +1584,7 @@ GET /api/chat/unread-count
 
 ### 14.6 Send Message (Mock Extension)
 
-> The backend sends messages through WebSocket (see section 17); during development Mock provides an HTTP endpoint used by the chat page in `dev:mock`.
+> The backend sends messages through WebSocket (see section 17). The chat page connects directly to WebSocket in `npm run dev` and production; the HTTP endpoint is used only in `npm run dev:mock` demo mode.
 
 ```
 POST /api/chat/message
