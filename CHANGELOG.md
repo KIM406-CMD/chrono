@@ -25,6 +25,8 @@
 ### Fixed
 - 领券中心重复领取：已领且达到每人限领的券直接禁用按钮并显示“已领取”，不再点击后才提示；Mock 数据同步回填领取状态
 - 领券后列表为空：领取成功后自动切换到“我的优惠券”，切换标签页时重新拉取数据，避免展示旧数据或空列表
+- Docker 前端启动：`--docker-frontend` 现在会带 `--build` 重新构建前端镜像，避免继续使用旧构建产物
+- 启动文档补充说明：Docker 模式 MySQL 在宿主机 3307，IDE 直接启动后端需显式设置 `SPRING_DATASOURCE_URL`，否则会连接本机 3306 导致数据不一致
 
 ### Removed
 - 拆分启动脚本：删除 `start-middleware`、`start-backend`、`start-frontend` 独立脚本，中间件、后端、前端启动逻辑统一并入 `start-all`，仅保留整体启动脚本与 `stop-middleware`
