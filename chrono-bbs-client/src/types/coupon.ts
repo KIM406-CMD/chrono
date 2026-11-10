@@ -35,6 +35,8 @@ export interface SeckillCoupon {
   endTime: string
   perUserLimit: number
   status: CouponStatus
+  claimed?: boolean
+  userClaimCount?: number
 }
 
 // 我的优惠券（my-coupons 返回的富化结构）

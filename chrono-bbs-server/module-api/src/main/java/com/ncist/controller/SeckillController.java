@@ -57,13 +57,14 @@ public class SeckillController {
     public Result<PageResult<SeckillCouponVO>> listCoupons(@RequestParam(required = false) Integer status,
                                                            @RequestParam(required = false, defaultValue = "1") Integer page,
                                                            @RequestParam(required = false, defaultValue = "10") Integer size) {
-        return Result.success(seckillService.listCoupons(status, page, size));
+        return Result.success(seckillService.listCoupons(status, page, size, UserContext.getUserId()));
     }
 
     /**
      * 查询秒杀券详情。
      *
-     * <p>公开接口，返回券面额、使用门槛、有效期与剩余数量等。</p>
+     * <p>公开接口，返回券面额、使用门槛、有效期与剩余数量等；
+     * 携带有效登录令牌时同时回填当前用户的领取状态。</p>
      *
      * @param id 秒杀券 ID
      * @return 秒杀券详情
@@ -73,7 +74,7 @@ public class SeckillController {
     @Public
     @GetMapping("/detail/{id}")
     public Result<SeckillCouponVO> getCouponDetail(@PathVariable Long id) {
-        return Result.success(seckillService.getCouponDetail(id));
+        return Result.success(seckillService.getCouponDetail(id, UserContext.getUserId()));
     }
 
     /**

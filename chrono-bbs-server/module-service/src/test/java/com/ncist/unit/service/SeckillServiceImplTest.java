@@ -96,7 +96,7 @@ class SeckillServiceImplTest {
         when(seckillCouponMapper.selectListPage(null, 0, 10)).thenReturn(List.of(activeCoupon(1L, 1)));
         when(seckillCouponMapper.countList(null)).thenReturn(1L);
 
-        PageResult<SeckillCouponVO> result = seckillService.listCoupons(null, null, null);
+        PageResult<SeckillCouponVO> result = seckillService.listCoupons(null, null, null, null);
 
         assertEquals(1L, result.getTotal());
         assertEquals(1, result.getList().size());
@@ -106,10 +106,23 @@ class SeckillServiceImplTest {
     }
 
     @Test
+    @DisplayName("秒杀券列表-登录用户回填已领取数量")
+    void listCouponsWithUserClaim() {
+        when(seckillCouponMapper.selectListPage(null, 0, 10)).thenReturn(List.of(activeCoupon(1L, 1)));
+        when(seckillCouponMapper.countList(null)).thenReturn(1L);
+        when(userCouponMapper.countClaimed(1L, 1L)).thenReturn(1);
+
+        SeckillCouponVO vo = seckillService.listCoupons(null, null, null, 1L).getList().get(0);
+
+        assertTrue(vo.getClaimed());
+        assertEquals(1, vo.getUserClaimCount());
+    }
+
+    @Test
     @DisplayName("秒杀券列表-非法状态参数被拒绝")
     void listCouponsIllegalStatus() {
         BusinessException e = assertThrows(BusinessException.class,
-                () -> seckillService.listCoupons(5, 1, 10));
+                () -> seckillService.listCoupons(5, 1, 10, null));
         assertEquals(SeckillErrorCode.STATUS_ILLEGAL.getMessage(), e.getMessage());
     }
 
@@ -119,8 +132,20 @@ class SeckillServiceImplTest {
         when(seckillCouponMapper.selectById(99L)).thenReturn(null);
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> seckillService.getCouponDetail(99L));
+                () -> seckillService.getCouponDetail(99L, null));
         assertEquals(SeckillErrorCode.SECKILL_NOT_FOUND.getMessage(), e.getMessage());
+    }
+
+    @Test
+    @DisplayName("秒杀券详情-登录用户回填领取状态")
+    void getCouponDetailWithUser() {
+        when(seckillCouponMapper.selectById(1L)).thenReturn(activeCoupon(1L, 1));
+        when(userCouponMapper.countClaimed(1L, 1L)).thenReturn(1);
+
+        SeckillCouponVO vo = seckillService.getCouponDetail(1L, 1L);
+
+        assertTrue(vo.getClaimed());
+        assertEquals(1, vo.getUserClaimCount());
     }
 
     // ================ 抢领 ================
