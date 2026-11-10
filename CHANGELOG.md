@@ -13,10 +13,12 @@
 - 文档与注释同步：移除“后端未实现/Mock 扩展”等过期描述，RBAC 说明改为实际的 Service 层角色与数据归属校验，补充本地图片存储与演示数据说明
 
 ### Fixed
+- Nginx 容器健康检查：改用 `127.0.0.1`，避免容器内 `localhost` 解析到 IPv6 导致健康状态误报
 - “联系客服”会话创建：商品详情新增 `merchantUserId`，前端使用商家用户 ID 创建会话，修复传入商家表主键导致“商家不存在”的问题
 - 商品删除引用校验：数据库未建外键，改为删除前显式统计购物车与订单明细引用，避免商家/管理员误删已售商品产生孤儿数据
 
 ### Added
+- 商品图片素材：从 `img/` 原图筛选并压缩 12 张商品图到 `chrono-bbs-client/public/img/products/`，演示商品改用本地 `/img/products/*.jpg` 访问，不依赖外部图片服务
 - 前端容器化部署：新增 `deploy/Dockerfile.frontend`、`deploy/nginx.docker.conf` 与 Compose `frontend` profile，一条命令构建并启动 Nginx 容器（默认 3000），代理宿主机 8080 的 API、WebSocket 与上传资源
 - 测试补齐：新增 `ChatServiceImplTest`、`MerchantServiceImplTest`、`UploadServiceImplTest`，并填充 `AuthControllerE2ETest` 的未登录与公开接口用例
 - 本地上传兜底：新增 `upload.mode` 配置，开发环境默认写入 `uploads/` 并通过 `/uploads/**` 访问，无需 OSS 密钥即可上传；生产可设置 `UPLOAD_MODE=oss` 切回对象存储，Vite 与 Nginx 已补充代理
