@@ -102,7 +102,7 @@ rem Step 3: frontend (Docker Nginx or Vite dev server).
 if "%DOCKER_FRONTEND%"=="1" (
   echo [3/3] Starting frontend Nginx container...
   pushd "%DOCKER_DIR%"
-  docker compose --profile frontend up -d nginx
+  docker compose --profile frontend up -d --build nginx
   popd
   echo.
   echo Backend has been started in a new window:

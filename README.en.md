@@ -153,6 +153,7 @@ The script starts middleware, backend, and frontend in order:
 > On Windows, the backend and frontend each open in a new console window; close the window to stop the service.
 > On Bash, the backend runs in the background with logs in `logs/backend.log`; `Ctrl+C` stops both backend and frontend.
 > For more options (`--skip-build`, `--volumes`), see [script/README.md](script/README.md).
+> **In Docker mode MySQL listens on host port 3307.** If you start the backend directly from an IDE, set `SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/chrono_bbs_dev?...` explicitly or use `--local`; otherwise the backend connects to local port 3306 and its account/product/coupon data diverges from the Docker database (e.g. a claimed coupon does not appear under "My Coupons").
 
 ### 2. Stop middleware
 

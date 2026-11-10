@@ -149,6 +149,7 @@ Bash / Git Bash / macOS / Linux：
 > Windows 会为后端和前端各打开一个新命令行窗口，关闭窗口即停止服务。
 > Bash 下后端在后台运行，日志写入 `logs/backend.log`，`Ctrl+C` 同时停止前后端。
 > 更多参数（`--skip-build`、`--volumes`）见 [script/README.md](script/README.md)。
+> **Docker 模式下 MySQL 在宿主机 3307。** 若在 IDE 中直接启动后端，请显式设置 `SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/chrono_bbs_dev?...`，或改用 `--local` 模式；否则后端会连接本机 3306，导致账号、商品、领券数据与 Docker 数据库不一致（例如领券成功但“我的优惠券”为空）。
 
 ### 2. 停止中间件
 

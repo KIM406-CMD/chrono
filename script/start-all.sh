@@ -155,7 +155,7 @@ trap stop_backend EXIT INT TERM
 # ------------------------------------------------------------
 if [ "$DOCKER_FRONTEND" -eq 1 ]; then
   echo "==> 启动前端 Nginx 容器..."
-  (cd "$ROOT_DIR/docker" && docker compose --profile frontend up -d nginx)
+  (cd "$ROOT_DIR/docker" && docker compose --profile frontend up -d --build nginx)
   echo "==> 前端已启动: http://localhost:3000"
   echo "==> 后端运行中（日志：$BACKEND_LOG），按 Ctrl+C 停止后端"
   echo "==> 停止前端容器：./script/stop-middleware.sh"

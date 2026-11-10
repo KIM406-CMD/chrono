@@ -48,7 +48,7 @@ script\start-all.bat --local    :: 本机中间件 + 后端 + 前端
 
 - `--local`：使用本机中间件（默认 Docker）
 - `--skip-build`：跳过后端 `mvn clean install`，适用于已构建过、只改了少量代码的场景
-- `--docker-frontend`：`start-all` 使用 Docker Nginx 容器（`http://localhost:3000`）代替 Vite 开发服务器
+- `--docker-frontend`：`start-all` 使用 Docker Nginx 容器（`http://localhost:3000`）代替 Vite 开发服务器，启动时会重新构建前端镜像以加载最新代码
 - `--volumes`：停止中间件时同时删除数据卷（会清空数据库，下次启动重新执行 `initial/` 初始化脚本）
 
 推荐（前端使用 Nginx 容器，不启动 Vite）：
