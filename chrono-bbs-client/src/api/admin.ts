@@ -87,7 +87,7 @@ export const getAdminSalesReport = (params?: { startDate?: string; endDate?: str
   return service.get('/admin/report', { params })
 }
 
-// 管理员退款审核列表（Mock 扩展，正式后端未实现）
+// 管理员退款审核列表
 export const getAdminRefunds = (params: { page?: number; size?: number; status?: number }) => {
   return service.get<any, { code: number; message: string; data: PageResult<RefundItem>; timestamp: number }>(
     '/admin/refunds',
@@ -95,17 +95,17 @@ export const getAdminRefunds = (params: { page?: number; size?: number; status?:
   )
 }
 
-// 管理员修改商品（Mock 扩展，正式后端未实现）
+// 管理员修改商品
 export const updateAdminProduct = (id: number, data: import('@/types/product').ProductFormData) => {
   return service.put(`/admin/products/${id}`, data)
 }
 
-// 管理员商品上下架（Mock 扩展，正式后端未实现）
+// 管理员商品上下架
 export const setAdminProductStatus = (id: number, status: number) => {
   return service.put(`/admin/products/${id}/status`, { status })
 }
 
-// 管理员删除商品（Mock 扩展，正式后端未实现）
+// 管理员删除商品
 export const deleteAdminProduct = (id: number) => {
   return service.delete(`/admin/products/${id}`)
 }

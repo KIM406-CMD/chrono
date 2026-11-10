@@ -269,7 +269,7 @@ const loadProducts = async () => {
     return
   }
 
-  // 有关键词时走后端搜索接口；失败（如后端未实现）则回退本地过滤
+  // 有关键词时走后端搜索接口；接口异常时回退本地过滤
   const q = keyword.value.trim()
   if (q) {
     loading.value = true
@@ -331,7 +331,7 @@ const handleClearHistory = async () => {
     try {
       await clearSearchHistory()
     } catch {
-      // 后端未实现时仅清理本地
+      // 接口异常时仅清理本地
     }
   }
   historyKeywords.value = []

@@ -1496,7 +1496,7 @@ POST /api/upload/image
 **Swagger Group**: Instant Messaging  
 **Permission**: Login required
 
-> Implementation status: `ChatController` is not implemented yet; during development Mock provides the HTTP endpoints, and the chat entry is enabled by default (`CHAT_ENABLED = true`).
+> Note: This module is implemented. Conversation participants are the buyer user ID (`userId`) and the merchant user ID (`merchantId`), with one conversation per user-merchant pair (unique index prevents duplicates). Fetching history marks messages from the peer as read and clears the current user's unread count; every endpoint verifies that the current user belongs to the conversation.
 
 ### 14.1 Conversation List
 
@@ -1584,7 +1584,7 @@ GET /api/chat/unread-count
 
 ---
 
-### 14.6 Send Message (Mock Extension)
+### 14.6 Send Message (dev:mock only)
 
 > The backend sends messages through WebSocket (see section 17). The chat page connects directly to WebSocket in `npm run dev` and production; the HTTP endpoint is used only in `npm run dev:mock` demo mode.
 
@@ -2036,13 +2036,13 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | File Upload | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | Instant Messaging | `/api/chat` | ❌ | ✅ | ✅ | — |
 | Product Search | `/api/search` | ✅ | ✅ | ✅ | ✅ |
-| Flash-sale Coupons | `/api/seckill` | ✅ View | ✅ Claim/My Coupons/Calculate | — | ✅ Create/Edit/Delete |
+| Flash-sale Coupons | `/api/seckill` | ✅ View | ✅ Claim/My Coupons/Calculate | ✅ Create/Edit/Delete | ✅ Create/Edit/Delete |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
 
 > ✅ = accessible, ❌ = inaccessible, ← = same as left
 
 ---
 
-> **Document update date**: 2026-11-09
+> **Document update date**: 2026-11-10
 >
-> **Corresponding version**: v0.2.0-dev (Unreleased)
+> **Corresponding version**: v0.3.0-dev (Unreleased)

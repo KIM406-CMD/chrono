@@ -60,10 +60,10 @@
 | **UI 组件库** | Element Plus | Vue 3 官方推荐 |
 | **状态管理** | Pinia | Vue 3 官方推荐 |
 | **构建工具** | Vite | 开发热更新 + Rollup 打包 |
-| **认证鉴权** | JWT + Redis + Spring AOP | RBAC 权限控制 |
+| **认证鉴权** | JWT + Redis | 拦截器认证 + Service 层角色/数据归属校验 |
 | **即时通讯** | WebSocket (JSR 356) | 用户与商家实时聊天 |
 | **接口文档** | springdoc-openapi + knife4j-ui | 自动生成 API 文档 |
-| **对象存储** | 阿里云 OSS + Thumbnailator | 图片上传，800px 压缩 |
+| **图片存储** | 本地目录 / 阿里云 OSS + Thumbnailator | 开发默认本地，支持 OSS，800px 压缩 |
 | **容器化** | Docker + Docker Compose | 中间件一键编排 |
 | **部署** | Nginx | 前后端分离 + 反向代理 |
 
@@ -260,7 +260,7 @@ npm run build
 
 - 密码 BCrypt 加密存储
 - JWT + Redis 双校验认证（支持主动踢人）
-- Spring AOP + `@RequireRole` RBAC 权限控制
+- Service 层角色与数据归属校验（管理员角色、商家资质、商品/订单/退款归属）
 - 下单防重 Token（Redis 原子 DEL）
 - 库存扣减乐观锁（`WHERE stock >= ?`）
 - 支付幂等（基于 `order_id` 去重）

@@ -28,7 +28,7 @@ export const confirmQRCodePayment = (orderId: number) => {
   return service.post('/payment/confirm-qrcode', { orderId })
 }
 
-// 我的支付记录（Mock 扩展，正式后端未实现）
+// 我的支付记录
 export const getPaymentRecords = (params: { page?: number; size?: number }) => {
   return service.get<any, { code: number; message: string; data: PageResult<PaymentRecord>; timestamp: number }>(
     '/payment/records',

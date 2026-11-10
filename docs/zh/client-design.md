@@ -562,7 +562,7 @@ ws://localhost:8080/chat/{userId}
 
 ## 八、商品搜索（后端接口）
 
-> **实现状态**：搜索页已按本节接口接入（后端内部使用 Elasticsearch，前端不直连 ES），封装见 `api/search.ts`。后端接口未实现时自动降级为 `/api/product/list` 本地过滤，保证游客可用。
+> **实现状态**：搜索页已按本节接口接入（后端内部使用 Elasticsearch，前端不直连 ES），封装见 `api/search.ts`。接口异常时自动降级为 `/api/product/list` 本地过滤，保证游客可用。
 
 ### 8.1 接口清单
 
@@ -894,7 +894,7 @@ server {
 
 ## 十五、前端增强能力（当前实现）
 
-以下能力均可在 `npm run dev:mock` 下独立验证，不依赖尚未实现的后端接口。
+以下能力均已接入正式后端；`npm run dev:mock` 仍可在不启动后端时独立演示。
 
 ### 15.1 商家多规格 SKU
 
@@ -918,7 +918,7 @@ server {
 ### 15.4 搜索筛选与三级分类
 
 - 搜索结果页新增级联分类、品牌、价格区间筛选，支持重置与分类路径展示。
-- 当前后端搜索接口未实现，筛选基于 `/api/product/list` 已加载商品在前端完成。
+- 搜索与筛选优先调用 `/api/search`（Elasticsearch）；接口异常时降级为 `/api/product/list` 已加载商品的前端过滤。
 - 顶部导航与首页分类侧边栏支持 hover 浮层，可直接选择二级/三级分类。
 - 对应文件：`src/views/product/SearchResultView.vue`、`src/components/category/CategoryFlyout.vue`。
 

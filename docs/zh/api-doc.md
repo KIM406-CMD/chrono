@@ -1585,7 +1585,7 @@ GET /api/chat/unread-count
 
 ---
 
-### 14.6 发送消息（Mock 扩展）
+### 14.6 发送消息（仅 dev:mock）
 
 > 正式后端通过 WebSocket 发送消息（见第 17 节）。前端聊天页在 `npm run dev` / 生产环境直接连接 WebSocket 实时收发；仅 `npm run dev:mock` 演示模式使用本 HTTP 接口。
 
@@ -2043,13 +2043,13 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 文件上传 | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | 即时通讯 | `/api/chat` | ❌ | ✅ | ✅ | — |
 | 商品搜索 | `/api/search` | ✅ 检索/建议/热搜 | ✅ + 搜索历史/清空 | ✅ | ✅ |
-| 秒杀券 | `/api/seckill` | ✅ 查看 | ✅ 抢领/我的券/计算 | — | ✅ 创建/编辑/删除 |
+| 秒杀券 | `/api/seckill` | ✅ 查看 | ✅ 抢领/我的券/计算 | ✅ 创建/编辑/删除 | ✅ 创建/编辑/删除 |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
 
 > ✅ = 可访问，❌ = 不可访问，← = 同左
 
 ---
 
-> **文档更新日期**：2026-11-09
+> **文档更新日期**：2026-11-10
 >
-> **对应版本**：v0.2.0-dev（Unreleased）
+> **对应版本**：v0.3.0-dev（Unreleased）

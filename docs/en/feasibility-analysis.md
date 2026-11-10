@@ -39,7 +39,7 @@ This document conducts a comprehensive analysis from four dimensions: **technica
 | Instant Messaging | WebSocket (backend @OnOpen / frontend native API) | ★★☆☆☆ Unfamiliar | ⚠️ Medium |
 | Containerization | Docker + Docker Compose | ★★☆☆☆ Unfamiliar | ⚠️ Medium |
 | Deployment | Nginx | ★★★☆☆ Moderate | Low |
-| Authentication & Authorization | JWT + Redis + Spring AOP RBAC | ★★★☆☆ Moderate | Medium |
+| Authentication & Authorization | JWT + Redis + service-layer RBAC | ★★★☆☆ Moderate | Medium |
 
 ### 2.2 Key Technical Risk Analysis
 

@@ -60,10 +60,10 @@ Chrono BBS is a B2B2C multi-merchant online supermarket platform. Guests can bro
 | **UI library** | Element Plus | Recommended for Vue 3 |
 | **State management** | Pinia | Recommended for Vue 3 |
 | **Build tool** | Vite | HMR in development + Rollup production build |
-| **Authentication** | JWT + Redis + Spring AOP | RBAC authorization |
+| **Authentication** | JWT + Redis | Interceptor authentication + service-layer role/ownership checks |
 | **Real-time messaging** | WebSocket (JSR 356) | User–merchant chat |
 | **API documentation** | springdoc-openapi + knife4j-ui | Auto-generated API docs |
-| **Object storage** | Aliyun OSS + Thumbnailator | Image upload with 800px compression |
+| **Image storage** | Local directory / Aliyun OSS + Thumbnailator | Local by default, OSS optional, 800px compression |
 | **Containerization** | Docker + Docker Compose | One-command middleware setup |
 | **Deployment** | Nginx | Frontend/backend separation + reverse proxy |
 
@@ -264,7 +264,7 @@ Place `deploy/nginx.conf` in the Nginx configuration directory and reload Nginx.
 
 - Passwords stored with BCrypt hashing
 - JWT + Redis dual validation (supports forced logout)
-- Spring AOP + `@RequireRole` RBAC authorization
+- Service-layer role and ownership checks (admin role, merchant approval, product/order/refund ownership)
 - Anti-duplicate order token (Redis atomic DEL)
 - Optimistic locking for stock deduction (`WHERE stock >= ?`)
 - Idempotent payment (deduplicated by `order_id`)

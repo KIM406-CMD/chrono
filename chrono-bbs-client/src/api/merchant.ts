@@ -27,7 +27,7 @@ export const updateMerchantInfo = (data: { shopName?: string; contactPhone?: str
   return service.put('/merchant/info', data)
 }
 
-// 商家退款审核列表（Mock 扩展，正式后端未实现）
+// 商家退款审核列表
 export const getMerchantRefunds = (params: { page?: number; size?: number; status?: number }) => {
   return service.get<any, { code: number; message: string; data: PageResult<RefundItem>; timestamp: number }>(
     '/merchant/refunds',

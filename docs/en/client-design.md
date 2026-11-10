@@ -893,7 +893,7 @@ server {
 
 ## 15. Frontend Enhancements (Current Implementation)
 
-All items below can be verified independently with `npm run dev:mock`, without the backend APIs that are not implemented yet.
+All items below are connected to the real backend; `npm run dev:mock` can still demo them without starting the backend.
 
 ### 15.1 Multi-SKU Management for Merchants
 
@@ -917,7 +917,7 @@ All items below can be verified independently with `npm run dev:mock`, without t
 ### 15.4 Search Filters and Three-level Categories
 
 - Search results support cascading category, brand and price-range filters, with reset and category path display.
-- The backend search API is not implemented yet, so filtering is performed locally over products loaded from `/api/product/list`.
+- Search and filtering call `/api/search` (Elasticsearch) first; when the API is unavailable, they fall back to local filtering over products loaded from `/api/product/list`.
 - The top navigation and home sidebar show hover flyouts for selecting level-2/level-3 categories.
 - Files: `src/views/product/SearchResultView.vue`, `src/components/category/CategoryFlyout.vue`.
 
@@ -935,7 +935,7 @@ All items below can be verified independently with `npm run dev:mock`, without t
 - `npm run dev` uses the real backend; `npm run dev:mock` uses the `mock/` directory. They are independent.
 - Mock product create/edit persists multiple SKUs and recalculates min/max prices; the admin report fields match `AdminReportVO`.
 
-> Note: admin product enable/disable and delete are still backed by Mock extension APIs; other listed capabilities are available against the real backend.
+> Note: all listed capabilities are available against the real backend; `npm run dev:mock` mirrors them with Mock data.
 
 
 ### 15.8 Chat Integration

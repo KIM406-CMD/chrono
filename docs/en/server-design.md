@@ -16,10 +16,10 @@
 | Cache | Redis | Jedis / Lettuce |
 | Search engine | Elasticsearch | |
 | Authentication | JWT + Redis dual validation | |
-| Authorization | Spring AOP + RBAC annotations | |
+| Authorization | Service-layer role/ownership checks | |
 | Parameter validation | Spring Validation + custom annotations | |
 | API documentation | Knife4j (OpenAPI 3.0) | 4.5.0 |
-| Object storage | Alibaba Cloud OSS | |
+| Image storage | Local directory / Alibaba Cloud OSS | |
 | Utility library | Lombok | |
 | Logging | Logback + AOP operation log | |
 | Scheduled tasks | Spring @Scheduled | |
@@ -231,40 +231,29 @@ Subsequent requests → Interceptor extracts Header Authorization → Parse JWT 
 - **Redis**: Stores the token version number and supports active kick-out (delete the corresponding Redis key to invalidate immediately).
 - **Logout**: Delete the token from Redis.
 
-### 5.2 RBAC Permission Control (Spring AOP)
+### 5.2 RBAC Permission Control (Service-Layer Checks)
+
+The current implementation does not use AOP annotations. It uses a two-stage approach: interceptor authentication plus service-layer authorization.
+
+1. `JwtInterceptor` validates the JWT and its Redis session, then writes `userId / username / role` into `UserContext`;
+2. Every public service method checks the role and data ownership before business logic and throws `BusinessException` on violation.
+
+Typical checks:
 
 ```java
-// Custom annotation
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface RequireRole {
-    String[] value();  // e.g., {"admin"} or {"admin", "merchant"}
-}
-```
-
-```java
-// AOP aspect
-@Aspect
-@Component
-public class RoleAspect {
-    @Around("@annotation(requireRole)")
-    public Object checkRole(ProceedingJoinPoint pjp, RequireRole requireRole) {
-        // Get the current user role from JWT → check whether it is in the allowed list → if not → throw BusinessException
+// Admin role check (AdminServiceImpl)
+private void requireAdmin() {
+    if (!UserRoleEnum.ADMIN.getCode().equals(UserContext.getRole())) {
+        throw new BusinessException(AdminErrorCode.NOT_ADMIN);
     }
 }
+
+// Merchant approval and product ownership (ProductServiceImpl)
+Merchant merchant = requireApprovedMerchant(userId);
+requireOwnership(productId, merchant.getId());
 ```
 
-Controller usage example:
-
-```java
-@RequireRole("admin")
-@GetMapping("/admin/users")
-public Result<?> listUsers() { ... }
-
-@RequireRole({"admin", "merchant"})
-@PutMapping("/product/{id}")
-public Result<?> updateProduct() { ... }
-```
+Other examples: merchants can only ship orders whose items all belong to them (`MerchantServiceImpl.ship`), refund review verifies merchant approval and product ownership (`RefundServiceImpl.requireReviewPermission`), and users can only operate on their own addresses, orders and refunds. Controllers only bind parameters and return `Result<T>`.
 
 ### 5.3 Captcha
 
@@ -422,7 +411,7 @@ Product unlisted/deleted → Service layer finishes MySQL processing → asynchr
 
 ---
 
-## 10. File Upload (Alibaba Cloud OSS)
+## 10. File Upload (Local Directory / Alibaba Cloud OSS)
 
 ### 10.1 Upload Flow
 
@@ -430,8 +419,8 @@ Product unlisted/deleted → Service layer finishes MySQL processing → asynchr
 Frontend selects an image → calls POST /api/upload/image
              → backend validation (format: jpg/png/webp, size: ≤2MB)
              → compression (proportionally scaled to 800px wide)
-             → upload to OSS (directory: product/date/uuid.jpg)
-             → return OSS URL → frontend stores it in the form
+             → write to local uploads/ or upload to OSS based on upload.mode (directory: product/date/uuid.jpg)
+             → return access URL (local /uploads/... or OSS URL) → frontend stores it in the form
 ```
 
 ### 10.2 Validation Rules
@@ -446,6 +435,8 @@ Frontend selects an image → calls POST /api/upload/image
 ---
 
 ## 11. Scheduled Tasks
+
+> Implementation status: only `refreshSeckillStatus` (`SeckillStatusScheduler`, every 30 seconds) is implemented; the remaining tasks below are planned.
 
 | Task | Execution Frequency | Description |
 |------|------|------|
@@ -760,8 +751,8 @@ graph TB
         D3[("Elasticsearch")]
     end
 
-    subgraph "External Services"
-        E1["Alibaba Cloud OSS"]
+    subgraph "Storage"
+        E1["Local uploads/ or Alibaba Cloud OSS"]
     end
 
     A1 & A2 & A3 --> B1 & B2 & B3 & B4

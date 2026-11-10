@@ -17,10 +17,10 @@
 | 缓存 | Redis | Jedis / Lettuce |
 | 搜索引擎 | Elasticsearch | |
 | 认证 | JWT + Redis 双校验 | |
-| 鉴权 | Spring AOP + RBAC 注解 | |
+| 鉴权 | Service 层角色/数据归属校验 | |
 | 参数校验 | Spring Validation + 自定义注解 | |
 | 接口文档 | Knife4j (OpenAPI 3.0) | 4.5.0 |
-| 对象存储 | 阿里云 OSS | |
+| 图片存储 | 本地目录 / 阿里云 OSS | |
 | 工具库 | Lombok | |
 | 日志 | Logback + AOP 操作日志 | |
 | 定时任务 | Spring @Scheduled | |
@@ -232,40 +232,29 @@ public class GlobalExceptionHandler {
 - **Redis**：存 Token 版本号，支持主动踢人（删除 Redis 对应 Key 即可立即失效）
 - **登出**：删除 Redis 中 Token
 
-### 5.2 RBAC 权限控制（Spring AOP）
+### 5.2 RBAC 权限控制（Service 层校验）
+
+当前实现未使用 AOP 注解，而是采用“拦截器认证 + Service 层鉴权”两段式：
+
+1. `JwtInterceptor` 校验 JWT 与 Redis 中的登录态，将 `userId / username / role` 写入 `UserContext`；
+2. 各 Service 的 public 方法在执行业务前校验角色与数据归属，越权时抛出 `BusinessException`。
+
+典型校验方法：
 
 ```java
-// 自定义注解
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface RequireRole {
-    String[] value();  // 如 {"admin"} 或 {"admin", "merchant"}
-}
-```
-
-```java
-// AOP 切面
-@Aspect
-@Component
-public class RoleAspect {
-    @Around("@annotation(requireRole)")
-    public Object checkRole(ProceedingJoinPoint pjp, RequireRole requireRole) {
-        // 从 JWT 中获取当前用户角色 → 判断是否在允许列表中 → 否 → 抛 BusinessException
+// 管理员角色校验（AdminServiceImpl）
+private void requireAdmin() {
+    if (!UserRoleEnum.ADMIN.getCode().equals(UserContext.getRole())) {
+        throw new BusinessException(AdminErrorCode.NOT_ADMIN);
     }
 }
+
+// 商家资质与商品归属校验（ProductServiceImpl）
+Merchant merchant = requireApprovedMerchant(userId);
+requireOwnership(productId, merchant.getId());
 ```
 
-Controller 使用示例：
-
-```java
-@RequireRole("admin")
-@GetMapping("/admin/users")
-public Result<?> listUsers() { ... }
-
-@RequireRole({"admin", "merchant"})
-@PutMapping("/product/{id}")
-public Result<?> updateProduct() { ... }
-```
+同类校验还包括：商家发货前校验订单商品全部归属自己（`MerchantServiceImpl.ship`）、退款审核前校验商家资质与商品归属（`RefundServiceImpl.requireReviewPermission`）、用户只能操作本人地址/订单/退款等。Controller 仅负责参数绑定与返回 `Result<T>`。
 
 ### 5.3 验证码
 
@@ -426,7 +415,7 @@ public class OrderServiceImpl implements OrderService {
 
 ---
 
-## 十、文件上传（阿里云 OSS）
+## 十、文件上传（本地目录 / 阿里云 OSS）
 
 ### 10.1 上传流程
 
@@ -434,8 +423,8 @@ public class OrderServiceImpl implements OrderService {
 前端选择图片 → 调用 POST /api/upload/image
              → 后端校验（格式：jpg/png/webp，大小：≤2MB）
              → 压缩（按比例缩放到 800px 宽）
-             → 上传到 OSS（目录：product/日期/uuid.jpg）
-             → 返回 OSS URL → 前端存储到表单
+             → 按 upload.mode 写入本地 uploads/ 或上传到 OSS（目录：product/日期/uuid.jpg）
+             → 返回访问 URL（本地 /uploads/... 或 OSS URL）→ 前端存储到表单
 ```
 
 ### 10.2 校验规则
@@ -450,6 +439,8 @@ public class OrderServiceImpl implements OrderService {
 ---
 
 ## 十一、定时任务
+
+> 实现状态：当前仅实现 `refreshSeckillStatus`（`SeckillStatusScheduler`，每 30 秒刷新秒杀券状态并过期用户券）；下表其余任务为后续规划。
 
 | 任务 | 执行频率 | 说明 |
 |------|------|------|
@@ -764,8 +755,8 @@ graph TB
         D3[("Elasticsearch")]
     end
 
-    subgraph "外部服务"
-        E1["阿里云 OSS"]
+    subgraph "存储"
+        E1["本地 uploads/ 或阿里云 OSS"]
     end
 
     A1 & A2 & A3 --> B1 & B2 & B3 & B4

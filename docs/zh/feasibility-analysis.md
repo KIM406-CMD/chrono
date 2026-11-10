@@ -40,7 +40,7 @@
 | 即时通讯 | WebSocket（后端 @OnOpen / 前端原生 API） | ★★☆☆☆ 不熟悉 | ⚠️ 中 |
 | 容器化 | Docker + Docker Compose | ★★☆☆☆ 不熟悉 | ⚠️ 中 |
 | 部署 | Nginx | ★★★☆☆ 一般 | 低 |
-| 认证鉴权 | JWT + Redis + Spring AOP RBAC | ★★★☆☆ 一般 | 中 |
+| 认证鉴权 | JWT + Redis + Service 层 RBAC | ★★★☆☆ 一般 | 中 |
 
 ### 2.2 关键技术风险分析
 
