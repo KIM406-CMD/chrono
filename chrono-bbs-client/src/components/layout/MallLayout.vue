@@ -581,4 +581,67 @@ const handleUserCommand = (command: string) => {
   padding-top: 20px;
   border-top: 1px solid #444;
 }
+
+/* 响应式：窄屏下搜索框换行、导航与页脚压缩 */
+@media (max-width: 900px) {
+  .header-inner {
+    gap: 12px;
+    padding: 0 12px;
+  }
+
+  .logo-text {
+    display: none;
+  }
+
+  .search-input {
+    max-width: none;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-inner {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px 12px;
+  }
+
+  .logo {
+    order: 1;
+  }
+
+  .header-actions {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .search-input {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .category-inner,
+  .footer-inner {
+    padding: 0 12px;
+  }
+
+  .footer-columns {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-btn {
+    padding: 8px 6px;
+    font-size: 13px;
+  }
+
+  .footer-columns {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
