@@ -152,15 +152,12 @@ The script starts middleware, backend, and frontend in order:
 > To serve the frontend from the Docker Nginx container instead of Vite, run `script\start-all.bat --docker-frontend --skip-build` (Bash: `./script/start-all.sh --docker-frontend --skip-build`); the frontend is then available at <http://localhost:3000>.
 > On Windows, the backend and frontend each open in a new console window; close the window to stop the service.
 > On Bash, the backend runs in the background with logs in `logs/backend.log`; `Ctrl+C` stops both backend and frontend.
-> For more options (`--skip-build`, `--install`, `--volumes`), see [script/README.md](script/README.md).
+> For more options (`--skip-build`, `--volumes`), see [script/README.md](script/README.md).
 
-### 2. Step-by-step startup (optional)
+### 2. Stop middleware
 
-| Step | Windows | Bash |
-|------|---------|------|
-| Start middleware | `script\start-middleware.bat` | `./script/start-middleware.sh` |
-| Start backend | `script\start-backend.bat` | `./script/start-backend.sh` |
-| Start frontend | `script\start-frontend.bat` | `./script/start-frontend.sh` |
+| Operation | Windows | Bash |
+|-----------|---------|------|
 | Stop middleware | `script\stop-middleware.bat` | `./script/stop-middleware.sh` |
 
 > Docker middleware is used by default (MySQL exposed on host port `3307`); add `--local` to use locally running MySQL / Redis / Elasticsearch (MySQL uses `3306` from `application-dev.yml`).
