@@ -97,6 +97,11 @@ chrono-bbs/
 ├── docker/                           # 🐳 Docker orchestration
 │   └── docker-compose.yml            # MySQL + Redis + ES
 │
+├── script/                           # 🚀 Startup scripts
+│   ├── first-start.bat / .sh         # First run: check/install tools, then start
+│   ├── start-all.bat / .sh           # Daily run: middleware + backend + frontend
+│   └── stop-middleware.bat / .sh     # Stop middleware
+│
 ├── initial/                          # 🗄 Database initialization scripts
 │   ├── schema.sql                    # DDL (latest schema)
 │   ├── data.sql                      # Seed data
@@ -127,7 +132,38 @@ chrono-bbs/
 | Maven | 3.8+ |
 | Docker Desktop | Latest (Docker mode only) |
 
-### 1. One-command startup (recommended)
+### 1. First-time startup (fresh machine)
+
+Use the first-start script when no tooling is configured yet. It checks JDK 21+, Maven 3.8+, Node.js 18+ and Docker, installs missing tools with the system package manager after confirmation, then starts all services.
+
+Windows (cmd / PowerShell):
+
+```bat
+script\first-start.bat          :: check/install tools, then start Docker middleware + backend + frontend
+script\first-start.bat --check  :: check only, do not install or start
+```
+
+Bash / Git Bash / macOS / Linux:
+
+```bash
+./script/first-start.sh         # check/install tools, then start
+./script/first-start.sh --check # check only
+```
+
+| OS | Package manager | Automatically installed |
+|----|-----------------|-------------------------|
+| Windows | winget | Temurin JDK 21, Maven, Node.js LTS, Docker Desktop |
+| macOS | Homebrew | `temurin@21`, `maven`, `node`, Docker Desktop |
+| Debian / Ubuntu | apt | OpenJDK 21, Maven, NodeSource 20.x, Docker + Compose v2 |
+| Fedora / RHEL | dnf | OpenJDK 21, Maven, Node.js, Docker + Compose |
+| Arch / Manjaro | pacman | OpenJDK 21, Maven, Node.js, Docker + Compose |
+
+> Add `--yes` to skip per-tool confirmation; `--local` means local MySQL / Redis / Elasticsearch are already running, so Docker is not checked.
+> Docker Desktop on Windows requires WSL2; if missing, the script prints the administrator command `wsl --install` and asks you to reboot.
+> Reopen the terminal if a newly installed command is not found; on Linux, log out and back in after joining the `docker` group.
+> See [script/README.md](script/README.md) for details and troubleshooting.
+
+### 2. Daily startup (environment ready)
 
 Windows (cmd / PowerShell):
 
@@ -157,7 +193,7 @@ The script starts middleware, backend, and frontend in order:
 > For more options (`--skip-build`, `--volumes`), see [script/README.md](script/README.md).
 > **In Docker mode MySQL listens on host port 3307.** If you start the backend directly from an IDE, set `SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/chrono_bbs_dev?...` explicitly or use `--local`; otherwise the backend connects to local port 3306 and its account/product/coupon data diverges from the Docker database (e.g. a claimed coupon does not appear under "My Coupons").
 
-### 2. Stop middleware
+### 3. Stop middleware
 
 | Operation | Windows | Bash |
 |-----------|---------|------|
@@ -165,7 +201,7 @@ The script starts middleware, backend, and frontend in order:
 
 > Docker middleware is used by default (MySQL exposed on host port `3307`); add `--local` to use locally running MySQL / Redis / Elasticsearch (MySQL uses `3306` from `application-dev.yml`).
 
-### 3. Deploy the frontend with Docker (optional)
+### 4. Deploy the frontend with Docker (optional)
 
 A multi-stage frontend image (Node build + Nginx hosting) is provided; the backend still runs on host port `8080`:
 
@@ -181,7 +217,7 @@ docker compose --profile frontend up -d --build nginx
 > Host port `3000` is used by default; override with `FRONTEND_PORT=3001`. Stop any local Nginx using 3000 first.
 > The container reaches the backend through `host.docker.internal:8080`; if the backend is added to Compose, update the address in `deploy/nginx.docker.conf` to the service name.
 
-### 4. Initialize a local database (optional)
+### 5. Initialize a local database (optional)
 
 When using `--local` for the first time, initialize the database:
 
@@ -197,7 +233,7 @@ The scripts are in `initial/` and create the `chrono_bbs_dev` database. The defa
 > In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql → rename-products.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
 > In development, images are written to the backend's local `uploads/` directory (`upload.mode=local`) and no OSS configuration is required. To use object storage, copy `script/.env.example` to `.env`, fill in the keys and set `UPLOAD_MODE=oss`.
 
-### 5. Default test account
+### 6. Default test account
 
 | Role | Username | Password | Notes |
 |------|----------|----------|-------|
@@ -208,7 +244,7 @@ The scripts are in `initial/` and create the `chrono_bbs_dev` database. The defa
 
 > Demo accounts are created by `initial/demo-data.sql`; regular users can also register through the frontend.
 
-### 6. Production deployment (Nginx)
+### 7. Production deployment (Nginx)
 
 ```bash
 cd chrono-bbs-client

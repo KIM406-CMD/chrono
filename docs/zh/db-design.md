@@ -116,7 +116,7 @@
 | status | TINYINT | 0-禁用, 1-启用 |
 | created_at | DATETIME | 创建时间 |
 
-> **说明**：商品发布时商家选择规格模板及对应值，组合生成 SKU。Redis 中可缓存热门商品 SKU 的库存，下单时先扣 Redis 库存，异步同步 MySQL。
+> **说明**：商品发布时商家选择规格模板及对应值，组合生成 SKU。当前库存直接存于 MySQL，下单时通过 `UPDATE ... SET stock = stock - ? WHERE stock >= ?` 原子扣减；Redis 仅用于秒杀券库存等场景，普通商品库存未接入 Redis 缓存。
 
 ---
 
@@ -245,11 +245,11 @@
 | images | VARCHAR(2000) | 评论图片 URL 数组（JSON，最多 4 张） |
 | star | TINYINT | 星级评分（1-5），仅一级评论有值，回复为 NULL |
 | is_append | TINYINT | 0-首次评价, 1-追评 |
-| status | TINYINT | 0-正常, 1-已删除（管理员/商家删除） |
+| status | TINYINT | 0-正常, 1-已删除（预留） |
 | created_at | DATETIME | 评论时间 |
 
 > **整体设计思路**：
-> - 当前仅已收货订单的用户可发表一级评论；商家可回复自己商品的评论。
+> - 当前仅已完成(4)订单的用户可发表一级评论；商家可回复自己商品的评论。
 > - 用户确认收货后弹出星级评分窗口，提交后生成 `star + is_append=0` 的评论；之后用户可再次评论同一商品，此时 `is_append=1`，实现追评。
 > - 当前实现为“一级评论 + 追评 + 商家回复”两层结构（通过 `parent_id` 关联一级评论），不做无限级嵌套。
 > - `status` 为逻辑删除预留字段（0-正常，1-已删除）；当前尚未提供评论删除接口。
@@ -278,7 +278,7 @@
 |------|------|------|
 | id | BIGINT PK | 主键 |
 | user_id | BIGINT | 普通用户 ID，关联 user 表 |
-| merchant_id | BIGINT | 关联 merchant 表主键（merchant.id），非 user_id |
+| merchant_id | BIGINT | 商家用户 ID（`merchant.user_id`），非 merchant 表主键；会话双方均为 user 表用户 |
 | product_id | BIGINT | 关联的商品 ID（可选，标记从哪个商品发起的对话） |
 | last_message | VARCHAR(500) | 最后一条消息摘要 |
 | last_message_time | DATETIME | 最后一条消息时间 |
@@ -302,7 +302,7 @@
 | is_read | TINYINT | 0-未读, 1-已读 |
 | created_at | DATETIME | 发送时间 |
 
-> **说明**：离线消息：发送方发送时写入数据库，接收方上线后从数据库拉取未读消息并通过 WebSocket 推送。定时任务每天凌晨清理 `created_at < 30天前` 的消息。
+> **说明**：离线消息：发送方发送时写入数据库，接收方上线后从数据库拉取未读消息并通过 WebSocket 推送。按 30 天清理历史消息属于规划任务，当前版本尚未实现。
 
 ---
 
@@ -363,7 +363,7 @@
 | cost_time | BIGINT | 耗时（ms） |
 | created_at | DATETIME | 操作时间 |
 
-> 通过 AOP 切面自动记录，Service 层方法添加 `@OperationLog` 注解即可触发。
+> 该表为后续审计功能预留：设计上通过 AOP 切面自动记录，Service 层方法添加 `@OperationLog` 注解即可触发；当前版本尚未实现切面与写入逻辑。
 
 ### operation_log 索引
 

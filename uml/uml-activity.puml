@@ -33,10 +33,9 @@ if (库存充足?) then (是)
     :收到商品;
     :手动点击确认收货;
     |系统|
-    :status = 已收货;
+    :status = 已完成;
 
     if (用户满意?) then (是)
-      :status = 已完成;
       |用户|
       :评价留言(可选);
       stop
@@ -44,18 +43,16 @@ if (库存充足?) then (是)
       |用户|
       :提交退款/退货申请;
       |系统|
-      :status = 退款/退货申请;
+      :status = 退款中;
       |商家/管理员|
       :审核申请;
       if (审核通过?) then (是)
         |系统|
-        :status = 审核中;
         :执行退款/退货;
-        :status = 退款/退货通过;
-        :恢复库存;
+        :status = 已退款;
         stop
       else (拒绝)
-        :status = 已拒绝;
+        :status = 恢复为已完成(4);
         stop
       endif
     endif
@@ -74,7 +71,7 @@ endif
 if (支付前取消?) then (是)
   :status = 已取消;
   |系统|
-  :恢复 Redis 库存;
+  :回补 SKU 库存(MySQL);
   stop
 endif
 
@@ -108,9 +105,8 @@ if (材料合规?) then (是)
   :merchant.status = 已通过;
   :user.role = 商家;
   :允许上架商品;
-  :系统通知商家;
   |商家|
-  :收到审核通过通知;
+  :查询商家资料看到 status = 已通过;
   :登录商家后台;
   :管理商品/查看销售;
   stop
@@ -121,9 +117,8 @@ else (材料不合规)
   |系统|
   :merchant.status = 已拒绝;
   :user.role = 普通用户;
-  :系统通知商家;
   |商家|
-  :收到拒绝通知(含原因);
+  :查询商家资料看到 status = 已拒绝及原因;
   :修改材料重新提交;
   detach
 endif
@@ -137,7 +132,7 @@ title 退款/退货状态流转活动图
 
 |用户|
 start
-:订单状态为 已发货/已收货;
+:订单状态为 已支付/已发货/已完成;
 :进入订单详情;
 :选择要退款的 order_item;
 :填写退款原因/类型;
@@ -153,30 +148,33 @@ start
 
 if (申请类型?) then (退款)
   if (审核通过?) then (是)
-    :status = 审核中;
     :执行退款;
-    :status = 已通过;
-    :恢复 order_item 对应 SKU 库存;
+    :status = 已通过(1);
+    :订单标记为已退款;
     stop
   else (否)
-    :status = 已拒绝;
+    :status = 已拒绝(2);
     :填写拒绝原因;
+    :订单恢复为已完成(4);
     stop
   endif
 else (退货)
   if (审核通过?) then (是)
-    :status = 审核中;
+    :status = 待寄回(3);
     |用户|
-    :寄回商品;
-    |商家|
-    :收到退货 → 确认;
+    :填写快递公司/物流单号;
     |系统|
-    :status = 已通过;
-    :恢复库存;
+    :status = 待商家收货(4);
+    |商家|
+    :确认收到退货;
+    |系统|
+    :status = 退货完成(5);
+    :订单标记为已退款;
     stop
   else (否)
-    :status = 已拒绝;
+    :status = 已拒绝(2);
     :填写拒绝原因;
+    :订单恢复为已完成(4);
     stop
   endif
 endif

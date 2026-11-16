@@ -40,14 +40,14 @@ import java.util.stream.Collectors;
  * 再批量查询其子评论并按父评论分组，避免 N+1 查询；
  * 所有写操作使用 {@code @Transactional} 保证单据与评论记录的一致性。</p>
  *
- * <p>业务约束：仅已收货订单的明细可评价，且每个明细只能评价一次；
+ * <p>业务约束：仅已完成（已收货）订单的明细可评价，且每个明细只能评价一次；
  * 追评仅限原评论者且每条一级评论仅一次；商家回复需通过资质与商品归属校验。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class CommentServiceImpl implements CommentService {
 
-    /** 订单状态：已收货/已完成，仅该状态允许评价。 */
+    /** 订单状态：已完成(4，已收货)，仅该状态允许评价。 */
     private static final int ORDER_STATUS_RECEIVED = 4;
 
     /** 评论数据访问组件。 */
@@ -86,7 +86,7 @@ public class CommentServiceImpl implements CommentService {
     /**
      * {@inheritDoc}
      *
-     * <p>依次校验订单明细属主、商品匹配、订单已收货与评价幂等，全部通过后写入评论。</p>
+     * <p>依次校验订单明细属主、商品匹配、订单已完成与评价幂等，全部通过后写入评论。</p>
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -97,7 +97,7 @@ public class CommentServiceImpl implements CommentService {
         if (!orderItem.getProductId().equals(dto.getProductId())) {
             throw new BusinessException(CommentErrorCode.PRODUCT_MISMATCH);
         }
-        // 3. 仅已收货订单可评价
+        // 3. 仅已完成订单可评价
         Order order = orderMapper.selectById(orderItem.getOrderId());
         if (order == null || order.getStatus() == null || order.getStatus() != ORDER_STATUS_RECEIVED) {
             throw new BusinessException(CommentErrorCode.ORDER_NOT_RECEIVED);

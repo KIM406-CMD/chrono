@@ -48,7 +48,9 @@ chrono-bbs-client/
 │   ├── comment.ts                   # 评论 Mock
 │   └── seckill.ts                   # 秒杀券 Mock
 ├── public/
-│   └── favicon.ico
+│   ├── favicon.svg
+│   ├── icons.svg
+│   └── img/products/                # 商品图片
 └── src/
     ├── main.ts                          # 入口文件
     ├── App.vue                          # 根组件
@@ -70,6 +72,8 @@ chrono-bbs-client/
     │   └── upload.ts                    # 上传接口
     ├── router/                          # ===== 路由层 =====
     │   └── index.ts                     # 路由配置 + 守卫 + 角色元信息
+    ├── config/                          # ===== 功能开关 =====
+    │   └── features.ts                  # CHAT_ENABLED / REFUND_AUDIT_ENABLED
     ├── stores/                          # ===== 状态管理层 =====
     │   └── user.ts                      # 用户登录态（token + userInfo）
     ├── views/                           # ===== 页面视图层 =====
@@ -86,17 +90,20 @@ chrono-bbs-client/
     │   │   ├── CheckoutView.vue         # 结算/提交订单
     │   │   ├── OrderListView.vue        # 订单列表
     │   │   ├── OrderDetailView.vue      # 订单详情
-    │   │   └── PaymentView.vue          # 支付页面
+    │   │   ├── PaymentView.vue          # 支付页面
+    │   │   └── PaymentRecordView.vue    # 支付记录
+    │   ├── refund/                      # 退款/售后
+    │   │   └── RefundListView.vue       # 我的退款/售后
     │   ├── user/                        # 用户模块
     │   │   ├── LoginView.vue            # 登录
     │   │   ├── RegisterView.vue         # 注册
     │   │   ├── ForgotPasswordView.vue   # 忘记密码
-    │   │   ├── ProfileView.vue          # 个人信息
-    │   │   ├── SettingsView.vue         # 账户设置
+    │   │   ├── SettingsView.vue         # 账户设置（/profile 重定向至此）
     │   │   └── AddressView.vue          # 收货地址管理
     │   ├── merchant/                    # 商家后台
     │   │   ├── MerchantApplyView.vue    # 入驻申请
     │   │   ├── ProductManageView.vue    # 商品管理
+    │   │   ├── CommentManageView.vue    # 评论管理
     │   │   ├── OrderManageView.vue      # 订单管理
     │   │   ├── RefundManageView.vue     # 退款/退货审核
     │   │   └── SalesStatsView.vue       # 销售统计
@@ -125,8 +132,12 @@ chrono-bbs-client/
     ├── utils/                           # ===== 工具函数 =====
     │   ├── token.ts                     # Token 存取（localStorage）
     │   ├── settings.ts                  # 用户偏好设置（localStorage）
+    │   ├── chatSocket.ts                # WebSocket 客户端（单例、自动重连）
     │   ├── luhn.ts                      # 银行卡号格式化与 Luhn/有效期/CVV 校验
-    │   └── sanitizeHtml.ts              # 商品详情富文本清洗
+    │   ├── region.ts                    # 省市区数据
+    │   ├── sanitizeHtml.ts              # 商品详情富文本清洗
+    │   ├── luhn.spec.ts                 # Luhn 单元测试
+    │   └── sanitizeHtml.spec.ts         # 富文本清洗单元测试
     ├── styles/                          # ===== 全局样式 =====
     │   ├── variables.css                # CSS 变量系统（设计 Token）
     │   └── global.css                   # 全局基础样式
@@ -248,10 +259,9 @@ chrono-bbs-client/
 ### 4.1 Axios 实例 `api/index.ts`
 
 ```typescript
-import axios from 'axios'
-import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios'
-import { getToken, removeToken } from '@/utils/token'
+import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
+import { getToken, removeToken } from '@/utils/token'
 import router from '@/router'
 
 const service: AxiosInstance = axios.create({
@@ -259,37 +269,44 @@ const service: AxiosInstance = axios.create({
   timeout: 15000,
 })
 
-// 请求拦截器
+// 请求拦截器：自动附加 Token
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getToken()
-    if (token && config.headers) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 )
 
-// 响应拦截器
+// 响应拦截器：统一处理业务码与 401
 service.interceptors.response.use(
   (response: AxiosResponse) => {
     const res = response.data
-    if (res.code !== 200) {
+    if (res.code !== undefined && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
-      // 401 未登录 → 跳转登录页
       if (res.code === 401) {
         removeToken()
         router.push('/login')
       }
-      return Promise.reject(new Error(res.message))
+      return Promise.reject(new Error(res.message || '请求失败'))
     }
     return res
   },
   (error) => {
-    ElMessage.error(error.message || '网络异常')
+    const status = error.response?.status
+    const message = error.response?.data?.message || error.message || '网络异常'
+    if (status === 401) {
+      removeToken()
+      router.push('/login')
+      ElMessage.error('登录已过期，请重新登录')
+    } else {
+      ElMessage.error(message)
+    }
     return Promise.reject(error)
-  }
+  },
 )
 
 export default service
@@ -298,27 +315,37 @@ export default service
 ### 4.2 API 模块示例 `api/cart.ts`
 
 ```typescript
-import request from './index'
-import type { CartItem } from '@/types/cart'
+import service from '@/api'
+import type { CartItem, AddCartRequest, UpdateCartRequest, SelectCartRequest } from '@/types/cart'
 
-export function getCartList(): Promise<CartItem[]> {
-  return request.get('/cart/list')
+// 获取购物车列表
+export const getCartList = () => {
+  return service.get<any, { code: number; message: string; data: CartItem[]; timestamp: number }>('/cart/list')
 }
 
-export function addToCart(skuId: number, quantity: number) {
-  return request.post('/cart/add', { skuId, quantity })
+// 加入购物车
+export const addToCart = (data: AddCartRequest) => {
+  return service.post('/cart/add', data)
 }
 
-export function updateQuantity(cartItemId: number, quantity: number) {
-  return request.put('/cart/update', { cartItemId, quantity })
+// 更新购物车数量
+export const updateCartQuantity = (data: UpdateCartRequest) => {
+  return service.put('/cart/update', data)
 }
 
-export function removeFromCart(cartItemId: number) {
-  return request.delete(`/cart/${cartItemId}`)
+// 删除购物车商品
+export const removeFromCart = (cartItemId: number) => {
+  return service.delete(`/cart/${cartItemId}`)
 }
 
-export function selectCartItems(cartItemIds: number[]) {
-  return request.put('/cart/select', { cartItemIds })
+// 选中/取消选中
+export const selectCartItems = (data: SelectCartRequest) => {
+  return service.put('/cart/select', data)
+}
+
+// 全选/取消全选
+export const selectAllCart = (selected: number) => {
+  return service.put('/cart/select-all', { selected })
 }
 ```
 
@@ -329,9 +356,8 @@ export function selectCartItems(cartItemIds: number[]) {
 ### 5.1 静态路由 + 角色元信息 `router/index.ts`
 
 ```typescript
-import { createRouter, createWebHistory } from 'vue-router'
-import type { RouteRecordRaw } from 'vue-router'
-import { getToken } from '@/utils/token'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 // 路由 meta 类型扩展
@@ -344,50 +370,51 @@ declare module 'vue-router' {
   }
 }
 
-// 公开路由（无需登录）
+// 公开路由（无需登录）：登录/注册 + 商品详情
 const publicRoutes: RouteRecordRaw[] = [
-  {
-    path: '/',
-    component: () => import('@/components/layout/MallLayout.vue'),
-    children: [
-      { path: '', name: 'Home', component: () => import('@/views/home/HomeView.vue') },
-      { path: 'product/:id', name: 'ProductDetail', component: () => import('@/views/product/ProductDetailView.vue') },
-      { path: 'search', name: 'SearchResult', component: () => import('@/views/product/SearchResultView.vue') },
-    ]
-  },
-  { path: '/login', name: 'Login', component: () => import('@/views/user/LoginView.vue') },
-  { path: '/register', name: 'Register', component: () => import('@/views/user/RegisterView.vue') },
-  { path: '/forgot-password', name: 'ForgotPassword', component: () => import('@/views/user/ForgotPasswordView.vue') },
+  { path: '/login', name: 'Login', component: () => import('@/views/user/LoginView.vue'), meta: { title: '登录' } },
+  { path: '/register', name: 'Register', component: () => import('@/views/user/RegisterView.vue'), meta: { title: '注册' } },
+  { path: '/forgot-password', name: 'ForgotPassword', component: () => import('@/views/user/ForgotPasswordView.vue'), meta: { title: '忘记密码' } },
+  { path: '/product/:id', name: 'ProductDetail', component: () => import('@/views/product/ProductDetailView.vue'), meta: { title: '商品详情' } },
 ]
 
-// 需登录路由（普通用户）
+// 商城布局路由（首页/搜索/领券等公开子路由 + 需登录子路由）
 const userRoutes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/components/layout/MallLayout.vue'),
-    meta: { roles: ['USER', 'MERCHANT', 'ADMIN'] },
+    meta: { layout: 'mall' },
     children: [
-      { path: 'cart', name: 'Cart', meta: { title: '购物车' }, component: () => import('@/views/cart/CartView.vue') },
-      { path: 'checkout', name: 'Checkout', meta: { title: '结算' }, component: () => import('@/views/order/CheckoutView.vue') },
-      { path: 'orders', name: 'OrderList', meta: { title: '我的订单' }, component: () => import('@/views/order/OrderListView.vue') },
-      { path: 'order/:id', name: 'OrderDetail', meta: { title: '订单详情' }, component: () => import('@/views/order/OrderDetailView.vue') },
-      { path: 'payment/:orderId', name: 'Payment', meta: { title: '支付' }, component: () => import('@/views/order/PaymentView.vue') },
-      { path: 'profile', name: 'Profile', meta: { title: '个人信息' }, component: () => import('@/views/user/ProfileView.vue') },
-      { path: 'address', name: 'Address', meta: { title: '收货地址' }, component: () => import('@/views/user/AddressView.vue') },
-      { path: 'chat/:conversationId?', name: 'Chat', meta: { title: '聊天' }, component: () => import('@/views/chat/ChatView.vue') },
+      { path: '', redirect: '/home' },
+      { path: 'home', name: 'Home', component: () => import('@/views/home/HomeView.vue'), meta: { title: '首页' } },
+      { path: 'coupons', name: 'CouponCenter', component: () => import('@/views/coupon/CouponCenterView.vue'), meta: { title: '领券中心' } },
+      { path: 'search', name: 'SearchResult', component: () => import('@/views/product/SearchResultView.vue'), meta: { title: '搜索结果' } },
+      { path: 'cart', name: 'Cart', meta: { title: '购物车', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/cart/CartView.vue') },
+      { path: 'checkout', name: 'Checkout', meta: { title: '结算', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/CheckoutView.vue') },
+      { path: 'orders', name: 'OrderList', meta: { title: '我的订单', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderListView.vue') },
+      { path: 'payments', name: 'PaymentRecords', meta: { title: '支付记录', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentRecordView.vue') },
+      { path: 'order/:id', name: 'OrderDetail', meta: { title: '订单详情', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderDetailView.vue') },
+      { path: 'payment/:orderId', name: 'Payment', meta: { title: '支付', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentView.vue') },
+      { path: 'merchant/apply', name: 'MerchantApply', meta: { title: '商家入驻', roles: ['USER', 'MERCHANT'] }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
+      { path: 'refunds', name: 'RefundList', meta: { title: '退款/售后', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/refund/RefundListView.vue') },
+      { path: 'profile', name: 'Profile', redirect: '/settings' },
+      { path: 'settings', name: 'Settings', meta: { title: '账户设置', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/user/SettingsView.vue') },
+      { path: 'address', name: 'Address', meta: { title: '收货地址', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/user/AddressView.vue') },
+      { path: 'chat/:conversationId?', name: 'Chat', meta: { title: '聊天', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/chat/ChatView.vue') },
+      { path: 'help/:type', name: 'Help', meta: { title: '帮助中心' }, component: () => import('@/views/common/HelpView.vue') },
     ]
   },
 ]
 
-// 商家路由
+// 商家后台路由
 const merchantRoutes: RouteRecordRaw[] = [
   {
     path: '/merchant',
     component: () => import('@/components/layout/MerchantLayout.vue'),
-    meta: { roles: ['MERCHANT'] },
+    meta: { layout: 'merchant', roles: ['MERCHANT'] },
     children: [
-      { path: 'apply', name: 'MerchantApply', meta: { title: '商家入驻', roles: ['USER', 'MERCHANT'] }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
       { path: 'products', name: 'ProductManage', meta: { title: '商品管理' }, component: () => import('@/views/merchant/ProductManageView.vue') },
+      { path: 'comments', name: 'MerchantComments', meta: { title: '评论管理' }, component: () => import('@/views/merchant/CommentManageView.vue') },
       { path: 'orders', name: 'MerchantOrders', meta: { title: '订单管理' }, component: () => import('@/views/merchant/OrderManageView.vue') },
       { path: 'refunds', name: 'RefundManage', meta: { title: '退款审核' }, component: () => import('@/views/merchant/RefundManageView.vue') },
       { path: 'stats', name: 'SalesStats', meta: { title: '销售统计' }, component: () => import('@/views/merchant/SalesStatsView.vue') },
@@ -395,26 +422,36 @@ const merchantRoutes: RouteRecordRaw[] = [
   },
 ]
 
-// 管理员路由
+// 管理员后台路由
 const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/admin',
     component: () => import('@/components/layout/AdminLayout.vue'),
-    meta: { roles: ['ADMIN'] },
+    meta: { layout: 'admin', roles: ['ADMIN'] },
     children: [
+      { path: '', redirect: '/admin/users' },
+      { path: 'dashboard', redirect: '/admin/users' },
       { path: 'users', name: 'UserManage', meta: { title: '用户管理' }, component: () => import('@/views/admin/UserManageView.vue') },
       { path: 'merchants', name: 'MerchantAudit', meta: { title: '商家审核' }, component: () => import('@/views/admin/MerchantAuditView.vue') },
       { path: 'categories', name: 'CategoryManage', meta: { title: '分类管理' }, component: () => import('@/views/admin/CategoryManageView.vue') },
       { path: 'products', name: 'ProductAll', meta: { title: '商品管理' }, component: () => import('@/views/admin/ProductAllView.vue') },
       { path: 'orders', name: 'OrderAll', meta: { title: '订单管理' }, component: () => import('@/views/admin/OrderAllView.vue') },
+      { path: 'refunds', name: 'AdminRefundAudit', meta: { title: '退款审核' }, component: () => import('@/views/merchant/RefundManageView.vue') },
       { path: 'report', name: 'SalesReport', meta: { title: '销售报表' }, component: () => import('@/views/admin/SalesReportView.vue') },
+      { path: 'coupons', name: 'CouponManage', meta: { title: '秒杀券管理' }, component: () => import('@/views/admin/CouponManageView.vue') },
     ]
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [...publicRoutes, ...userRoutes, ...merchantRoutes, ...adminRoutes],
+  routes: [
+    ...publicRoutes,
+    ...userRoutes,
+    ...merchantRoutes,
+    ...adminRoutes,
+    { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/views/NotFound.vue'), meta: { title: '页面不存在' } },
+  ],
 })
 ```
 
@@ -422,31 +459,27 @@ const router = createRouter({
 
 ```typescript
 router.beforeEach((to, _from, next) => {
-  document.title = (to.meta.title as string) || '网上超市'
+  document.title = `${to.meta.title || '网上超市'} - Chrono BBS`
+  const userStore = useUserStore()
 
-  const token = getToken()
-
+  // 已登录不能访问登录/注册页
   if (to.path === '/login' || to.path === '/register') {
-    if (token) return next('/')       // 已登录不能访问登录页
+    if (userStore.token) return next('/home')
     return next()
   }
 
-  // 目标路由无需角色 → 放行（公开页面）
-  if (!to.meta.roles || to.meta.roles.length === 0) {
+  const roles = to.meta.roles
+  if (!roles || roles.length === 0) {
     return next()
   }
 
-  // 目标路由需要角色 → 检查登录
-  if (!token) {
+  if (!userStore.token) {
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
 
-  // 检查角色是否匹配
-  const userStore = useUserStore()
-  const userRole = userStore.userInfo?.role
-  if (to.meta.roles && !to.meta.roles.includes(userRole || '')) {
+  if (!roles.includes(userStore.roleName)) {
     ElMessage.warning('无权限访问')
-    return next('/')
+    return next('/home')
   }
 
   next()
@@ -529,10 +562,10 @@ export const useUserStore = defineStore('user', () => {
 
 ### 7.1 后端 WebSocket 约定
 
-后端使用 JSR 356 注解（`@OnOpen` / `@OnClose` / `@OnMessage`），连接地址格式：
+后端使用 JSR 356 注解（`@OnOpen` / `@OnClose` / `@OnMessage`），连接地址格式（与当前页面同源，协议根据页面自动选择 `ws`/`wss`，Token 经查询参数传递）：
 
 ```
-ws://localhost:8080/chat/{userId}
+/chat/{userId}?token={jwt}
 ```
 
 消息格式（JSON）：
@@ -597,6 +630,27 @@ export interface SearchParams {
   size?: number
 }
 
+// 搜索结果项
+export interface SearchItem {
+  id: number
+  name: string
+  description?: string
+  brand?: string
+  categoryId?: number
+  categoryName?: string
+  minPrice: number
+  sales: number
+  image?: string
+}
+
+// 搜索结果分页结构
+export interface SearchResult {
+  total: number
+  page: number
+  size: number
+  list: SearchItem[]
+}
+
 export const searchProducts = (params: SearchParams) =>
   service.get<any, SearchResponse<SearchResult>>('/search', { params })
 
@@ -619,70 +673,70 @@ export const getHotSearch = () =>
 
 ## 九、图片上传（前端 → 后端 → 本地目录 / OSS）
 
-### 9.1 上传组件 `components/ImageUpload.vue`
+### 9.1 上传接口 `api/upload.ts` 与页面内联用法
+
+> 前端未抽离独立的 `ImageUpload` 组件，各页面（商品管理、账户设置、分类管理、订单详情等）直接内联 `el-upload`，通过 `api/upload.ts` 手动上传。认证头由 Axios 拦截器统一注入，无需手动设置。
+
+上传接口封装：
+
+```typescript
+// api/upload.ts
+import service from '@/api'
+
+export interface UploadImageResponse {
+  url: string
+}
+
+export const uploadImage = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return service.post<any, { code: number; message: string; data: UploadImageResponse; timestamp: number }>(
+    '/upload/image',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+}
+```
+
+页面内联用法（以商品管理 `ProductManageView.vue` 为例）：
 
 ```vue
-<template>
-  <div class="image-upload">
-    <el-upload
-      :action="uploadUrl"
-      :headers="uploadHeaders"
-      list-type="picture-card"
-      :limit="limit"
-      :on-success="handleSuccess"
-      :on-error="handleError"
-      :before-upload="beforeUpload"
-      :file-list="fileList"
-      multiple
-    >
-      <el-icon><Plus /></el-icon>
-    </el-upload>
-  </div>
-</template>
+<el-upload
+  v-model:file-list="imageFileList"
+  list-type="picture-card"
+  :auto-upload="false"
+  :limit="4"
+  :on-change="handleImageChange"
+  :on-remove="handleImageRemove"
+>
+  <el-icon><Plus /></el-icon>
+</el-upload>
+```
 
-<script setup lang="ts">
-import { computed, ref } from 'vue'
-import { getToken } from '@/utils/token'
-import { ElMessage } from 'element-plus'
-import type { UploadProps, UploadFile } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+```typescript
+import { uploadImage } from '@/api/upload'
+import type { UploadUserFile } from 'element-plus'
 
-const props = defineProps<{
-  modelValue: string[]          // 已上传的 URL 列表
-  limit?: number
-}>()
-
-const emit = defineEmits<{
-  (e: 'update:modelValue', urls: string[]): void
-}>()
-
-const uploadUrl = '/api/upload/image'
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${getToken()}`,
-}))
-
-const fileList = ref<UploadFile[]>(
-  props.modelValue.map((url, idx) => ({ uid: idx, name: `image-${idx}`, url, status: 'success' }))
-)
-
-const handleSuccess: UploadProps['onSuccess'] = (response: any, _file, _fileList) => {
-  const urls = _fileList.filter(f => f.url || f.response?.url).map(f => f.url || f.response?.url)
-  emit('update:modelValue', urls)
+const handleImageChange = async (file: UploadUserFile) => {
+  if (!file.raw) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.raw.type)) {
+    ElMessage.warning('仅支持 jpg/jpeg/png/webp 格式')
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  if (file.raw.size > 2 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 2MB')
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  try {
+    const res = await uploadImage(file.raw)
+    file.url = res.data.url
+    syncImageUrls()
+  } catch {
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+  }
 }
-
-const handleError: UploadProps['onError'] = () => {
-  ElMessage.error('上传失败，请重试')
-}
-
-const beforeUpload: UploadProps['beforeUpload'] = (file) => {
-  const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
-
-  if (!isImage)  { ElMessage.error('只能上传图片文件'); return false }
-  if (!isLt2M)   { ElMessage.error('图片大小不能超过 2MB'); return false }
-  return true
-}
-</script>
 ```
 
 ---
@@ -745,21 +799,42 @@ export function luhnCheck(cardNo: string): boolean {
 ### 11.2 前端实现
 
 ```typescript
-// 下单页面
+// 结算页（CheckoutView.vue）
+const loadData = async () => {
+  // 并行获取购物车、收货地址与防重复提交 Token
+  const [cartRes, addrRes, tokenRes] = await Promise.all([
+    getCartList(),
+    getAddressList(),
+    getSubmitToken(),
+  ])
+  cartItems.value = (cartRes.data || []).filter(i => i.selected === 1)
+  addresses.value = addrRes.data || []
+  submitToken.value = tokenRes.data.token
+  // ...
+}
+
 const submitOrder = async () => {
-  // 1. 获取防重复提交 Token
-  const { data: tokenData } = await getSubmitToken()
-  const submitToken = tokenData.token
-
-  // 2. 提交订单
-  const { data: orderData } = await createOrder({
-    token: submitToken,
-    addressId: selectedAddressId.value,
-    cartItemIds: cartStore.selectedItems.map(i => i.id),
-  })
-
-  // 3. 跳转支付页面
-  router.push(`/payment/${orderData.orderId}`)
+  if (cartItems.value.length === 0) {
+    ElMessage.warning('没有选中商品')
+    return
+  }
+  submitting.value = true
+  try {
+    // 携带防重 Token + 地址 + 选中购物车项 ID 提交订单
+    const res = await createOrder({
+      token: submitToken.value,
+      addressId: selectedAddress.value.id,
+      cartItemIds: cartItems.value.map(i => i.id),
+      remark: remark.value || undefined,
+      userCouponId: selectedCouponId.value ?? undefined,
+    })
+    ElMessage.success('订单创建成功')
+    router.replace(`/payment/${res.data.orderId}`)
+  } catch {
+    ElMessage.error('订单创建失败')
+  } finally {
+    submitting.value = false
+  }
 }
 ```
 
@@ -827,16 +902,18 @@ server {
 | `/coupons` | 领券中心 | 游客/用户/商家/管理员 | 游客可浏览，领取需登录 |
 | `/login` | 登录 | 游客 | 用户名密码 + 验证码 |
 | `/register` | 注册 | 游客 | 选择角色 |
+| `/forgot-password` | 忘记密码 | 游客 | 重置密码 |
 | `/cart` | 购物车 | 用户/商家 | 需登录 |
 | `/checkout` | 结算 | 用户/商家 | 确认地址、商品、金额 |
 | `/payment/:orderId` | 支付 | 用户/商家 | 卡号/二维码支付 |
 | `/orders` | 我的订单 | 用户/商家 | 订单列表 |
 | `/payments` | 支付记录 | 用户/商家/管理员 | 支付方式、金额与时间 |
 | `/order/:id` | 订单详情 | 用户/商家 | 含退款/退货入口 |
-| `/profile` | 个人信息 | 用户/商家/管理员 | 修改密码等 |
+| `/refunds` | 我的退款/售后 | 用户/商家/管理员 | 退款/退货申请列表 |
+| `/profile` | 个人信息 | 用户/商家/管理员 | 重定向至 `/settings` |
 | `/settings` | 账户设置 | 用户/商家/管理员 | 偏好设置 + 头像上传 |
 | `/address` | 收货地址 | 用户/商家 | 增删改查 |
-| `/chat/:id?` | 聊天 | 用户/商家 | WebSocket 即时通讯 |
+| `/chat/:conversationId?` | 聊天 | 用户/商家 | WebSocket 即时通讯 |
 | `/help/:type` | 帮助中心 | 游客/用户 | 静态帮助页 |
 | `/merchant/apply` | 商家入驻 | 用户 | 提交入驻申请 |
 | `/merchant/products` | 商品管理 | 商家 | 增删改查、上下架 |
@@ -859,36 +936,99 @@ server {
 
 | 前端操作 | HTTP 方法 | API 路径 | 请求体/参数 |
 |----------|-----------|----------|-------------|
+| 图形验证码 | GET | `/api/user/captcha` | — |
 | 注册 | POST | `/api/user/register` | `{ username, password, phone, email, role, shopName, captchaUuid, captchaCode }`（商家注册需传 `role=2` 与 `shopName`） |
 | 登录 | POST | `/api/user/login` | `{ username, password, captchaUuid, captchaCode }` |
+| 获取用户信息 | GET | `/api/user/info` | — |
+| 修改个人信息 | PUT | `/api/user/profile` | `{ nickname, phone, email, avatar }` |
+| 修改密码 | PUT | `/api/user/password` | `{ oldPassword, newPassword }` |
+| 退出登录 | POST | `/api/user/logout` | — |
 | 获取重置密码验证码 | POST | `/api/user/forgot-code` | `{ account, captchaUuid, captchaCode }` |
 | 重置密码 | POST | `/api/user/reset-password` | `{ uuid, code, newPassword }` |
-| 获取用户信息 | GET | `/api/user/info` | — |
 | 商品列表 | GET | `/api/product/list` | `?categoryId=&page=&size=` |
 | 商品详情 | GET | `/api/product/{id}` | — |
+| 分类树 | GET | `/api/category/tree` | — |
+| 子分类列表 | GET | `/api/category/children` | `?parentId=` |
 | 搜索 | GET | `/api/search` | `?keyword=&categoryId=&brand=&minPrice=&maxPrice=&sort=&page=&size=` |
 | 搜索建议 | GET | `/api/search/suggest` | `?keyword=` |
 | 搜索历史 | GET | `/api/search/history` | — |
 | 清除搜索历史 | DELETE | `/api/search/history` | — |
 | 热搜榜 | GET | `/api/search/hot` | — |
 | 获取购物车 | GET | `/api/cart/list` | — |
-| 加入购物车 | POST | `/api/cart/add` | `{ skuId, quantity }` |
+| 加入购物车 | POST | `/api/cart/add` | `{ productId, skuId, quantity }` |
 | 更新购物车数量 | PUT | `/api/cart/update` | `{ cartItemId, quantity }` |
-| 删除购物车 | DELETE | `/api/cart/{id}` | — |
+| 删除购物车 | DELETE | `/api/cart/{cartItemId}` | — |
+| 选中/取消选中 | PUT | `/api/cart/select` | `{ cartItemIds, selected }` |
+| 全选/取消全选 | PUT | `/api/cart/select-all` | `{ selected }` |
 | 获取防重 Token | GET | `/api/order/submit-token` | — |
-| 创建订单 | POST | `/api/order/create` | `{ token, addressId, cartItemIds }` |
+| 创建订单 | POST | `/api/order/create` | `{ token, addressId, cartItemIds, remark?, userCouponId? }` |
 | 订单列表 | GET | `/api/order/list` | `?status=&page=&size=` |
 | 订单详情 | GET | `/api/order/{id}` | — |
-| 取消订单 | PUT | `/api/order/{id}/cancel` | — |
+| 取消订单 | PUT | `/api/order/{id}/cancel` | `{ reason }` |
 | 确认收货 | PUT | `/api/order/{id}/receive` | — |
+| 删除订单 | DELETE | `/api/order/{id}` | — |
 | 卡号支付 | POST | `/api/payment/card` | `{ orderId, cardNo, expireDate, cvv }` |
 | 获取支付二维码 | POST | `/api/payment/qrcode` | `{ orderId }` |
 | 确认二维码支付 | POST | `/api/payment/confirm-qrcode` | `{ orderId }` |
+| 支付记录 | GET | `/api/payment/records` | `?page=&size=` |
 | 上传图片 | POST | `/api/upload/image` | FormData(file) |
-| 收货地址 CRUD | GET/POST/PUT/DELETE | `/api/address` | — |
-| 发表评论 | POST | `/api/comment` | `{ productId, content, rating, images }` |
+| 地址列表 | GET | `/api/address/list` | — |
+| 地址详情 | GET | `/api/address/{id}` | — |
+| 新增地址 | POST | `/api/address` | `{ receiverName, phone, province, city, district, detail, isDefault }` |
+| 修改地址 | PUT | `/api/address/{id}` | 同上 |
+| 删除地址 | DELETE | `/api/address/{id}` | — |
+| 设为默认地址 | PUT | `/api/address/{id}/default` | — |
+| 评论列表 | GET | `/api/comment/list/{productId}` | `?page=&size=&star=` |
+| 发表评论 | POST | `/api/comment` | `{ productId, orderItemId, content, star, images }` |
+| 追加评论 | POST | `/api/comment/append` | `{ commentId, content }` |
+| 商家回复 | POST | `/api/comment/reply` | `{ parentId, content }` |
 | 申请退款 | POST | `/api/refund` | `{ orderItemId, type, reason, amount }` |
-| WebSocket 连接 | WS | `ws://host/chat/{userId}` | — |
+| 我的退款列表 | GET | `/api/refund/my` | `?page=&size=` |
+| 退款详情 | GET | `/api/refund/{id}` | — |
+| 审核退款 | PUT | `/api/refund/{id}/review` | `{ approved, reviewReason }` |
+| 填写退货物流 | PUT | `/api/refund/{id}/return` | `{ returnCompany, returnLogisticsNo }` |
+| 确认收到退货 | PUT | `/api/refund/{id}/return-received` | — |
+| 会话列表 | GET | `/api/chat/conversations` | — |
+| 历史消息 | GET | `/api/chat/history/{conversationId}` | `?page=&size=` |
+| 发送消息 | POST | `/api/chat/message` | `{ conversationId, content, type }`（仅 Mock 联调） |
+| 创建会话 | POST | `/api/chat/conversation` | `{ merchantId, productId }` |
+| 标记已读 | PUT | `/api/chat/read/{conversationId}` | — |
+| 未读计数 | GET | `/api/chat/unread-count` | — |
+| 秒杀券列表 | GET | `/api/seckill/list` | `?page=&size=` |
+| 秒杀券详情 | GET | `/api/seckill/detail/{id}` | — |
+| 抢领秒杀券 | POST | `/api/seckill/claim/{couponId}` | — |
+| 我的优惠券 | GET | `/api/seckill/my-coupons` | `?page=&size=` |
+| 创建秒杀券 | POST | `/api/seckill/create` | `{ name, ... }` |
+| 编辑秒杀券 | PUT | `/api/seckill/update/{id}` | 同上 |
+| 删除秒杀券 | DELETE | `/api/seckill/{id}` | — |
+| 下单优惠计算 | POST | `/api/seckill/calculate` | `{ ... }` |
+| 商家入驻申请 | POST | `/api/merchant/apply` | `{ shopName, contactPhone, businessLicense }` |
+| 商家信息 | GET | `/api/merchant/info` | — |
+| 更新商家信息 | PUT | `/api/merchant/info` | `{ shopName, contactPhone }` |
+| 商家退款列表 | GET | `/api/merchant/refunds` | `?page=&size=&status=` |
+| 商家商品列表 | GET | `/api/merchant/products` | `?page=&size=&status=` |
+| 商家订单列表 | GET | `/api/merchant/orders` | `?page=&size=&status=` |
+| 发货 | PUT | `/api/merchant/ship/{orderId}` | — |
+| 商家销售统计 | GET | `/api/merchant/stats` | `?startDate=&endDate=` |
+| 添加商品 | POST | `/api/product` | `{ ...ProductFormData }` |
+| 修改商品 | PUT | `/api/product/{id}` | 同上 |
+| 商品上下架 | PUT | `/api/product/{id}/status` | `{ status }` |
+| 删除商品 | DELETE | `/api/product/{id}` | — |
+| 用户列表 | GET | `/api/admin/users` | `?page=&size=&keyword=&role=&status=` |
+| 设置用户状态 | PUT | `/api/admin/users/{id}/status` | `{ status }` |
+| 商家列表 | GET | `/api/admin/merchants` | `?status=&page=&size=` |
+| 审核商家 | PUT | `/api/admin/merchants/{id}/review` | `{ approved, reviewReason }` |
+| 创建分类 | POST | `/api/admin/categories` | `{ name, parentId, level, sortOrder, icon }` |
+| 更新分类 | PUT | `/api/admin/categories/{id}` | 同上 |
+| 删除分类 | DELETE | `/api/admin/categories/{id}` | — |
+| 管理员商品列表 | GET | `/api/admin/products` | `?page=&size=&keyword=&categoryId=&merchantId=&status=` |
+| 管理员订单列表 | GET | `/api/admin/orders` | `?page=&size=&orderNo=&status=` |
+| 管理员销售报表 | GET | `/api/admin/report` | `?startDate=&endDate=&groupBy=` |
+| 管理员退款列表 | GET | `/api/admin/refunds` | `?page=&size=&status=` |
+| 管理员修改商品 | PUT | `/api/admin/products/{id}` | `{ ...ProductFormData }` |
+| 管理员商品上下架 | PUT | `/api/admin/products/{id}/status` | `{ status }` |
+| 管理员删除商品 | DELETE | `/api/admin/products/{id}` | — |
+| WebSocket 连接 | WS | `/chat/{userId}?token={jwt}` | — |
 
 ---
 

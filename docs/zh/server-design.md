@@ -22,7 +22,7 @@
 | 接口文档 | Knife4j (OpenAPI 3.0) | 4.5.0 |
 | 图片存储 | 本地目录 / 阿里云 OSS | |
 | 工具库 | Lombok | |
-| 日志 | Logback + AOP 操作日志 | |
+| 日志 | Logback（AOP 操作日志预留，未启用） | |
 | 定时任务 | Spring @Scheduled | |
 
 ---
@@ -56,10 +56,10 @@ module-start
 
 | 模块 | 职责 |
 |------|------|
-| **common** | 通用基类：`Result<T>`、`PageResult<T>`、`BusinessException`、错误码枚举、`RedisUtil`、`JwtUtil`、常量定义 |
+| **common** | 通用基类：`Result<T>`、`PageResult<T>`、`BusinessException`、错误码枚举、`JwtUtil`、`UserContext`、`@Public` 注解 |
 | **module-mapper** | 实体类 Entity、MyBatis Mapper 接口、XML 映射文件 |
 | **module-service** | Service 接口 + Impl 实现、DTO 入参定义、业务逻辑编排 |
-| **module-api** | Controller、VO 出参定义、拦截器（鉴权/日志） |
+| **module-api** | Controller、VO 出参定义、WebSocket 端点、全局异常处理 |
 | **module-start** | Spring Boot 启动类、`application.yml`、全局配置（跨域/OSS/Knife4j）、定时任务调度 |
 
 ---
@@ -70,7 +70,7 @@ module-start
 
 ```
 com.ncist.controller/
-    ├── UserController.java          # 用户接口
+    ├── AuthController.java          # 用户认证接口
     ├── ProductController.java       # 商品接口
     ├── CategoryController.java      # 分类接口
     ├── SearchController.java        # 搜索接口
@@ -79,23 +79,28 @@ com.ncist.controller/
     ├── PaymentController.java       # 支付接口
     ├── AddressController.java       # 地址接口
     ├── CommentController.java       # 评论接口
-    ├── AdminController.java         # 管理员接口
+    ├── RefundController.java        # 退款接口
     ├── MerchantController.java      # 商家接口
+    ├── AdminController.java         # 管理员接口
+    ├── SeckillController.java       # 秒杀券接口
+    ├── UploadController.java        # 文件上传接口
     └── ChatController.java          # 即时通讯接口
+com.ncist.websocket/                 # WebSocket 端点（@ServerEndpoint）
 com.ncist.vo/                        # 出参 VO
-com.ncist.interceptor/               # 拦截器（JWT 鉴权、操作日志）
+com.ncist.interceptor/               # 拦截器（JWT 鉴权）
 ```
 
 以 `module-service` 为例：
 
 ```
 com.ncist.service/
-    ├── UserService.java             # 接口
-    ├── impl/UserServiceImpl.java    # 实现
+    ├── AuthService.java             # 接口
+    ├── impl/AuthServiceImpl.java    # 实现
     ├── ProductService.java
     ├── impl/ProductServiceImpl.java
     └── ...（同上按模块划分）
 com.ncist.dto/                       # 入参 DTO
+com.ncist.scheduler/                 # 定时任务（秒杀券状态刷新）
 ```
 
 以 `module-mapper` 为例：
@@ -262,7 +267,7 @@ requireOwnership(productId, merchant.getId());
 
 | 类型 | 用途 | Redis Key | 有效期 | 说明 |
 |------|------|-----------|--------|------|
-| 图形验证码 | 登录/注册/获取重置密码验证码 | `verify:{uuid}` | 5min | 生成 UUID + 验证码图片 |
+| 图形验证码 | 登录/注册/获取重置密码验证码 | `captcha:{uuid}` | 2min | 生成 UUID + 验证码图片 |
 | 短信/邮箱验证码 | 忘记密码时重置密码 | `reset:code:{uuid}` | 5min | 课程阶段直接返回在响应中 |
 
 - 登录/注册时需输入图形验证码，防止暴力破解
@@ -319,39 +324,24 @@ UPDATE product_sku SET stock = stock - ? WHERE id = ? AND stock >= ?
 -- 条件不满足时返回 0 行，业务层判断后提示"库存不足"
 ```
 
-### 7.2 Redis 分布式锁
+### 7.2 防重复提交 Token
+
+```
+下单前：前端调 GET /api/order/submit-token → 后端生成 UUID 存 Redis
+        键 order:submit-token:{token}，值为 userId，5 分钟过期
+下单时：前端携带该 Token → 后端校验 userId 归属并立即删除 → 原子性保证一次有效
+        若 Token 不存在或不属于当前用户 → 重复提交 → 拒绝
+```
+
+### 7.3 支付幂等
 
 ```java
-// 下单时对 userId 加锁，防并发重复下单
-String lockKey = "lock:order:" + userId;
-boolean locked = redisUtil.tryLock(lockKey, 10);  // 10 秒超时
-if (!locked) {
-    throw new BusinessException(ErrorCode.ORDER_DUPLICATE);
+// 先校验订单归属与 status=待支付，再写入支付记录
+// 最后以状态条件更新订单：并发/重复支付时更新 0 行，抛异常回滚
+int rows = orderMapper.markPaid(orderId, userId);
+if (rows == 0) {
+    throw new BusinessException(PaymentErrorCode.ORDER_NOT_PAYABLE);
 }
-try {
-    // 下单逻辑
-} finally {
-    redisUtil.unlock(lockKey);
-}
-```
-
-### 7.3 防重复提交 Token
-
-```
-下单前：前端调 GET /api/order/submit-token → 后端生成 UUID 存 Redis(5分钟过期)
-下单时：前端携带该 Token → 后端校验并立即删除 → 原子性保证一次有效
-        若 Token 不存在 → 重复提交 → 拒绝
-```
-
-### 7.4 支付幂等
-
-```java
-// payment 表 order_id 唯一，支付前先查
-Payment existing = paymentMapper.selectByOrderId(orderId);
-if (existing != null && existing.getStatus() == SUCCESS) {
-    return Result.success();  // 幂等返回
-}
-// 执行支付...
 ```
 
 ---
@@ -366,13 +356,16 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Order createOrder(Long userId, CreateOrderDTO dto) {
-        // 1. 校验购物车 + 库存
-        // 2. 扣减 Redis 库存（仅扣 Redis，不在此事务里）
-        // 3. 生成订单号 → 插入 order 表
-        // 4. 插入 order_item 表
-        // 5. 删除购物车选中项
-        // 6. 扣减 MySQL 库存 → 同步 Redis
+    public CreateOrderVO createOrder(Long userId, CreateOrderDTO dto) {
+        // 1. 校验并消费防重复提交 Token（DELETE 原子保证只可用一次）
+        // 2. 校验收货地址属主
+        // 3. 查询购物车选中项（SQL 限定属主），校验上架与库存
+        // 4. 原子扣减库存（UPDATE ... WHERE stock >= 数量）
+        // 5. 计算金额，用券抵扣
+        // 6. 写入地址快照 → 插入 order 表
+        // 7. 插入 order_item 表（下单时价格快照）
+        // 8. 清理已下单的购物车项
+        // 9. 核销优惠券（状态条件保证并发下不重复核销）
         // 任何步骤异常 → 全部回滚
     }
 }
@@ -382,8 +375,8 @@ public class OrderServiceImpl implements OrderService {
 
 | 操作 | 是否在同一事务 | 说明 |
 |------|------|------|
-| 插 order + 插 order_item + 清购物车 + 扣 MySQL 库存 | ✅ 同一事务 | MySQL 写操作，ACID 保证 |
-| 扣 Redis 库存 | ❌ 独立操作 | Redis 不支持回滚，在下单成功/失败后分别补偿 |
+| 消费防重 Token | ❌ Redis 操作 | 在事务方法内执行 DELETE，但不随 MySQL 事务回滚，删除即消费 |
+| 插 order + 插 order_item + 清购物车 + 扣 MySQL 库存 + 核销券 | ✅ 同一事务 | MySQL 写操作，ACID 保证 |
 | 发送 ES 同步消息 | ❌ 事务内同步调用 | 内部吞异常，失败仅记日志 |
 
 ---
@@ -452,27 +445,19 @@ public class OrderServiceImpl implements OrderService {
 | `refreshSeckillStatus` | 每 30 秒 | 刷新秒杀券状态（未开始→进行中→已结束），并批量过期未使用的用户券 |
 
 ```java
-@Configuration
-@EnableScheduling
-public class ScheduleConfig {
+@Component
+@RequiredArgsConstructor
+public class SeckillStatusScheduler {
 
-    @Scheduled(cron = "0 */5 * * * ?")
-    public void cancelTimeoutOrders() { ... }
-
-    @Scheduled(cron = "0 */10 * * * ?")
-    public void syncSalesFromRedis() { ... }
-
-    @Scheduled(cron = "0 0 3 * * ?")
-    public void cleanSearchHistory() { ... }
-
-    @Scheduled(cron = "0 */5 * * * ?")
-    public void syncStockFromRedis() { ... }
-
-    @Scheduled(cron = "0 0 4 * * ?")
-    public void cleanChatMessages() { ... }
+    private final SeckillCouponMapper seckillCouponMapper;
+    private final UserCouponMapper userCouponMapper;
 
     @Scheduled(fixedDelay = 30_000)
-    public void refreshSeckillStatus() { ... }
+    public void refreshSeckillStatus() {
+        int activated = seckillCouponMapper.activateStarted(); // 到点未开始 → 进行中
+        int finished = seckillCouponMapper.finishEnded();      // 到点进行中 → 已结束
+        int expired = userCouponMapper.expireEnded();          // 活动结束后未使用用户券 → 已过期
+    }
 }
 ```
 
@@ -486,7 +471,9 @@ public class ScheduleConfig {
 - 文件按天滚动：`logs/application.%d{yyyy-MM-dd}.log`
 - 保留 30 天
 
-### 12.2 AOP 操作日志
+### 12.2 AOP 操作日志（预留，未启用）
+
+> 当前版本仅保留 `operation_log` 表与 Mapper 接口，尚未实现 `@OperationLog` 注解与 AOP 切面；以下为设计草案。
 
 ```java
 @Target(ElementType.METHOD)
@@ -536,132 +523,98 @@ public class OperationLogAspect {
 
 | 特性 | 说明 |
 |------|------|
-| 协议 | WebSocket + STOMP |
-| 持久化 | 消息存入 MySQL，30 天自动清理 |
+| 协议 | 原生 WebSocket（JSR 356，`@ServerEndpoint`，非 STOMP） |
+| 持久化 | 消息存入 MySQL；30 天自动清理为规划任务，当前未启用 |
 | 历史记录 | 分页查询，上拉加载更多 |
 | 离线消息 | 支持，接收方上线后自动推送未读消息 |
-| 未读计数 | 会话级别维护未读数，存储在 Redis + MySQL |
+| 未读计数 | 会话级别维护未读数，存储在 MySQL `conversation.user_unread` / `merchant_unread` |
+| 在线状态 | Redis `online:{userId}`，连接建立/断开时写入/删除 |
 
 ### 13.2 数据库表
 
 详见 [db-design.md](./db-design.md) 第九章：
 
-- **`conversation`**：会话表，`(user_id, merchant_id)` 唯一约束
-- **`message`**：消息表，`conversation_id` 关联会话
+- **`conversation`**：会话表，`(user_id, merchant_id)` 唯一约束；`merchant_id` 存商家用户 ID（`user.id`），不是 merchant 表主键
+- **`message`**：消息表，`conversation_id` 关联会话；`sender_id` 为发送者用户 ID
 
-### 13.3 Spring WebSocket 配置
+### 13.3 WebSocket 端点
 
 ```java
-@Configuration
-@EnableWebSocketMessageBroker
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+@Component
+@ServerEndpoint("/chat/{userId}")
+public class ChatWebSocketEndpoint {
 
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 客户端连接端点
-        registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();  // 兼容不支持 WebSocket 的浏览器
+    // 本地在线连接（userId -> Session），用于实时推送
+    private static final Map<Long, Session> SESSIONS = new ConcurrentHashMap<>();
+
+    @OnOpen
+    public void onOpen(Session session, @PathParam("userId") String userIdText) {
+        // 1. 解析路径 userId 与 queryString 中的 token
+        // 2. JwtUtil 校验 token，且 token.userId == 路径 userId
+        // 3. 与 Redis token:{userId} 一致（防冒连）
+        // 4. 顶下线：同 userId 旧连接关闭
+        // 5. Redis 标记在线 online:{userId}
+        // 6. 推送离线期间未读消息
     }
 
-    @Override
-    public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // 客户端订阅前缀（接收消息）
-        registry.enableSimpleBroker("/queue", "/topic");
-        // 服务端接收消息前缀
-        registry.setApplicationDestinationPrefixes("/app");
+    @OnMessage
+    public void onMessage(String text) {
+        // 1. JSON 反序列化 SendMessageDTO
+        // 2. chatService.sendMessage(userId, dto) 入库
+        // 3. 回显给发送方
+        // 4. 接收方在线则实时推送（SESSIONS.get(receiverId)）
+    }
+
+    @OnClose
+    public void onClose() {
+        // 移除本地会话，Redis online:{userId} 删除
     }
 }
 ```
 
 ### 13.4 消息推送路径设计
 
-| 路径 | 方向 | 说明 |
+| 通道 | 方向 | 说明 |
 |------|------|------|
-| `/app/chat.send` | 客户端 → 服务端 | 发送消息 |
-| `/queue/chat/{userId}` | 服务端 → 客户端 | 个人消息推送（一对一） |
-| `/queue/chat/notify` | 服务端 → 客户端 | 系统通知（新会话、离线消息提醒） |
+| `ws://host/chat/{userId}?token=` | 客户端 → 服务端 | 建立连接（握手鉴权） |
+| `@OnMessage` 接收 JSON | 客户端 → 服务端 | 发送消息 |
+| `session.sendText` | 服务端 → 客户端 | 实时推送（接收方在线时） |
+
+> 消息帧 JSON：`{ type, conversationId, messageId, senderId, senderRole, content, productId, isRead, timestamp }`；错误帧：`{ type: "ERROR", message }`。
 
 ### 13.5 发送消息流程
 
 ```
 ┌─────────┐     ┌─────────────┐     ┌──────────┐     ┌─────────┐
-│ 发送方   │     │  WebSocket  │     │  MySQL   │     │ 接收方   │
-│ (用户)   │     │  Controller │     │          │     │ (商家)  │
+│ 发送方   │     │ WebSocket   │     │  MySQL   │     │ 接收方   │
+│ (用户)   │     │   端点      │     │          │     │ (商家)  │
 └────┬────┘     └──────┬──────┘     └────┬─────┘     └────┬────┘
-     │                 │                │                 │
-     │ /app/chat.send  │                │                 │
+     │ 发送 JSON 消息   │                │                 │
      │────────────────▶│                │                 │
      │                 │ INSERT message │                 │
      │                 │───────────────▶│                 │
      │                 │ UPDATE unread  │                 │
      │                 │───────────────▶│                 │
-     │                 │                │                 │
-     │                 │ /queue/chat/{merchantId}         │
-     │                 │─────────────────────────────────▶│
-     │                 │                │    (在线则收到)  │
-     │    return OK    │                │                 │
-     │◀────────────────│                │                 │
+     │                 │  回显 + 实时推送（接收方在线时）   │
+     │◀────────────────│─────────────────────────────────▶│
      │                 │                │                 │
      接收方离线？                                               │
      ─────────────────────────────────────────────────────  │
-     下次上线 → 查 message WHERE is_read=0 → 批量推送         │
+     下次上线 → @OnOpen 拉取 is_read=0 消息 → 逐条推送          │
 ```
 
-### 13.6 核心代码设计
-
-#### ChatController
+### 13.6 核心 REST 接口（ChatController）
 
 ```java
 @RestController
+@RequestMapping("/api/chat")
 public class ChatController {
 
-    @MessageMapping("/chat.send")
-    public void sendMessage(@Payload SendMessageDTO dto, SimpMessageHeaderAccessor headerAccessor) {
-        // 1. 从 JWT 解析发送者信息
-        // 2. 校验发送者是 conversation 的参与者
-        // 3. 构建 message 对象 → 入库
-        // 4. 更新 conversation 的 last_message + 对方未读数
-        // 5. 将消息推送到接收方的 /queue/chat/{receiverId}
-        // 6. 如果接收方在线 → 实时送达
-        //    如果接收方离线 → 消息已入库，下次上线拉取
-    }
-}
-```
-
-#### 查询历史消息
-
-```java
-// REST 接口，分页拉取
-@GetMapping("/api/chat/history/{conversationId}")
-public Result<PageResult<MessageVO>> history(
-        @PathVariable Long conversationId,
-        @RequestParam int page,
-        @RequestParam(defaultValue = "20") int size) {
-    // 1. 校验当前用户是该会话的参与者
-    // 2. PageHelper 分页查询 message
-    // 3. 返回历史消息（从新到旧）
-}
-```
-
-#### 会话列表
-
-```java
-// REST 接口
-@GetMapping("/api/chat/conversations")
-public Result<List<ConversationVO>> listConversations() {
-    // 查询当前用户的所有会话，按 last_message_time 倒序
-    // 返回：对方头像/名称、最后一条消息摘要、未读数、最后消息时间
-}
-```
-
-#### 标记已读
-
-```java
-@PutMapping("/api/chat/read/{conversationId}")
-public Result<Void> markRead(@PathVariable Long conversationId) {
-    // UPDATE message SET is_read=1 WHERE conversation_id=? AND is_read=0
-    // 重置当前用户在 conversation 中的未读数为 0
+    @GetMapping("/conversations")              // 会话列表（按 last_message_time 倒序）
+    @GetMapping("/history/{conversationId}")   // 历史消息分页（从新到旧）
+    @PostMapping("/conversation")              // 创建会话（基于商品/商家）
+    @PutMapping("/read/{conversationId}")      // 标记已读（重置未读数）
+    @GetMapping("/unread-count")               // 未读消息总数
 }
 ```
 
@@ -669,23 +622,21 @@ public Result<Void> markRead(@PathVariable Long conversationId) {
 
 | 缓存 Key | 内容 | 说明 |
 |------|------|------|
-| `online:{userId}` | true | 用户 WebSocket 连接时 SET，断开时 DEL，用于判断是否在线 |
+| `online:{userId}` | "1" | 用户 WebSocket 连接时 SET，断开时 DELETE，用于判断是否在线 |
+| `token:{userId}` | JWT | 握手鉴权：连接携带 token 必须与服务端记录一致 |
 
 ```java
-// 连接建立时
-@EventListener(SessionConnectEvent.class)
-public void onConnect(SessionConnectEvent event) {
-    Long userId = extractUserId(event);
-    redisUtil.set("online:" + userId, "1", 30, TimeUnit.MINUTES);
-    // 推送离线期间收到的未读消息
-    pushOfflineMessages(userId);
-}
-
-// 连接断开时
-@EventListener(SessionDisconnectEvent.class)
-public void onDisconnect(SessionDisconnectEvent event) {
-    Long userId = extractUserId(event);
-    redisUtil.del("online:" + userId);
+@Service
+public class RedisOnlineService {
+    public void setOnline(Long userId) {
+        stringRedisTemplate.opsForValue().set("online:" + userId, "1");
+    }
+    public void setOffline(Long userId) {
+        stringRedisTemplate.delete("online:" + userId);
+    }
+    public boolean isTokenValid(Long userId, String token) {
+        return token.equals(stringRedisTemplate.opsForValue().get("token:" + userId));
+    }
 }
 ```
 
@@ -693,9 +644,9 @@ public void onDisconnect(SessionDisconnectEvent event) {
 
 | 措施 | 说明 |
 |------|------|
-| 连接鉴权 | WebSocket 握手时从请求参数 `?token=xxx` 校验 JWT，拒绝未登录连接 |
-| 越权防护 | 发送消息时校验 `sender_id` 必须是 `conversation` 的参与者之一 |
-| 频率限制 | 同一用户每秒最多发送 5 条消息，防刷屏（Redis 计数） |
+| 连接鉴权 | 握手时从 `?token=xxx` 校验 JWT，且 token.userId 与路径一致、与 Redis `token:{userId}` 一致 |
+| 顶下线 | 同 userId 新连接建立时关闭旧连接（"账号在其他位置连接"） |
+| 越权防护 | 发送消息时校验发送者是 conversation 的参与者之一 |
 
 ---
 
@@ -717,7 +668,10 @@ public class ProductController {
 
     @Operation(summary = "分页查询商品列表")
     @GetMapping("/list")
-    public Result<PageResult<ProductVO>> list(ProductPageDTO dto) { ... }
+    public Result<PageResult<ProductVO>> listProducts(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) { ... }
 }
 ```
 

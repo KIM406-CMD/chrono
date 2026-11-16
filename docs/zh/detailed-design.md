@@ -38,7 +38,7 @@ flowchart TD
     K --> L{"手机号已存在?"}
     L -->|是| M["返回错误: 手机号已被注册"]
     L -->|否| N["BCrypt 加密密码"]
-    N --> O["构建 User 实体<br/>username, password(加密), phone, email, role<br/>nickname=username, status=0（正常）"]
+    N --> O["构建 User 实体<br/>username, password(加密), phone, email, role<br/>nickname=username, status=1（正常）"]
     O --> P["userMapper.insert<br/>@Options useGeneratedKeys 回填 id"]
     P --> Q["JWT 生成 Token<br/>载荷: {userId, username, role}<br/>有效期 2 小时"]
     Q --> R["返回 LoginVO { token, userInfo }"]
@@ -57,7 +57,7 @@ flowchart TD
     G --> H["查询用户表: 按用户名查找"]
     H --> I{"用户存在?"}
     I -->|否| J["返回错误: 用户不存在"]
-    I -->|是| K{"账号状态正常 status == 0"}
+    I -->|是| K{"账号状态正常 status == 1"}
     K -->|否| L["返回错误: 账号已被禁用"]
     K -->|是| M["BCrypt 验证密码"]
     M --> N{"密码匹配?"}
@@ -66,23 +66,9 @@ flowchart TD
     P --> Q["返回 LoginVO { token, userInfo }"]
 ```
 
-### 1.4 Token 刷新 — `POST /api/user/refresh`
+### 1.4 Token 刷新与过期处理（未提供独立刷新接口）
 
-```mermaid
-flowchart TD
-    A["前端拦截器捕获 401<br/>Header: Authorization Bearer token"] --> B{"token 存在?"}
-    B -->|否| C["清除本地 token → 跳转登录页"]
-    B -->|是| D["POST /api/user/refresh"]
-    D --> E["解析旧 JWT，获取 userId"]
-    E --> F["Redis 查询: token:{userId}"]
-    F --> G{"Redis 中 token == 旧token?"}
-    G -->|否/过期| H["返回错误: token 已失效"]
-    G -->|是| I["生成新 JWT Token"]
-    I --> J["Redis 删除旧 token"]
-    J --> K["Redis 存储: token:{userId} = 新token, 2小时"]
-    K --> L["返回 { 新token, userInfo }"]
-    L --> M["前端更新 localStorage<br/>重试失败的请求"]
-```
+> 当前后端未提供独立的 Token 刷新接口。登录态由 `JwtInterceptor` 校验：JWT 过期或与服务端 `token:{userId}` 不一致时，直接返回 `TOKEN_EXPIRED` / `TOKEN_INVALID`，前端据此清除本地 token 并跳转登录页重新登录。Token 有效期 2 小时，与 Redis 缓存同生命周期。
 
 ### 1.5 用户登出 — `POST /api/user/logout`
 
@@ -130,7 +116,7 @@ flowchart TD
     I --> J["返回成功"]
 ```
 
-### 1.8 修改密码 — `PUT /api/user/change-password`
+### 1.8 修改密码 — `PUT /api/user/password`
 
 ```mermaid
 flowchart TD
@@ -190,11 +176,11 @@ flowchart TD
     F --> G["返回分页结果"]
 ```
 
-### 2.2 商品详情 — `GET /api/product/detail/{id}`
+### 2.2 商品详情 — `GET /api/product/{id}`
 
 ```mermaid
 flowchart TD
-    A["GET /api/product/detail/{productId}"] --> B["查询商品表"]
+    A["GET /api/product/{productId}"] --> B["查询商品表"]
     B --> C{"商品存在且状态==上架?"}
     C -->|否| D["返回错误: 商品不存在或已下架"]
     C -->|是| E["查询 SKU 表: 该商品所有 SKU"]
@@ -203,7 +189,7 @@ flowchart TD
     G --> H["返回商品详情"]
 ```
 
-### 2.3 创建商品 — `POST /api/product/create`
+### 2.3 创建商品 — `POST /api/product`
 
 ```mermaid
 flowchart TD
@@ -217,7 +203,7 @@ flowchart TD
     H --> I["返回成功"]
 ```
 
-### 2.4 更新商品 — `PUT /api/product/update/{id}`
+### 2.4 更新商品 — `PUT /api/product/{id}`
 
 ```mermaid
 flowchart TD
@@ -231,30 +217,36 @@ flowchart TD
     H --> I["返回成功"]
 ```
 
-### 2.5 上架商品 — `PUT /api/product/on-shelf/{id}`
+### 2.5 上架/下架商品 — `PUT /api/product/{id}/status`
 
 ```mermaid
 flowchart TD
-    A["PUT /api/product/on-shelf/{id}"] --> B["解析 JWT → 校验商家/管理员身份"]
+    A["PUT /api/product/{id}/status<br/>{ status: 0-下架, 1-上架 }"] --> B["解析 JWT → 校验商品所属商家"]
     B --> C["查询商品表"]
     C --> D{"有权限操作?"}
     D -->|否| E["返回错误: 无权限"]
-    D -->|是| F["更新商品状态为: 上架"]
-    F --> G["同步商品到 ES"]
-    G --> H["返回成功"]
+    D -->|是| F{"status == 1（上架）?"}
+    F -->|是| G["更新商品状态为: 上架"]
+    G --> H["同步商品到 ES"]
+    F -->|否| I["更新商品状态为: 下架"]
+    I --> J["从 ES 删除该商品索引"]
+    H --> K["返回成功"]
+    J --> K
 ```
 
-### 2.6 下架商品 — `PUT /api/product/off-shelf/{id}`
+### 2.6 删除商品 — `DELETE /api/product/{id}`
 
 ```mermaid
 flowchart TD
-    A["PUT /api/product/off-shelf/{id}"] --> B["解析 JWT → 校验商家/管理员身份"]
+    A["DELETE /api/product/{id}"] --> B["解析 JWT → 校验商品所属商家"]
     B --> C["查询商品表"]
     C --> D{"有权限操作?"}
     D -->|否| E["返回错误: 无权限"]
-    D -->|是| F["更新商品状态为: 下架"]
-    F --> G["从 ES 删除该商品索引"]
-    G --> H["返回成功"]
+    D -->|是| F{"商品被购物车/订单引用?"}
+    F -->|是| G["返回错误: 商品被引用，无法删除"]
+    F -->|否| H["删除商品"]
+    H --> I["从 ES 删除该商品索引"]
+    I --> J["返回成功"]
 ```
 
 ---
@@ -274,7 +266,7 @@ flowchart TD
     G --> D
 ```
 
-### 3.2 新增分类 — `POST /api/category`
+### 3.2 新增分类 — `POST /api/admin/categories`
 
 ```mermaid
 flowchart TD
@@ -291,7 +283,7 @@ flowchart TD
     J --> K["返回成功"]
 ```
 
-### 3.3 编辑分类 — `PUT /api/category/{id}`
+### 3.3 编辑分类 — `PUT /api/admin/categories/{id}`
 
 ```mermaid
 flowchart TD
@@ -304,11 +296,11 @@ flowchart TD
     G --> H["返回成功"]
 ```
 
-### 3.4 删除分类 — `DELETE /api/category/{id}`
+### 3.4 删除分类 — `DELETE /api/admin/categories/{id}`
 
 ```mermaid
 flowchart TD
-    A["DELETE /api/category/{id}"] --> B["解析 JWT → 校验管理员身份"]
+    A["DELETE /api/admin/categories/{id}"] --> B["解析 JWT → 校验管理员身份"]
     B --> C["统计该分类下的商品数量"]
     C --> D{"分类下有商品?"}
     D -->|有| E["返回错误: 分类非空，无法删除"]
@@ -393,6 +385,24 @@ flowchart TD
     F --> G["返回成功"]
 ```
 
+### 4.6 全选/取消全选 — `PUT /api/cart/select-all`
+
+```mermaid
+flowchart TD
+    A["用户提交<br/>{ selected: 1-全选, 0-取消全选 }"] --> B["解析 JWT，获取 userId"]
+    B --> C["将当前用户所有购物车项设为指定选中状态"]
+    C --> D["返回成功"]
+```
+
+### 4.7 清空购物车 — `DELETE /api/cart/clear`
+
+```mermaid
+flowchart TD
+    A["DELETE /api/cart/clear"] --> B["解析 JWT，获取 userId"]
+    B --> C["删除当前用户全部购物车项"]
+    C --> D["返回成功"]
+```
+
 ---
 
 ## 五、订单模块
@@ -403,7 +413,7 @@ flowchart TD
 flowchart TD
     A["前端结算页加载<br/>GET /api/order/submit-token"] --> B["解析 JWT，获取 userId"]
     B --> C["生成唯一标识 UUID"]
-    C --> D["Redis 存储: submit:{userId}:{uuid} = 1, 5分钟"]
+    C --> D["Redis 存储: order:submit-token:{token} = userId, 5分钟"]
     D --> E["返回 { token: uuid }"]
 ```
 
@@ -411,27 +421,25 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["用户提交下单数据<br/>{ 防重Token, 地址ID, 购物车项ID[] }"] --> B["解析 JWT，获取 userId"]
-    B --> C["Redis 删除: submit:{userId}:{token}"]
-    C --> D{"删除返回 1 ?"}
-    D -->|返回 0| E["返回错误: 请勿重复提交（token 已使用/过期）"]
-    D -->|返回 1| F["Redis 加分布式锁: lock:order:{userId}, 10秒"]
-    F --> G{"获取锁成功?"}
-    G -->|否| H["返回错误: 操作频繁"]
-    G -->|是| I["开启数据库事务"]
-    I --> J["查询购物车选中项"]
-    J --> K["遍历校验: 查询 SKU 库存 >= 数量"]
-    K --> L{"全部库存充足?"}
-    L -->|否| M["事务回滚 → 返回错误: 库存不足"]
-    L -->|是| N["查询收货地址 → JSON 快照保存"]
+    A["用户提交下单数据<br/>{ 防重Token, 地址ID, 购物车项ID[], 优惠券ID? }"] --> B["解析 JWT，获取 userId"]
+    B --> C["Redis 校验: order:submit-token:{token} == userId"]
+    C --> D{"存在且绑定当前用户?"}
+    D -->|否| E["返回错误: 请勿重复提交（token 已使用/过期）"]
+    D -->|是| F["Redis 删除: order:submit-token:{token}<br/>（删除返回 true 才继续，保证只消费一次）"]
+    F --> G["开启数据库事务"]
+    G --> H["校验收货地址属主"]
+    H --> I["查询购物车选中项（SQL 限定属主）"]
+    I --> J{"商品上架且库存充足?"}
+    J -->|否| K["事务回滚 → 返回错误: 库存不足/已下架"]
+    J -->|是| L["原子扣减库存<br/>UPDATE stock = stock - 数量 WHERE stock >= 数量"]
+    L --> M["计算金额 + 优惠券抵扣（复用 calculate 逻辑）"]
+    M --> N["查询收货地址 → JSON 快照保存"]
     N --> O["生成订单编号（时间戳+随机数）"]
-    O --> P["插入订单表 → 计算总金额"]
-    P --> Q["批量插入订单明细<br/>快照单价/数量/小计"]
-    Q --> R["遍历扣减库存<br/>UPDATE stock = stock - 数量 WHERE stock >= 数量"]
-    R --> S["删除已下单的购物车项"]
-    S --> T["事务提交"]
-    T --> U["释放分布式锁: lock:order:{userId}"]
-    U --> V["返回 { 订单ID, 订单编号 }"]
+    O --> P["插入订单表 + 批量插入订单明细<br/>快照单价/数量/小计"]
+    P --> Q["删除已下单的购物车项"]
+    Q --> R["核销优惠券（条件更新防重复核销）"]
+    R --> S["事务提交"]
+    S --> T["返回 { 订单ID, 订单编号 }"]
 ```
 
 ### 5.3 订单列表 — `GET /api/order/list`
@@ -445,11 +453,11 @@ flowchart TD
     E --> F["返回订单列表"]
 ```
 
-### 5.4 订单详情 — `GET /api/order/detail/{id}`
+### 5.4 订单详情 — `GET /api/order/{id}`
 
 ```mermaid
 flowchart TD
-    A["GET /api/order/detail/{orderId}"] --> B["解析 JWT，获取 userId"]
+    A["GET /api/order/{orderId}"] --> B["解析 JWT，获取 userId"]
     B --> C["查询订单表"]
     C --> D{"订单属于当前用户?"}
     D -->|否| E["返回错误: 无权查看"]
@@ -460,11 +468,11 @@ flowchart TD
     I --> J["返回订单详情"]
 ```
 
-### 5.5 取消订单 — `PUT /api/order/cancel/{id}`
+### 5.5 取消订单 — `PUT /api/order/{id}/cancel`
 
 ```mermaid
 flowchart TD
-    A["PUT /api/order/cancel/{orderId}<br/>?reason=取消原因"] --> B["解析 JWT，获取 userId"]
+    A["PUT /api/order/{orderId}/cancel<br/>?reason=取消原因"] --> B["解析 JWT，获取 userId"]
     B --> C["查询订单表"]
     C --> D{"订单属于当前用户?"}
     D -->|否| E["返回错误: 无权操作"]
@@ -475,19 +483,32 @@ flowchart TD
     I --> J["返回成功"]
 ```
 
-### 5.6 确认收货 — `PUT /api/order/receive/{id}`
+### 5.6 确认收货 — `PUT /api/order/{id}/receive`
 
 ```mermaid
 flowchart TD
-    A["PUT /api/order/receive/{orderId}"] --> B["解析 JWT，获取 userId"]
+    A["PUT /api/order/{orderId}/receive"] --> B["解析 JWT，获取 userId"]
     B --> C["查询订单表"]
     C --> D{"订单属于当前用户?"}
     D -->|否| E["返回错误: 无权操作"]
     D -->|是| F{"订单状态 == 已发货?"}
     F -->|否| G["返回错误: 当前状态不可确认收货"]
-    F -->|是| H["更新订单状态为: 已收货<br/>记录收货时间"]
-    H --> I["自动流转为: 已完成"]
-    I --> J["返回成功"]
+    F -->|是| H["更新订单状态为: 已完成(4)<br/>记录收货时间"]
+    H --> I["返回成功"]
+```
+
+### 5.7 删除订单 — `DELETE /api/order/{id}`
+
+```mermaid
+flowchart TD
+    A["DELETE /api/order/{orderId}"] --> B["解析 JWT，获取 userId"]
+    B --> C["查询订单表"]
+    C --> D{"订单属于当前用户?"}
+    D -->|否| E["返回错误: 无权操作"]
+    D -->|是| F{"订单处于可删除状态（已完成/已取消）?"}
+    F -->|否| G["返回错误: 当前状态不可删除"]
+    F -->|是| H["删除订单（及关联明细）"]
+    H --> I["返回成功"]
 ```
 
 ---
@@ -640,12 +661,12 @@ flowchart TD
     C --> D{"订单明细属于当前用户?"}
     D -->|否| E["返回错误: 无权评价"]
     D -->|是| F["查询订单表"]
-    F --> G{"订单状态 == 已收货/已完成?"}
+    F --> G{"订单状态 == 已完成(4)?"}
     G -->|否| H["返回错误: 收货后才能评价"]
     G -->|是| I["查询评论表: 该订单明细是否已有初评"]
     I --> J{"已有初评?"}
     J -->|是| K["返回错误: 已评价过"]
-    J -->|否| L["插入评论(type=初评)"]
+    J -->|否| L["插入评论(is_append=0, star=评分)"]
     L --> M["上传图片到 OSS → 保存图片 URL"]
     M --> N["更新商品评分缓存"]
     N --> O["返回成功"]
@@ -659,7 +680,7 @@ flowchart TD
     B --> C["查询初评记录"]
     C --> D{"初评存在 && 属于当前用户 && 未追评?"}
     D -->|否| E["返回错误: 不能追评"]
-    D -->|是| F["插入评论(关联初评ID, type=追评)"]
+    D -->|是| F["插入评论(关联初评ID, is_append=1)"]
     F --> G["返回成功"]
 ```
 
@@ -675,7 +696,7 @@ flowchart TD
     F --> G["查询该评论对应的商品"]
     G --> H{"商品属于当前商家?"}
     H -->|否| I["返回错误: 无权回复"]
-    H -->|是| J["插入评论(关联评论ID, type=回复)"]
+    H -->|是| J["插入评论(关联评论ID, parent_id=评论ID)"]
     J --> K["返回成功"]
 ```
 
@@ -692,7 +713,7 @@ flowchart TD
     C --> D{"订单明细属于当前用户?"}
     D -->|否| E["返回错误: 无权操作"]
     D -->|是| F["查询订单表"]
-    F --> G{"订单状态 IN [已支付, 已发货, 已收货]?"}
+    F --> G{"订单状态 IN [已支付(2), 已发货(3), 已完成(4)]?"}
     G -->|否| H["返回错误: 当前状态不可退款"]
     G -->|是| I["查询退款表: 该明细是否已有退款记录"]
     I --> J{"已有退款记录?"}
@@ -716,25 +737,63 @@ flowchart TD
     G --> H["返回退款列表"]
 ```
 
-### 9.3 审核退款 — `PUT /api/refund/{id}/review`
+### 9.3 退款详情 — `GET /api/refund/{id}`
 
 ```mermaid
 flowchart TD
-    A["商家/管理员提交<br/>{ 审核结果, 原因 }"] --> B["解析 JWT → 获取 userId → 角色"]
-    B --> C["查询退款记录"]
-    C --> D{"有审核权限?"}
+    A["GET /api/refund/{refundId}"] --> B["解析 JWT，获取 userId"]
+    B --> C["查询退款单"]
+    C --> D{"退款单属于当前用户?"}
+    D -->|否| E["返回错误: 无权查看"]
+    D -->|是| F["组装退款详情<br/>{ 退款金额, 状态, 审核意见, 物流信息 }"]
+    F --> G["返回退款详情"]
+```
+
+### 9.4 审核退款/退货 — `PUT /api/refund/{id}/review`
+
+```mermaid
+flowchart TD
+    A["商家/管理员提交<br/>{ approved: 1-同意, 0-拒绝, 原因 }"] --> B["解析 JWT → 获取 userId → 角色"]
+    B --> C["查询退款单"]
+    C --> D{"有审核权限?<br/>商家需资质有效且商品归属自己"}
     D -->|否| E["返回错误: 无权限"]
-    D -->|是| F{"退款状态 == 待审核?"}
+    D -->|是| F{"退款单待审核?"}
     F -->|否| G["返回错误: 已审核过"]
     F -->|是| H{"审核通过?"}
     H -->|拒绝| I["更新退款状态: 已拒绝<br/>记录拒绝原因"]
-    H -->|通过| J{"退款类型?"}
-    J -->|仅退款| K["更新退款状态: 已通过"]
-    J -->|退货| L["更新退款状态: 审核中<br/>等待用户寄回"]
-    K --> M["更新订单状态: 已取消/退款完成"]
-    M --> N["恢复库存"]
-    N --> O["返回成功"]
-    I --> O
+    I --> J["订单恢复为已完成(4)"]
+    H -->|通过| K{"退款类型?"}
+    K -->|仅退款| L["更新退款状态: 已通过<br/>订单置为: 已退款"]
+    K -->|退货| M["更新退款状态: 待寄回<br/>等待买家填写退货物流"]
+    L --> N["返回成功"]
+    M --> N
+    J --> N
+```
+
+### 9.5 填写退货物流 — `PUT /api/refund/{id}/return`
+
+```mermaid
+flowchart TD
+    A["买家提交<br/>{ 快递公司, 物流单号 }"] --> B["解析 JWT，获取 userId"]
+    B --> C["查询退款单"]
+    C --> D{"属于当前用户且状态 == 待寄回?"}
+    D -->|否| E["返回错误: 当前状态不可填写物流"]
+    D -->|是| F["保存退货物流信息<br/>退款状态更新为: 待商家收货"]
+    F --> G["返回成功"]
+```
+
+### 9.6 确认收到退货 — `PUT /api/refund/{id}/return-received`
+
+```mermaid
+flowchart TD
+    A["PUT /api/refund/{id}/return-received"] --> B["解析 JWT → 获取 userId → 角色"]
+    B --> C["查询退款单"]
+    C --> D{"有权限（商家/管理员）?"}
+    D -->|否| E["返回错误: 无权限"]
+    D -->|是| F{"退款状态 == 待商家收货?"}
+    F -->|否| G["返回错误: 当前状态不可确认收货"]
+    F -->|是| H["退款状态更新为: 退货完成<br/>订单标记为: 已退款"]
+    H --> I["返回成功"]
 ```
 
 ---
@@ -751,76 +810,105 @@ flowchart TD
     D --> E["返回会话列表"]
 ```
 
-### 10.2 获取历史消息 — `GET /api/chat/messages/{conversationId}`
+### 10.2 获取历史消息 — `GET /api/chat/history/{conversationId}`
 
 ```mermaid
 flowchart TD
-    A["GET /api/chat/messages/{conversationId}<br/>?page=&size="] --> B["解析 JWT，获取 userId"]
+    A["GET /api/chat/history/{conversationId}<br/>?page=&size="] --> B["解析 JWT，获取 userId"]
     B --> C["查询会话表"]
     C --> D{"会话参与者包含当前用户?"}
     D -->|否| E["返回错误: 无权查看"]
-    D -->|是| F["分页查询消息表"]
-    F --> G["标记已读: 更新消息表中对方发送的消息为已读"]
-    G --> H["清零该会话的未读数"]
-    H --> I["返回分页消息列表"]
+    D -->|是| F["分页查询消息表（从新到旧）"]
+    F --> G["返回分页消息列表"]
 ```
 
-### 10.3 WebSocket 建立连接 — `ws://host/chat/{userId}`
+### 10.3 创建/获取会话 — `POST /api/chat/conversation`
+
+```mermaid
+flowchart TD
+    A["用户提交<br/>{ merchantId, productId }"] --> B["解析 JWT，获取 userId"]
+    B --> C{"会话已存在?"}
+    C -->|是| D["返回已有会话"]
+    C -->|否| E["创建新会话"]
+    E --> F["返回会话信息"]
+    D --> F
+```
+
+### 10.4 标记会话已读 — `PUT /api/chat/read/{conversationId}`
+
+```mermaid
+flowchart TD
+    A["PUT /api/chat/read/{conversationId}"] --> B["解析 JWT，获取 userId"]
+    B --> C["将会话中对方发送的消息标记为已读"]
+    C --> D["清零该会话未读数"]
+    D --> E["返回成功"]
+```
+
+### 10.5 未读消息总数 — `GET /api/chat/unread-count`
+
+```mermaid
+flowchart TD
+    A["GET /api/chat/unread-count"] --> B["解析 JWT，获取 userId"]
+    B --> C["统计当前用户所有会话的未读消息总数"]
+    C --> D["返回 { unreadCount }"]
+```
+
+### 10.6 WebSocket 建立连接 — `ws://host/chat/{userId}?token=jwt`
 
 ```mermaid
 sequenceDiagram
     actor 前端 as 前端 WebSocket
-    participant 后端 as WebSocket 服务端
+    participant 后端 as ChatWebSocketEndpoint
     participant Redis as Redis
     participant DB as 数据库
 
     前端 ->> 后端: ws://host/chat/{userId}?token=xxx
-    后端 ->> 后端: 解析 JWT 校验身份
-    alt Token 无效
-        后端 -->> 前端: 关闭连接 (1008)
+    后端 ->> 后端: 解析 queryString 中的 token → JWT 解析 userId
+    后端 ->> Redis: 校验 token:{userId} == token（防冒连）
+    alt Token 无效 / userId 与路径不一致
+        后端 -->> 前端: 关闭连接 (VIOLATED_POLICY)
     else Token 有效
-        后端 ->> Redis: 存储 ws:{userId} = sessionId
-        后端 ->> DB: 查询用户的会话列表
-        后端 -->> 前端: 返回在线会话列表 + 未读数
+        后端 ->> 后端: 本地 SESSIONS 缓存 userId -> Session<br/>（已有旧连接则顶下线）
+        后端 ->> Redis: set online:{userId} = "1"
+        后端 ->> DB: 查询未读消息
+        后端 -->> 前端: 补推离线期间的消息
     end
 ```
 
-### 10.4 WebSocket 发送消息
+### 10.7 WebSocket 发送消息
 
 ```mermaid
 sequenceDiagram
     actor 用户A as 用户 A
-    participant WS as WebSocket 服务端
+    participant WS as ChatWebSocketEndpoint
     participant DB as 数据库
-    participant Redis as Redis
     actor 用户B as 用户 B (商家)
 
     用户A ->> WS: 发送消息 { conversationId, content, type }
-    WS ->> WS: 解析 JSON
-    WS ->> DB: 保存消息到消息表
-    WS ->> DB: 更新会话表(最后消息内容 + 时间)
-    WS ->> DB: 增加对方未读数 +1
-    WS ->> Redis: 查询 ws:{对方userId}
-    alt 对方在线
+    WS ->> WS: 解析 JSON → ChatService.sendMessage
+    WS ->> DB: 保存消息 + 更新会话(最后消息/时间) + 对方未读 +1
+    WS ->> DB: 查询会话对端 userId
+    WS ->> WS: 从本地 SESSIONS 获取接收方 Session
+    alt 接收方在线（本地 Session 存在）
         WS -->> 用户B: 实时推送消息
-    else 对方离线
-        WS ->> WS: 消息已持久化，等待对方上线拉取
+    else 接收方离线
+        WS ->> WS: 消息已持久化，等待对方上线补推
     end
     WS -->> 用户A: 回显消息（已发送状态）
 ```
 
-### 10.5 WebSocket 关闭连接
+### 10.8 WebSocket 关闭连接
 
 ```mermaid
 sequenceDiagram
     actor 前端 as 前端
-    participant 后端 as WebSocket 服务端
+    participant 后端 as ChatWebSocketEndpoint
     participant Redis as Redis
 
     前端 ->> 后端: WebSocket close / 页面关闭
-    后端 ->> 后端: 关闭事件触发
-    后端 ->> Redis: 删除 ws:{userId}
-    后端 ->> 后端: 清理本地 session 缓存
+    后端 ->> 后端: @OnClose 触发
+    后端 ->> 后端: 本地 SESSIONS 移除 userId -> Session
+    后端 ->> Redis: delete online:{userId}
 ```
 
 ---
@@ -832,18 +920,14 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A["用户提交<br/>{ 店铺名称, 营业执照, 联系电话 }"] --> B["解析 JWT，获取 userId"]
-    B --> C["查询用户表"]
-    C --> D{"用户角色 == 商家?"}
-    D -->|否| E["返回错误: 非商家角色"]
-    D -->|是| F["查询商家表: 是否已有申请记录"]
-    F --> G{"已有申请记录?"}
-    G -->|已通过| H["返回错误: 已是商家"]
-    G -->|待审核| I["返回错误: 审核中请等待"]
-    G -->|已拒绝| J["可重新提交 → 更新原记录"]
-    G -->|无记录| K["插入商家记录(status=待审核)"]
-    J --> L["返回成功"]
-    K --> L
+    B --> C["查询商家表: 当前用户是否已有记录"]
+    C --> D{"已有申请记录?"}
+    D -->|是| E["返回错误: 您已提交过入驻申请"]
+    D -->|否| F["插入商家记录(status=0 待审核)"]
+    F --> G["返回成功"]
 ```
+
+> 商家自助注册：注册接口允许 `role=2` 并必填 `shopName`，注册事务内直接创建 `status=0` 的待审核商家记录；`POST /api/merchant/apply` 供已注册的普通用户补充提交入驻申请。两种方式都只允许提交一次，审核通过后由管理员将用户角色更新为商家。
 
 ### 11.2 商家订单管理 — `GET /api/merchant/orders`
 
@@ -858,7 +942,7 @@ flowchart TD
     G --> H["返回订单列表"]
 ```
 
-### 11.3 商家发货 — `PUT /api/merchant/order/{id}/ship`
+### 11.3 商家发货 — `PUT /api/merchant/ship/{orderId}`
 
 ```mermaid
 flowchart TD
@@ -882,6 +966,27 @@ flowchart TD
     D --> E["组装统计结果返回"]
 ```
 
+### 11.5 商家信息 — `GET /api/merchant/info`
+
+```mermaid
+flowchart TD
+    A["GET /api/merchant/info"] --> B["解析 JWT，获取 userId"]
+    B --> C["查询商家表"]
+    C --> D{"商家记录存在?"}
+    D -->|否| E["返回错误: 未入驻"]
+    D -->|是| F["返回店铺信息 + 审核状态"]
+```
+
+### 11.6 商家商品列表 — `GET /api/merchant/products`
+
+```mermaid
+flowchart TD
+    A["GET /api/merchant/products<br/>?page=&size=&status="] --> B["解析 JWT，获取 userId"]
+    B --> C["校验商家身份"]
+    C --> D["分页查询商品表: 按商家ID + 状态筛选"]
+    D --> E["返回商品列表"]
+```
+
 ---
 
 ## 十二、管理员模块
@@ -897,11 +1002,11 @@ flowchart TD
     E --> F["返回分页用户列表"]
 ```
 
-### 12.2 禁用/启用用户 — `PUT /api/admin/user/{id}/disable|enable`
+### 12.2 禁用/启用用户 — `PUT /api/admin/users/{id}/status`
 
 ```mermaid
 flowchart TD
-    A["PUT /api/admin/user/{userId}/disable|enable"] --> B["解析 JWT → 校验管理员"]
+    A["PUT /api/admin/users/{id}/status<br/>{ status: 0-禁用, 1-正常 }"] --> B["解析 JWT → 校验管理员"]
     B --> C{"管理员?"}
     C -->|否| D["返回错误: 无权限"]
     C -->|是| E["查询用户表"]
@@ -922,7 +1027,7 @@ flowchart TD
     D --> E["返回商家申请列表"]
 ```
 
-### 12.4 审核商家 — `PUT /api/admin/merchant/{id}/audit`
+### 12.4 审核商家 — `PUT /api/admin/merchants/{id}/review`
 
 ```mermaid
 flowchart TD
@@ -959,6 +1064,33 @@ flowchart TD
     D --> G["组装报表返回"]
     E --> G
     F --> G
+```
+
+### 12.7 商品管理 — `GET/PUT/DELETE /api/admin/products`
+
+```mermaid
+flowchart TD
+    A["GET /api/admin/products<br/>?page=&size=&keyword=&status="] --> B["解析 JWT → 校验管理员"]
+    B --> C["分页查询全平台商品"]
+    C --> D["返回商品列表"]
+
+    A2["PUT /api/admin/products/{id} / {id}/status"] --> B2["校验管理员"]
+    B2 --> C2["修改商品信息 / 上下架（全平台强制）"]
+    C2 --> D2["同步更新 ES 索引"]
+
+    A3["DELETE /api/admin/products/{id}"] --> B3["校验管理员"]
+    B3 --> C3["删除商品"]
+    C3 --> D3["从 ES 删除索引"]
+```
+
+### 12.8 重建搜索索引 — `POST /api/admin/search-index/rebuild`
+
+```mermaid
+flowchart TD
+    A["POST /api/admin/search-index/rebuild"] --> B["解析 JWT → 校验管理员"]
+    B --> C["全量读取商品数据"]
+    C --> D["批量重建 ES 索引 chrono_product"]
+    D --> E["返回重建结果"]
 ```
 
 ---
@@ -1002,7 +1134,16 @@ flowchart TD
     E["DELETE /api/search/history"] --> F["按 userId 删除全部记录"]
 ```
 
-### 13.4 同步商品到 ES
+### 13.4 热门搜索 — `GET /api/search/hot`
+
+```mermaid
+flowchart TD
+    A["GET /api/search/hot"] --> B["聚合统计 search_history 表<br/>按关键词出现次数倒序"]
+    B --> C["取前 N 条热门关键词"]
+    C --> D["返回热门搜索列表"]
+```
+
+### 13.5 同步商品到 ES
 
 ```mermaid
 flowchart TD
@@ -1012,7 +1153,7 @@ flowchart TD
     D --> E["同步完成（异常仅记日志，不回滚主业务）"]
 ```
 
-### 13.5 从 ES 删除商品
+### 13.6 从 ES 删除商品
 
 ```mermaid
 flowchart TD
@@ -1105,21 +1246,21 @@ flowchart TD
 | 模块 | 路径前缀 | 接口数 | 权限 |
 |------|----------|--------|------|
 | 用户认证 | `/api/user` | 9 | 公开/登录 |
-| 商品 | `/api/product` | 6 | 公开/商家/管理员 |
-| 分类 | `/api/category` | 2 | 公开/管理员 |
-| 购物车 | `/api/cart` | 7 | 登录用户/商家 |
-| 订单 | `/api/order` | 7 | 登录用户/商家/管理员 |
-| 支付 | `/api/payment` | 3 | 登录用户/商家 |
-| 收货地址 | `/api/address` | 6 | 登录用户/商家 |
-| 评论 | `/api/comment` | 4 | 游客查看/登录用户/商家/管理员 |
-| 退款 | `/api/refund` | 4 | 登录用户/商家/管理员 |
-| 商家 | `/api/merchant` | 6 | 注册用户入驻/商家 |
-| 管理员 | `/api/admin` | 10 | 管理员 |
+| 商品 | `/api/product` | 6 | 公开/商家 |
+| 分类 | `/api/category` | 2 | 公开 |
+| 购物车 | `/api/cart` | 7 | 登录用户 |
+| 订单 | `/api/order` | 7 | 登录用户 |
+| 支付 | `/api/payment` | 4 | 登录用户 |
+| 收货地址 | `/api/address` | 6 | 登录用户 |
+| 评论 | `/api/comment` | 4 | 公开查看/登录用户/商家 |
+| 退款 | `/api/refund` | 6 | 登录用户/商家/管理员 |
+| 商家 | `/api/merchant` | 7 | 注册用户入驻/商家 |
+| 管理员 | `/api/admin` | 15 | 管理员 |
 | 文件上传 | `/api/upload` | 1 | 登录用户/商家/管理员 |
 | 即时通讯 | `/api/chat` | 5 | 登录用户/商家 |
 | 搜索 | `/api/search` | 5 | 公开/登录用户 |
 | 秒杀券 | `/api/seckill` | 8 | 公开查看/登录抢领/管理员 |
-| **合计** | | **83** | |
+| **合计** | | **92** | |
 
 ---
 
@@ -1129,12 +1270,14 @@ flowchart TD
 |----------|------|------|------|
 | `captcha:{uuid}` | String | 2分钟 | 图形验证码 |
 | `reset:code:{uuid}` | String | 5分钟 | 重置密码验证码 |
+| `reset:account:{uuid}` | String | 5分钟 | 重置密码验证码绑定的用户ID |
 | `token:{userId}` | String(JWT) | 2小时 | 用户登录态 |
-| `submit:{userId}:{uuid}` | String | 5分钟 | 下单防重 |
-| `lock:order:{userId}` | String | 10秒 | 下单分布式锁 |
+| `order:submit-token:{token}` | String | 5分钟 | 下单防重（值为 userId） |
 | `qrcode:{orderId}` | String | 5分钟 | 支付二维码 |
 | `category:tree` | JSON | 30分钟 | 分类树 |
-| `ws:{userId}` | String | 连接期间 | WebSocket 会话映射 |
+| `online:{userId}` | String | 连接期间 | WebSocket 在线状态（值为 "1"） |
+| `seckill:remain:{couponId}` | String | 活动期间 | 秒杀券剩余库存 |
+| `seckill:claimed:{couponId}:{userId}` | String | 活动期间 | 秒杀券个人领取计数 |
 
 ---
 
@@ -1161,7 +1304,7 @@ flowchart TD
 | `message` | 即时通讯 | 消息记录 |
 | `seckill_coupon` | 秒杀券 | 券定义、总量/剩余量、活动时间窗 |
 | `user_coupon` | 秒杀券 | 用户领券记录、使用状态 |
-| `operation_log` | 管理后台 | AOP 操作日志 |
+| `operation_log` | 管理后台 | AOP 操作日志（表结构预留，当前未启用） |
 
 ---
 
@@ -1169,10 +1312,10 @@ flowchart TD
 
 | 场景 | 策略 | 说明 |
 |------|------|------|
-| 下单 | 分布式锁 + 数据库事务 | Redis 锁防并发，事务保证订单+扣库存原子性 |
-| 库存扣减 | 行级锁 `WHERE stock >= ?` | 防止超卖 |
+| 下单 | 防重 Token + 数据库事务 | Redis 防重 Token 防重复提交，事务保证订单+扣库存原子性 |
+| 库存扣减 | 乐观锁（条件更新）`WHERE stock >= ?` | 原子扣减防止超卖 |
 | 抢领秒杀券 | Redis 原子扣减 + 数据库事务 | Redis `DECR`/`INCR` 防超卖超领，MySQL 写入失败时补偿 Redis |
-| 支付 | 幂等校验 | 查支付表防重复扣款 |
+| 支付 | 订单状态条件更新 | `UPDATE order SET status=已支付 WHERE status=待支付`，更新 0 行即拒绝重复支付 |
 | 退款审核 | 乐观锁（状态机） | 只有"待审核"状态可审核 |
 
 ---
@@ -1223,19 +1366,26 @@ graph TB
 
 | 路由 | 页面 | 权限 |
 |------|------|------|
-| `/` | 首页商品列表 | 公开 |
+| `/home` | 首页商品列表（`/` 重定向至此） | 公开 |
 | `/product/:id` | 商品详情 | 公开 |
 | `/search` | 搜索结果 | 公开 |
+| `/coupons` | 领券中心 | 公开 |
+| `/help/:type` | 帮助中心 | 公开 |
 | `/login` | 登录 | 公开 |
-| `/register` | 注册 | 公开 |
-| `/cart` | 购物车 | 用户 |
-| `/checkout` | 结算 | 用户 |
-| `/payment/:orderId` | 支付 | 用户 |
-| `/orders` | 订单列表 | 用户 |
-| `/order/:id` | 订单详情 | 用户 |
-| `/profile` | 个人信息 | 用户 |
-| `/address` | 地址管理 | 用户 |
-| `/chat` | 即时通讯 | 用户/商家 |
+| `/register` | 注册（买家/商家） | 公开 |
+| `/forgot-password` | 忘记密码 | 公开 |
+| `/cart` | 购物车 | 登录用户 |
+| `/checkout` | 结算 | 登录用户 |
+| `/payment/:orderId` | 支付 | 登录用户 |
+| `/orders` | 订单列表 | 登录用户 |
+| `/order/:id` | 订单详情 | 登录用户 |
+| `/payments` | 支付记录 | 登录用户 |
+| `/refunds` | 退款/售后 | 登录用户 |
+| `/profile` | 重定向至 `/settings` | 登录用户 |
+| `/settings` | 账户设置 | 登录用户 |
+| `/address` | 地址管理 | 登录用户 |
+| `/chat/:conversationId?` | 即时通讯 | 登录用户 |
+| `/merchant/apply` | 商家入驻 | 普通用户/商家 |
 | `/merchant/*` | 商家后台 | 商家 |
 | `/admin/*` | 管理员后台 | 管理员 |
 
@@ -1243,9 +1393,9 @@ graph TB
 
 | Store | 数据 | 用途 |
 |-------|------|------|
-| `userStore` | token / userInfo / role | 登录状态、权限判断 |
-| `cartStore` | items / totalCount / totalAmount | 购物车 |
-| `chatStore` | conversations / unreadCount | 即时通讯未读 |
+| `userStore` | token / userInfo / role | 登录状态、权限判断（持久化到 localStorage） |
+
+> 当前仅 `userStore` 为全局 Pinia 状态；购物车、订单、聊天等数据由各页面组件按需拉取并在组件内维护，未建立独立 Store。
 
 ### 数据流
 
@@ -1258,8 +1408,6 @@ flowchart LR
 
     subgraph Store["全局状态 Pinia"]
         US["userStore<br/>token / userInfo / role"]
-        CS["cartStore<br/>购物车数据"]
-        CHS["chatStore<br/>会话/未读"]
     end
 
     subgraph API["API 层"]
@@ -1273,17 +1421,15 @@ flowchart LR
     end
 
     V <--> US
-    V <--> CS
-    V <--> CHS
     C <--> US
 
     V --> AX
     AX --> BE
-    V --> ES
+    BE --> ES
     V --> WS
 
     AX -- "请求拦截: 注入 Token" --> AX
-    AX -- "响应拦截: 401 → 刷新 → 重试" --> AX
+    AX -- "响应拦截: 401 → 清除 token → 跳转登录" --> AX
 ```
 
 ---
@@ -1292,17 +1438,19 @@ flowchart LR
 
 | 模块 | 函数数 | 说明 |
 |------|--------|------|
-| 用户认证 | 10 | 验证码/注册/登录/登出/刷新/忘记密码/重置密码/改密/信息/修改资料 |
-| 商品 | 6 | 列表/详情/创建/更新/上架/下架 |
-| 分类 | 4 | 分类树/新增/编辑/删除 |
-| 购物车 | 5 | 列表/加入/修改数量/选中/删除 |
-| 订单 | 6 | 防重Token/创建/列表/详情/取消/确认收货 |
-| 支付 | 3 | 卡号支付/二维码/确认支付 |
-| 收货地址 | 5 | 列表/新增/编辑/删除/设为默认 |
+| 用户认证 | 9 | 验证码/注册/登录/登出/忘记密码/重置密码/改密/信息/修改资料 |
+| 商品 | 6 | 列表/详情/创建/更新/上下架/删除 |
+| 分类 | 2 | 分类树/子分类 |
+| 购物车 | 7 | 列表/加入/修改数量/选中/全选/删除/清空 |
+| 订单 | 7 | 防重Token/创建/列表/详情/取消/确认收货/删除 |
+| 支付 | 4 | 卡号支付/二维码/确认支付/支付记录 |
+| 收货地址 | 6 | 列表/详情/新增/编辑/删除/设为默认 |
 | 评论 | 4 | 列表/初评/追评/商家回复 |
-| 退款/退货 | 3 | 申请/列表/审核 |
-| 即时通讯 | 5 | 会话列表/历史消息/WS连接/发送/关闭 |
-| 商家 | 4 | 入驻申请/订单管理/发货/统计 |
-| 管理员 | 6 | 用户管理/禁用启用/商家审核/全局订单/报表 |
-| 搜索 | 5 | 建议/搜索/历史/同步ES/删除ES |
-| **合计** | **66** | |
+| 退款/退货 | 6 | 申请/列表/详情/审核/寄回/确认收货 |
+| 即时通讯 | 5 | 会话列表/历史消息/创建会话/标记已读/未读数（WebSocket 端点另计） |
+| 商家 | 7 | 入驻申请/信息/商品/订单/发货/退款/统计 |
+| 管理员 | 15 | 用户/禁用启用/商家审核/分类/商品/订单/退款/报表/重建索引 |
+| 文件上传 | 1 | 图片上传 |
+| 搜索 | 5 | 建议/搜索/历史/清空历史/热门搜索 |
+| 秒杀券 | 8 | 列表/详情/抢领/我的券/创建/更新/删除/计算 |
+| **合计** | **92** | |
