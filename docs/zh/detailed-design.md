@@ -849,7 +849,7 @@ flowchart TD
 flowchart TD
     A["GET /api/chat/unread-count"] --> B["解析 JWT，获取 userId"]
     B --> C["统计当前用户所有会话的未读消息总数"]
-    C --> D["返回 { unreadCount }"]
+    C --> D["返回 { count }"]
 ```
 
 ### 10.6 WebSocket 建立连接 — `ws://host/chat/{userId}?token=jwt`
