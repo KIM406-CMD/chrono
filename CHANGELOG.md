@@ -14,6 +14,7 @@
 - 商家商品详情接口 `GET /api/merchant/products/{id}`：卖家中心编辑商品时可回填自己的下架商品，且服务端校验商品归属
 - 商家商品列表补充 `minPrice`（SKU 最低价），卖家中心价格列不再显示“—”
 - 数据库增量脚本 `initial/migration-2026-11-16.sql`（幂等创建通知表）
+- 演示数据按类目拆分商家：新增“家居服饰馆”`merchant3`（账号 `merchant3` / `admin123`），批量商品按类目归属三个商家，并新增幂等迁移脚本 `initial/migration-2026-11-16-merchant-split.sql`
 - 商家评论列表接口 `GET /api/merchant/comments`：默认汇总商家全部商品的评论，支持按商品筛选并返回商品名称
 
 ### Fixed
