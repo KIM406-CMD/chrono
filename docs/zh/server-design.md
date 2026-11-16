@@ -226,7 +226,7 @@ public class GlobalExceptionHandler {
 ### 5.1 JWT + Redis 双校验流程
 
 ```
-登录请求 → 校验用户名密码 → 生成 JWT Token → 存入 Redis(userId:token)
+登录请求 → 校验用户名密码 → 生成 JWT Token → 存入 Redis(token:{userId} = token)
          → 返回 Token 给前端
 
 后续请求 → 拦截器提取 Header Authorization → 解析 JWT 获取 userId
@@ -234,7 +234,7 @@ public class GlobalExceptionHandler {
 ```
 
 - **JWT**：承载用户身份信息（userId、role），有效期 2 小时
-- **Redis**：存 Token 版本号，支持主动踢人（删除 Redis 对应 Key 即可立即失效）
+- **Redis**：存当前有效 Token 字符串（`token:{userId}`），支持主动踢人（删除对应 Key 即可立即失效）
 - **登出**：删除 Redis 中 Token
 
 ### 5.2 RBAC 权限控制（Service 层校验）

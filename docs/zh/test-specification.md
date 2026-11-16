@@ -10,12 +10,12 @@
 | 层次 | 范围 | 依赖处理 | 执行速度 | 稳定性 |
 |------|------|----------|----------|--------|
 | **单元测试** | 单个类/方法逻辑 | 全部 Mock | 毫秒级 | 极高 |
-| **集成测试** | 多组件协作（Service + Mapper + DB） | 部分真实（H2 内存库） | 秒级 | 高 |
+| **集成测试** | 多组件协作（Service + Mapper + DB） | 真实 MySQL 测试库 + Redis | 秒级 | 高 |
 | **E2E 测试** | 完整 HTTP 请求链路 | 全部真实 | 毫秒~秒级 | 中 |
 
 ### 1.1 单元测试
 
-- 测试对象：Service 层业务逻辑
+- 测试对象：Service 层业务逻辑（`module-service`）与工具类（`common`，如 `JwtUtilTest`）
 - 外部依赖（数据库、Redis）全部使用 Mockito 模拟
 - 不启动 Spring 容器，只验证 Java 代码逻辑
 
@@ -217,11 +217,11 @@ mvn test
 # 运行指定模块
 mvn test -pl module-start
 
-# 运行指定测试类
-mvn test -pl module-start -Dtest=AuthServiceImplTest
+# 运行指定测试类（-am 会连同依赖模块一起构建）
+mvn -pl module-service -am test -Dtest=AuthServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false
 
 # 运行指定测试方法
-mvn test -pl module-start -Dtest=AuthServiceImplTest#shouldRegisterNewUser
+mvn -pl module-service -am test -Dtest=AuthServiceImplTest#shouldDeleteCaptchaAfterSuccessfulRegister -Dsurefire.failIfNoSpecifiedTests=false
 
 # 前端质量检查
 cd chrono-bbs-client
@@ -233,9 +233,11 @@ npm run test:e2e   # 首次执行前：npx playwright install chromium
 ### 7.2 报告位置
 
 ```
-module-start/target/surefire-reports/
-├── com.ncist.service.AuthServiceImplTest.txt    # 文本报告
-└── TEST-com.ncist.service.AuthServiceImplTest.xml # XML 报告
+module-service/target/surefire-reports/
+├── com.ncist.unit.service.AuthServiceImplTest.txt    # 文本报告
+└── TEST-com.ncist.unit.service.AuthServiceImplTest.xml # XML 报告
+
+module-start/target/surefire-reports/   # 集成测试 / E2E 报告
 ```
 
 ### 7.3 输出示例
@@ -253,7 +255,7 @@ BUILD SUCCESS
 |------|----------|
 | 开发阶段 | 本地 IDE 直接运行目标测试类/方法 |
 | 提交前检查 | `mvn test` 跑全部测试 |
-| 集成测试 | `mvn test -P integration` 激活集成测试 profile |
+| 集成测试 | 运行 `module-start` 测试（`mvn -pl module-start -am test`），使用 `test` profile |
 
 ---
 
@@ -279,11 +281,15 @@ BUILD SUCCESS
 ### 9.3 包结构
 
 ```
+common/src/test/java/com/ncist/common/utils/
+└── JwtUtilTest.java              # 工具类单元测试
+
+module-service/src/test/java/com/ncist/unit/service/
+└── *ServiceImplTest.java         # Service 单元测试（Mockito）
+
 module-start/src/test/java/com/ncist/
-├── service/          # Service 单元测试
-│   └── AuthServiceImplTest.java
-├── integration/      # 集成测试
+├── integration/                  # 集成测试
 │   └── AuthServiceIntegrationTest.java
-└── e2e/              # E2E 测试
+└── e2e/                          # E2E 测试
     └── AuthControllerE2ETest.java
 ```

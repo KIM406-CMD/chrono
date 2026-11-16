@@ -69,14 +69,14 @@ This document conducts a comprehensive analysis from four dimensions: **technica
 | Scope of Impact | Development environment and demo environment setup |
 | **Mitigation Measures** | 1. Develop using local installations first (install MySQL and Redis directly) to ensure business development is not blocked<br>2. Write Docker Compose files in the middle stage to start all middleware with one command<br>3. Docker Compose orchestration requires only 1 `docker-compose.yml` file, and the learning cost is manageable (1-2 days) |
 
-#### Risk 4: Redis Cache and Distributed Lock (⚠️ Low-Medium Risk)
+#### Risk 4: Redis Cache and Concurrency Control (⚠️ Low-Medium Risk)
 
 | Risk Item | Analysis |
 |--------|------|
-| Risk Description | Redis needs to implement login state caching, anti-duplicate submission tokens, distributed locks (order placement), product sales counting, etc. |
-| Scope of Impact | Multiple high-priority features such as authentication, order placement, and sales statistics |
-| Learning Curve | Basic single-node Redis operations are simple; distributed locks have a certain learning cost |
-| **Mitigation Measures** | 1. First use simple `SET key value EX seconds` to implement login state and anti-duplicate tokens<br>2. Use Redisson or hand-written `SETNX` + Lua scripts for distributed locks, referring to mature solutions online<br>3. Use `Redis INCRBY` for sales counting and asynchronously synchronize back to MySQL, which is simple and reliable |
+| Risk Description | Redis needs to implement login state, graphical captcha, order duplicate-submission tokens, flash-sale coupon stock and per-user claim counts, WebSocket online status, etc. |
+| Scope of Impact | Multiple features such as authentication, order placement, flash-sale coupons, and instant messaging |
+| Learning Curve | Basic single-node Redis operations are simple; the `DECR` atomic deduction and the consume semantics of anti-duplicate tokens need careful design |
+| **Mitigation Measures** | 1. Use `SET key value EX seconds` for login state, captcha, and anti-duplicate tokens<br>2. Do not introduce a distributed lock for order placement; instead use "anti-duplicate token + conditional database status updates" to reduce concurrency-control complexity<br>3. Use Redis `DECR`/`INCR` for atomic deduction of flash-sale coupon stock, degrading to a `remain_count > 0` conditional update when Redis is unavailable |
 
 ### 2.3 Technical Feasibility Conclusion
 
@@ -232,4 +232,4 @@ This document conducts a comprehensive analysis from four dimensions: **technica
 | Unfamiliar with Docker | ⚠️ Medium | Allow direct local installation of middleware first; add Docker Compose in the middle stage |
 | Final-term time compression | ⚠️ Medium | Complete 90% of the code before week 5; decisively cut low-priority features |
 | Large frontend development volume | ⚠️ Medium | Simplify styles on admin pages; prioritize the mall shopping flow |
-| Redis distributed lock | ⚠️ Low | Refer to mature solutions; abundant community resources |
+| Redis concurrency control | ⚠️ Low | Anti-duplicate token + conditional updates reduce complexity; flash-sale coupons use atomic deduction with degradation |

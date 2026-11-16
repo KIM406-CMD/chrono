@@ -354,14 +354,14 @@ flowchart TB
 | Order status | Only valid state transitions are allowed | Directly reject illegal transitions |
 | Order amount | The payable amount is consistent with items, discounts, and shipping | Do not create the order if amount validation fails |
 | Address snapshot | Address changes after ordering do not affect historical orders | Save a snapshot at order time |
-| Payment idempotency | Duplicate payment for the same order records only one success | Return the success result directly for already-paid orders |
+| Payment idempotency | Duplicate payment for the same order records only one success | Reject duplicate payment when the order status is no longer Pending Payment |
 | Refund amount | Must not exceed the subtotal of the corresponding order item | Reject the application if exceeded |
 | Coupon per-user limit | Claim quantity must not exceed the per-user limit | Reject the claim if exceeded |
 | Coupon threshold | The order amount must reach the minimum spend | Cannot be used if not reached |
 | Coupon validity | Can only be claimed and used within the activity time | Mark as expired after expiration |
 | Merchant review | Only approved merchants can access operating features | Block unapproved or rejected merchants |
 | Comment eligibility | Only products in completed orders can be reviewed | Reject posting without eligibility |
-| Operation log | Key backend operations must leave a trail | Record operator, action, and result |
+| Operation log | Key backend operations should leave a trail (reserved in the current version, not enabled yet) | Record operator, action, and result |
 
 ### 4.5 State Models
 
@@ -370,18 +370,17 @@ flowchart TB
 ```mermaid
 stateDiagram-v2
     [*] --> PendingPayment
-    PendingPayment --> Cancelled : User cancels / timeout cancellation
+    PendingPayment --> Cancelled : User cancels
     PendingPayment --> Paid : Payment successful
     Paid --> Shipped : Merchant ships
-    Shipped --> Received : User confirms receipt
-    Received --> Completed : Transaction completed
+    Shipped --> Completed : User confirms receipt
     Paid --> Refunding : Apply for refund / return
     Shipped --> Refunding : Apply for refund / return
-    Received --> Refunding : Apply for refund / return
+    Completed --> Refunding : Apply for refund / return
     Refunding --> Refunded : Approved and refunded
-    Refunding --> Paid : Review rejected (return to original state)
-    Completed --> [*]
-    Cancelled --> [*]
+    Refunding --> Completed : Review rejected (current implementation restores to Completed)
+    Completed --> [*] : Delete order
+    Cancelled --> [*] : Delete order
     Refunded --> [*]
 ```
 
@@ -390,11 +389,14 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> PendingReview
-    PendingReview --> Approved : Merchant / Administrator approves
+    PendingReview --> Approved : Refund review approved
+    PendingReview --> AwaitingReturn : Return review approved
     PendingReview --> Rejected : Merchant / Administrator rejects
-    Approved --> RefundCompleted : Execute refund
+    AwaitingReturn --> AwaitingMerchantReceipt : Buyer submits return logistics
+    AwaitingMerchantReceipt --> ReturnCompleted : Merchant confirms receipt of the return
+    Approved --> [*]
     Rejected --> [*]
-    RefundCompleted --> [*]
+    ReturnCompleted --> [*]
 ```
 
 #### User Coupon Status
@@ -739,7 +741,7 @@ Permission validation is divided into two layers:
 #### 6.3.5 Idempotency and Anti-duplication
 
 - Obtain an anti-duplicate submission token before placing an order; validate it on submission and invalidate it immediately.
-- Query whether a successful payment record already exists before payment to avoid duplicate charges.
+- During payment, update the order status conditionally with `WHERE status = Pending Payment`; if 0 rows are updated, the duplicate payment is rejected.
 - Validate both stock and the user's claim quantity when claiming coupons to avoid over-claiming.
 - Refund review is only allowed to proceed from the "Pending Review" status to avoid duplicate reviews.
 
@@ -752,9 +754,9 @@ Permission validation is divided into two layers:
 | Snapshot | Orders save address snapshots and product price snapshots to avoid later changes affecting historical data |
 | Status | Use explicit status values to express the lifecycles of orders, refunds, coupons, etc. |
 | Index | Create indexes on high-frequency query fields; use composite indexes for combined queries |
-| Cache | Use caching for popular products, category trees, stock, sales, captchas, etc. |
+| Cache | Redis is used for the category tree, graphical captcha, login state, order submission token, and flash-sale coupon stock and per-user claim counts; products and stock are queried directly from MySQL |
 | Search Index | Product name, description, brand, category, price, etc. enter the search index |
-| Audit | Key backend operations record operator, action, parameters, result, and duration |
+| Audit | Key backend operations record operator, action, parameters, result, and duration (the current version reserves the `operation_log` table but does not enable it yet) |
 
 ### 6.5 UI Design
 

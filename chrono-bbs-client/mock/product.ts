@@ -72,10 +72,23 @@ function generateProducts(count: number) {
     10: 'T恤', 11: '衬衫', 14: '坚果炒货', 15: '糖果巧克力',
   }
   const brandPool = ['华为', '小米', '苹果', '三星', 'OPPO', '耐克', '阿迪达斯', '优衣库', '三只松鼠', '良品铺子']
-  
+  // 各三级分类的合理价格区间（单位：分），避免把手机和 T 恤生成成同一价位
+  const priceTiers: Record<number, { base: number; step: number }> = {
+    3: { base: 199900, step: 40000 }, // 智能手机 ¥1999~¥3599
+    4: { base: 19900, step: 5000 },   // 功能手机 ¥199~¥399
+    6: { base: 399900, step: 60000 }, // 笔记本电脑 ¥3999~¥6399
+    7: { base: 159900, step: 30000 }, // 平板电脑 ¥1599~¥2799
+    10: { base: 5990, step: 1000 },   // T恤 ¥59.90~¥99.90
+    11: { base: 8990, step: 2000 },   // 衬衫 ¥89.90~¥169.90
+    14: { base: 2990, step: 1000 },   // 坚果炒货 ¥29.90~¥69.90
+    15: { base: 1990, step: 500 },    // 糖果巧克力 ¥19.90~¥39.90
+  }
+
   for (let i = 0; i < count; i++) {
     const catId = categoryIds[i % categoryIds.length]
-    const basePrice = (i + 1) * 1000 // 价格以分为单位
+    const tier = priceTiers[catId] ?? { base: 2990, step: 1000 }
+    const basePrice = tier.base + (i % 5) * tier.step // 价格以分为单位
+    const secondPrice = basePrice + Math.round(basePrice * 0.1 / 10) * 10
     const brand = brandPool[i % brandPool.length]
     products.push({
       id: i + 1,
@@ -90,7 +103,7 @@ function generateProducts(count: number) {
       status: i % 10 === 0 ? 0 : 1, // 0=下架, 1=上架
       sales: Math.floor(Math.random() * 1000),
       minPrice: basePrice, // 最低价（分）
-      maxPrice: basePrice + 1000, // 最高价（分）
+      maxPrice: secondPrice, // 最高价（分）
       skuList: [
         {
           id: (i + 1) * 10 + 1,
@@ -106,7 +119,7 @@ function generateProducts(count: number) {
           productId: i + 1,
           specIds: '[2]',
           specText: '规格2',
-          price: basePrice + 1000,
+          price: secondPrice,
           stock: 50,
           status: 1,
         },

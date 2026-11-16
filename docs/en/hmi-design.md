@@ -1095,7 +1095,7 @@ User enters the checkout page
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Order ORD202412310002  2024-12-31 15:20      [Done]  │  │
+│  │ Order ORD202412310002  2024-12-31 15:20 [Completed]  │  │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ ┌─────┐  Product B  x2                  ¥118.00      │  │
 │  │ │Image│  Merchant: YYY Flagship Store               │   │
@@ -1270,7 +1270,7 @@ User enters the payment page
 │  Order Time: 2025-01-01 10:30                              │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Progress: Submit > Pay > Ship > Receive > Done       │  │
+│  │ Progress: Submit > Pay > Ship > Receive > Complete   │  │
 │  │ (Current node highlighted; completed nodes checked)  │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
@@ -1304,9 +1304,11 @@ User enters the order detail page
     │
     ├─ Display action buttons according to order status
     │   ├─ Pending Payment → [Cancel Order] [Pay Now]
-    │   ├─ Shipped → [Confirm Receipt]
-    │   ├─ Received → [Request Refund/Return]
-    │   └─ Completed → [Review Product]
+    │   ├─ Paid → [Request Refund/Return]
+    │   ├─ Shipped → [Confirm Receipt] [Request Refund/Return]
+    │   ├─ Completed → [Request Refund/Return] [Review Product]
+    │   ├─ Refunding → show refund progress
+    │   └─ Cancelled/Refunded → view only
     │
     ├─ Cancel Order: secondary confirmation → call the cancel API → restore stock
     ├─ Pay Now: navigate to the payment page
@@ -1627,13 +1629,13 @@ Merchant enters the product management page
 ├────────────────────┼───────────────────────────────────────────────────────────┤
 │📦 Products          │  Order Management                                         │
 │📋 Orders            │                                                           │
-│💰 Refund Review     │  Status: [All] [Pending] [Shipped] [Completed]            │
+│💰 Refund Review     │  Status: [All] [To Ship] [Shipped] [Completed]            │
 │📊 Sales Statistics  │                                                           │
 │                    │                                                           │
 │                    │  ┌─────────┬──────────┬─────┬───────┬────────┬─────────┐  │
 │                    │  │ Order   │ Product  │ Qty │ Amount│ Status │ Actions │  │
 │                    │  ├─────────┼──────────┼─────┼───────┼────────┼─────────┤  │
-│                    │  │ ORD001  │ Product A│ 2   │ ¥198  │ Pending│ [Ship]  │  │
+│                    │  │ ORD001  │ Product A│ 2   │ ¥198  │ To Ship│ [Ship]  │  │
 │                    │  │ ORD002  │ Product B│ 1   │ ¥59   │ Shipped│ Details │  │
 │                    │  └─────────┴──────────┴─────┴───────┴────────┴─────────┘  │
 │                    │                                                           │
@@ -1691,7 +1693,7 @@ Merchant enters the refund review page
     │
     ├─ Approve
     │   ├─ Click "Approve": show a confirmation
-    │   └─ Confirm: call the review API → status "Under Review" (refund) or "Awaiting Return" (return)
+    │   └─ Confirm: call the review API → status "Approved" (refund) or "Awaiting Return" (return)
     │
     ├─ Reject
     │   ├─ Click "Reject": show a reason input box
@@ -1984,7 +1986,7 @@ Administrator enters the product management page
 │                    │  │ Order No.│ User     │ Amount│ Status  │ Time        │  │
 │                    │  ├──────────┼──────────┼───────┼─────────┼─────────────┤  │
 │                    │  │ ORD001   │ Zhang San│ ¥198  │ Paid    │ 10-28 10:30 │  │
-│                    │  │ ORD002   │ Li Si    │ ¥59   │ Done    │ 10-27 15:20 │  │
+│                    │  │ ORD002   │ Li Si    │ ¥59   │Complete│ 10-27 15:20 │  │
 │                    │  └──────────┴──────────┴───────┴─────────┴─────────────┘  │
 └────────────────────┴───────────────────────────────────────────────────────────┘
 ```
