@@ -42,8 +42,8 @@ export default defineConfig(({ mode }) => ({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      // 聊天 WebSocket：浏览器连接同源 /chat/{userId}，由 Vite 转发到后端
-      '/chat': {
+      // 聊天 WebSocket：仅代理 /chat/{userId}，避免与前端 SPA 路由 /chat 冲突
+      '/chat/': {
         target: 'ws://localhost:8080',
         ws: true,
         changeOrigin: true,

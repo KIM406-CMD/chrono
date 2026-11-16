@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理器。
@@ -81,6 +82,21 @@ public class GlobalExceptionHandler {
         log.warn("上传文件超限: {}", e.getMessage());
         return Result.error(com.ncist.common.enums.UploadErrorCode.FILE_TOO_LARGE.getCode(),
                 com.ncist.common.enums.UploadErrorCode.FILE_TOO_LARGE.getMessage());
+    }
+
+    /**
+     * 处理静态资源不存在异常。
+     *
+     * <p>浏览器直接访问 SPA 路由（如 {@code /chat}）或请求不存在的静态文件时会触发，
+     * 属于正常的 404，仅记录调试日志，避免输出完整堆栈污染日志。</p>
+     *
+     * @param e 静态资源不存在异常
+     * @return 失败响应，{@code code} 为业务错误码 404
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Result<Void> handleNoResource(NoResourceFoundException e) {
+        log.debug("静态资源不存在: {}", e.getResourcePath());
+        return Result.error(CommonErrorCode.NOT_FOUND.getCode(), CommonErrorCode.NOT_FOUND.getMessage());
     }
 
     /**
