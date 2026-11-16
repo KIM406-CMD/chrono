@@ -97,6 +97,11 @@ chrono-bbs/
 ├── docker/                           # 🐳 Docker 编排
 │   └── docker-compose.yml            # MySQL + Redis + ES
 │
+├── script/                           # 🚀 启动脚本
+│   ├── first-start.bat / .sh         # 首次启动：检查/安装依赖后启动
+│   ├── start-all.bat / .sh           # 日常启动：中间件 + 后端 + 前端
+│   └── stop-middleware.bat / .sh     # 停止中间件
+│
 ├── initial/                          # 🗄 数据库初始化脚本
 │   ├── schema.sql                    # 建表语句（含最新字段）
 │   ├── data.sql                      # 初始数据
@@ -123,7 +128,38 @@ chrono-bbs/
 | Maven | 3.8+ |
 | Docker Desktop | 最新版（仅 Docker 模式需要） |
 
-### 1. 一键启动（推荐）
+### 1. 首次启动（新环境）
+
+没有任何环境配置时，使用首次启动脚本。它会检查 JDK 21+、Maven 3.8+、Node.js 18+、Docker，并在确认后通过系统包管理器安装缺失项，然后自动启动全部服务。
+
+Windows（cmd / PowerShell）：
+
+```bat
+script\first-start.bat          :: 检查/安装依赖，然后启动 Docker 中间件 + 后端 + 前端
+script\first-start.bat --check  :: 只检查环境，不安装也不启动
+```
+
+Bash / Git Bash / macOS / Linux：
+
+```bash
+./script/first-start.sh         # 检查/安装依赖，然后启动
+./script/first-start.sh --check # 只检查环境
+```
+
+| 系统 | 使用的包管理器 | 自动安装 |
+|------|----------------|----------|
+| Windows | winget | Temurin JDK 21、Maven、Node.js LTS、Docker Desktop |
+| macOS | Homebrew | `temurin@21`、`maven`、`node`、Docker Desktop |
+| Debian / Ubuntu | apt | OpenJDK 21、Maven、NodeSource 20.x、Docker + Compose v2 |
+| Fedora / RHEL | dnf | OpenJDK 21、Maven、Node.js、Docker + Compose |
+| Arch / Manjaro | pacman | OpenJDK 21、Maven、Node.js、Docker + Compose |
+
+> 加 `--yes` 可跳过逐项确认；`--local` 表示已有本机 MySQL / Redis / Elasticsearch，不检查 Docker。
+> Windows 需要 WSL2 支撑 Docker Desktop；若未安装，脚本会提示以管理员身份执行 `wsl --install`，重启后重试。
+> 首次安装后若提示找不到命令，请关闭并重新打开终端；Linux 加入 `docker` 组后需重新登录。
+> 详细说明与排障见 [script/README.md](script/README.md)。
+
+### 2. 日常启动（环境已就绪）
 
 Windows（cmd / PowerShell）：
 
@@ -153,13 +189,13 @@ Bash / Git Bash / macOS / Linux：
 > 更多参数（`--skip-build`、`--volumes`）见 [script/README.md](script/README.md)。
 > **Docker 模式下 MySQL 在宿主机 3307。** 若在 IDE 中直接启动后端，请显式设置 `SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/chrono_bbs_dev?...`，或改用 `--local` 模式；否则后端会连接本机 3306，导致账号、商品、领券数据与 Docker 数据库不一致（例如领券成功但“我的优惠券”为空）。
 
-### 2. 停止中间件
+### 3. 停止中间件
 
 | 操作 | Windows | Bash |
 |------|---------|------|
 | 停止中间件 | `script\stop-middleware.bat` | `./script/stop-middleware.sh` |
 
-### 3. Docker 部署前端（可选）
+### 4. Docker 部署前端（可选）
 
 前端提供多阶段镜像（Node 构建 + Nginx 托管），后端仍运行在宿主机 `8080`：
 
@@ -177,7 +213,7 @@ docker compose --profile frontend up -d --build nginx
 
 > 默认使用 Docker 中间件（MySQL 映射到宿主机 `3307`）；追加 `--local` 使用本机已启动的 MySQL / Redis / Elasticsearch（MySQL 按 `application-dev.yml` 使用 `3306`）。
 
-### 4. 本机中间件数据库初始化（可选）
+### 5. 本机中间件数据库初始化（可选）
 
 使用 `--local` 且首次运行时，先初始化数据库：
 
@@ -193,7 +229,7 @@ mysql -u root -p < initial/demo-data.sql
 > Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql → rename-products.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
 > 开发环境默认将图片写入后端本地 `uploads/` 目录（`upload.mode=local`），无需配置 OSS 即可上传；需要对象存储时，复制 `script/.env.example` 为根目录 `.env` 填写密钥并设置 `UPLOAD_MODE=oss`。
 
-### 5. 默认测试账号
+### 6. 默认测试账号
 
 | 角色 | 用户名 | 密码 | 说明 |
 |------|--------|------|------|
@@ -204,7 +240,7 @@ mysql -u root -p < initial/demo-data.sql
 
 > 演示账号由 `initial/demo-data.sql` 创建；普通用户也可通过前端注册功能自行创建。
 
-### 6. 生产部署（Nginx）
+### 7. 生产部署（Nginx）
 
 ```bash
 cd chrono-bbs-client
@@ -265,7 +301,7 @@ npm run build
 | 🏪 商品模块 | 三级分类浏览、商品详情、多规格 SKU |
 | 🔍 搜索模块 | Elasticsearch 全文检索、搜索建议、多条件筛选排序 |
 | 🛒 购物车 | 登录态购物车（数据库存储）、数量修改、库存校验 |
-| 📦 订单模块 | 下单（防重 Token + 分布式锁）、订单状态流转 |
+| 📦 订单模块 | 下单（防重 Token + 库存条件扣减）、订单状态流转 |
 | 💳 支付模块 | 模拟支付（Luhn 算法卡号校验 + 二维码支付） |
 | 🎟 秒杀券 | 管理员创建/编辑/删除券，用户抢领（Redis 防超卖）、我的券、下单优惠计算 |
 | 🔄 退款/退货 | 申请 → 审核 → 退货寄回 → 退款 → 恢复库存 |

@@ -9,9 +9,14 @@
 
 ## [Unreleased]
 
+### Added
+- 首次启动脚本 `script/first-start.bat` / `script/first-start.sh`：检查 JDK 21+、Maven 3.8+、Node.js 18+、Docker，缺失项经确认后通过 winget / Homebrew / apt / dnf / pacman 安装，随后调用 `start-all` 启动；支持 `--check`、`--yes`、`--local` 并透传 `--skip-build`、`--docker-frontend`
+- 启动脚本说明：`script/README.md` 补充首次启动与日常启动两套入口、各系统安装方式、参数表与常见问题
+
 ### Changed
 - 文档同步：`requirements-analysis.md`、`object-oriented-development.md`、`detailed-design.md`、`client-design.md`、`server-design.md`、`db-design.md`、`api-doc.md`、`hmi-design.md` 对齐当前实现（订单/退款状态、WebSocket 原生端点、评论 `star` 字段、会话 `merchant_id` 语义、操作日志预留状态等）
 - UML 同步：ER 图字段与关联、订单/退款活动图状态、WebSocket 时序图、组件图补充退款/上传/秒杀定时任务；用例图标注规划中的评论管理/操作日志用例
+- 根目录 `README.md` / `README.en.md` 与 `CLAUDE.md` 补充首次启动脚本、脚本目录结构与前端 lint/test 脚本说明
 
 ---
 

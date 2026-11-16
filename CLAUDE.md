@@ -20,6 +20,20 @@ cd docker && docker-compose up -d    # 启动中间件；down 停止
 
 数据库初始化脚本在 `initial/schema.sql`（建表，含最新字段）与 `initial/data.sql`（基础数据，含管理员账号 `admin` / `admin123`），`initial/demo-data.sql` 提供演示商家/商品/订单/评论（幂等）；`initial/batch-products.sql` 提供可选的批量商品数据，`initial/rename-products.sql` 用于将商品名称/品牌/分类与图片内容对齐（幂等）。已有数据库升级执行 `initial/migration-2026-11-09.sql`（幂等）；Docker 首次初始化会按 schema → data → migration → demo-data → rename-products 顺序执行。
 
+### 一键启动脚本（`script/`）
+
+```bash
+# 首次启动：检查/安装 JDK 21、Maven 3.8+、Node.js 18+、Docker 后启动
+./script/first-start.sh            # Windows: script\first-start.bat
+./script/first-start.sh --check    # 只检查环境
+
+# 日常启动：中间件 -> 后端 -> 前端
+./script/start-all.sh              # Windows: script\start-all.bat
+./script/start-all.sh --local      # 使用本机中间件（默认 Docker，MySQL 3307）
+```
+
+首次启动脚本会根据系统调用 winget / Homebrew / apt / dnf / pacman 安装缺失依赖；两者都支持 `--skip-build`、`--docker-frontend`。详见 `script/README.md`。
+
 ### 后端（chrono-bbs-server，Maven 多模块）
 
 ```bash
@@ -47,7 +61,7 @@ npm run test:e2e   # Playwright 冒烟测试（首次需 npx playwright install 
 npm run preview    # 预览构建产物
 ```
 
-前端没有配置 lint / test 脚本。请求代理与 Mock 数据由 `vite.config.ts` 中的 `vite-plugin-mock` 处理，Mock 源在 `mock/` 目录。
+请求代理与 Mock 数据由 `vite.config.ts` 中的 `vite-plugin-mock` 处理，Mock 源在 `mock/` 目录。`package.json` 已配置 `lint`（ESLint）、`test`（Vitest）与 `test:e2e`（Playwright）脚本。
 
 ## 架构
 
