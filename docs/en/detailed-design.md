@@ -846,7 +846,7 @@ flowchart TD
 flowchart TD
     A["GET /api/chat/unread-count"] --> B["Parse JWT and obtain userId"]
     B --> C["Count the total unread messages across all conversations of the current user"]
-    C --> D["Return { unreadCount }"]
+    C --> D["Return { count }"]
 ```
 
 ### 10.6 WebSocket Connection Establishment — `ws://host/chat/{userId}?token=jwt`
