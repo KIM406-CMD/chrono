@@ -77,6 +77,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
         notificationService.notifyOrderPaid(
                 userId, order.getId(), order.getOrderNo(), order.getTotalAmount());
+        notificationService.notifyOrderPaidToMerchants(order.getId(), order.getOrderNo());
         return PayResultVO.builder().status(2).paidAt(paidAt).build();
     }
 
@@ -115,6 +116,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
         notificationService.notifyOrderPaid(
                 userId, order.getId(), order.getOrderNo(), order.getTotalAmount());
+        notificationService.notifyOrderPaidToMerchants(order.getId(), order.getOrderNo());
         return PayResultVO.builder().status(2).paidAt(paidAt).build();
     }
 

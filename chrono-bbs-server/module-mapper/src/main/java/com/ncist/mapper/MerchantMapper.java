@@ -243,4 +243,18 @@ public interface MerchantMapper {
     @Update("UPDATE merchant SET status = #{status}, review_reason = #{reviewReason}, "
             + "reviewed_at = NOW(), updated_at = NOW() WHERE id = #{id} AND status = 0")
     int updateReview(@Param("id") Long id, @Param("status") Integer status, @Param("reviewReason") String reviewReason);
+
+    /**
+     * 查询订单涉及的商家及其商品小计，用于支付成功后向商家推送通知。
+     *
+     * @param orderId 订单 ID
+     * @return 每行包含 {@code userId}（商家用户 ID）、{@code merchantId}、{@code amount}（该商家商品小计，分）
+     */
+    @Select("SELECT m.user_id AS userId, m.id AS merchantId, SUM(oi.subtotal) AS amount "
+            + "FROM order_item oi "
+            + "JOIN product p ON p.id = oi.product_id "
+            + "JOIN merchant m ON m.id = p.merchant_id "
+            + "WHERE oi.order_id = #{orderId} "
+            + "GROUP BY m.id, m.user_id")
+    List<Map<String, Object>> selectOrderMerchants(Long orderId);
 }

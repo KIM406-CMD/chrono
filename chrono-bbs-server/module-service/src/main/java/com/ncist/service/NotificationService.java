@@ -87,4 +87,56 @@ public interface NotificationService {
      * @param orderNo 订单编号
      */
     void notifyOrderShipped(Long userId, Long orderId, String orderNo);
+
+    /**
+     * 支付成功后通知订单涉及的商家，按商家商品小计分别推送。
+     *
+     * @param orderId 订单 ID
+     * @param orderNo 订单编号
+     */
+    void notifyOrderPaidToMerchants(Long orderId, String orderNo);
+
+    /**
+     * 买家提交退款/退货申请后通知商家。
+     *
+     * @param merchantId  商家 ID（merchant 表主键）
+     * @param refundId    退款单 ID
+     * @param orderId     订单 ID
+     * @param productName 退款商品名称
+     * @param amount      退款金额（分）
+     */
+    void notifyRefundApplied(Long merchantId, Long refundId, Long orderId,
+                             String productName, long amount);
+
+    /**
+     * 退款/退货审核结果通知买家。
+     *
+     * @param userId   买家用户 ID
+     * @param refundId 退款单 ID
+     * @param orderId  订单 ID
+     * @param approved 是否通过
+     * @param reason   审核意见，拒绝时展示
+     * @param isReturn 是否为退货（true 时通过后提示寄回商品）
+     */
+    void notifyRefundReviewed(Long userId, Long refundId, Long orderId,
+                              boolean approved, String reason, boolean isReturn);
+
+    /**
+     * 买家寄回商品后通知商家。
+     *
+     * @param merchantId  商家 ID（merchant 表主键）
+     * @param refundId    退款单 ID
+     * @param orderId     订单 ID
+     * @param productName 退货商品名称
+     */
+    void notifyReturnSubmitted(Long merchantId, Long refundId, Long orderId, String productName);
+
+    /**
+     * 退货完成、退款到账后通知买家。
+     *
+     * @param userId   买家用户 ID
+     * @param refundId 退款单 ID
+     * @param orderId  订单 ID
+     */
+    void notifyRefundCompleted(Long userId, Long refundId, Long orderId);
 }

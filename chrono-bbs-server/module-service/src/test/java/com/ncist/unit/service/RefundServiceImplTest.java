@@ -17,6 +17,7 @@ import com.ncist.mapper.OrderItemMapper;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.ProductMapper;
 import com.ncist.mapper.RefundMapper;
+import com.ncist.service.NotificationService;
 import com.ncist.service.impl.RefundServiceImpl;
 import com.ncist.vo.RefundVO;
 import org.junit.jupiter.api.AfterEach;
@@ -55,6 +56,8 @@ class RefundServiceImplTest {
     private ProductMapper productMapper;
     @Mock
     private MerchantMapper merchantMapper;
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private RefundServiceImpl refundService;

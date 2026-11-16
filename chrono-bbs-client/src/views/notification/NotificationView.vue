@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import {
   getNotifications,
   getNotificationUnreadCount,
@@ -11,6 +12,7 @@ import {
 } from '@/api/notification'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const notifications = ref<NotificationItem[]>([])
@@ -81,7 +83,22 @@ const handleOpen = async (item: NotificationItem) => {
     }
   }
   if (item.relatedType === 1 && item.relatedId) {
-    router.push(`/order/${item.relatedId}`)
+    // 按角色跳转：商家到卖家订单，管理员到全平台订单，买家到订单详情
+    if (userStore.roleName === 'MERCHANT') {
+      router.push('/merchant/orders')
+    } else if (userStore.roleName === 'ADMIN') {
+      router.push('/admin/orders')
+    } else {
+      router.push(`/order/${item.relatedId}`)
+    }
+  } else if (item.relatedType === 2) {
+    if (userStore.roleName === 'MERCHANT') {
+      router.push('/merchant/refunds')
+    } else if (userStore.roleName === 'ADMIN') {
+      router.push('/admin/refunds')
+    } else {
+      router.push('/refunds')
+    }
   }
 }
 

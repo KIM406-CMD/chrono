@@ -3,7 +3,9 @@ package com.ncist.service.impl;
 import com.ncist.common.enums.CommonErrorCode;
 import com.ncist.common.exception.BusinessException;
 import com.ncist.common.result.PageResult;
+import com.ncist.entity.Merchant;
 import com.ncist.entity.Notification;
+import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.NotificationMapper;
 import com.ncist.service.NotificationService;
 import com.ncist.vo.NotificationVO;
@@ -28,6 +30,8 @@ public class NotificationServiceImpl implements NotificationService {
 
     /** 通知数据访问组件。 */
     private final NotificationMapper notificationMapper;
+    /** 商家数据访问组件，用于按 merchant_id 定位商家用户。 */
+    private final MerchantMapper merchantMapper;
 
     /** {@inheritDoc} */
     @Override
@@ -89,6 +93,108 @@ public class NotificationServiceImpl implements NotificationService {
         create(userId, TYPE_ORDER, "订单已发货",
                 "订单 " + orderNo + " 已发货，请留意物流信息并及时确认收货。",
                 RELATED_ORDER, orderId);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void notifyOrderPaidToMerchants(Long orderId, String orderNo) {
+        // 一个订单可能包含多个商家的商品，按商家分别推送，只包含该商家的商品小计
+        for (var row : merchantMapper.selectOrderMerchants(orderId)) {
+            Long merchantUserId = toLong(row.get("userId"));
+            if (merchantUserId == null) {
+                continue;
+            }
+            Long amount = toLong(row.get("amount"));
+            create(merchantUserId, TYPE_ORDER, "新订单待发货",
+                    "订单 " + orderNo + " 已支付，您的商品金额 ¥" + yuan(amount == null ? 0L : amount)
+                            + "，请及时发货。",
+                    RELATED_ORDER, orderId);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void notifyRefundApplied(Long merchantId, Long refundId, Long orderId,
+                                    String productName, long amount) {
+        Long merchantUserId = merchantUserId(merchantId);
+        if (merchantUserId == null) {
+            return;
+        }
+        String name = productName == null || productName.isBlank() ? "退款商品" : productName;
+        create(merchantUserId, TYPE_AFTER_SALE, "新的退款申请",
+                "商品「" + name + "」收到退款/退货申请，金额 ¥" + yuan(amount)
+                        + "，请及时审核。",
+                RELATED_REFUND, refundId);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void notifyRefundReviewed(Long userId, Long refundId, Long orderId,
+                                     boolean approved, String reason, boolean isReturn) {
+        String title;
+        String content;
+        if (approved) {
+            if (isReturn) {
+                title = "退货申请已通过";
+                content = "您的退货申请已通过，请填写退货物流信息并寄回商品。";
+            } else {
+                title = "退款申请已通过";
+                content = "您的退款申请已通过，退款将按支付渠道原路退回。";
+            }
+        } else {
+            title = "退款申请被拒绝";
+            content = "您的退款申请被拒绝"
+                    + (reason == null || reason.isBlank() ? "。" : "，原因：" + reason + "。");
+        }
+        create(userId, TYPE_AFTER_SALE, title, content, RELATED_REFUND, refundId);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void notifyReturnSubmitted(Long merchantId, Long refundId, Long orderId, String productName) {
+        Long merchantUserId = merchantUserId(merchantId);
+        if (merchantUserId == null) {
+            return;
+        }
+        String name = productName == null || productName.isBlank() ? "退货商品" : productName;
+        create(merchantUserId, TYPE_AFTER_SALE, "买家已寄回商品",
+                "商品「" + name + "」的退货商品已寄回，请收到后确认退款。",
+                RELATED_REFUND, refundId);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void notifyRefundCompleted(Long userId, Long refundId, Long orderId) {
+        create(userId, TYPE_AFTER_SALE, "退款已完成",
+                "您的退货已确认收货，退款已原路退回。",
+                RELATED_REFUND, refundId);
+    }
+
+    /**
+     * 按商家 ID 查询商家用户 ID。
+     *
+     * @param merchantId 商家 ID（merchant 表主键）
+     * @return 商家用户 ID；商家不存在时返回 null
+     */
+    private Long merchantUserId(Long merchantId) {
+        if (merchantId == null) {
+            return null;
+        }
+        Merchant merchant = merchantMapper.selectById(merchantId);
+        return merchant == null ? null : merchant.getUserId();
+    }
+
+    /**
+     * 将 Map 中的数值转换为 Long，兼容 Integer/Long/BigDecimal。
+     *
+     * @param value 原始值
+     * @return 转换后的 Long；无法转换时返回 0
+     */
+    private Long toLong(Object value) {
+        if (value instanceof Number num) {
+            return num.longValue();
+        }
+        return value == null ? null : Long.parseLong(String.valueOf(value));
     }
 
     /**

@@ -2,7 +2,9 @@ package com.ncist.unit.service;
 
 import com.ncist.common.exception.BusinessException;
 import com.ncist.common.result.PageResult;
+import com.ncist.entity.Merchant;
 import com.ncist.entity.Notification;
+import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.NotificationMapper;
 import com.ncist.service.impl.NotificationServiceImpl;
 import com.ncist.vo.NotificationVO;
@@ -32,6 +34,9 @@ class NotificationServiceImplTest {
 
     @Mock
     private NotificationMapper notificationMapper;
+
+    @Mock
+    private MerchantMapper merchantMapper;
 
     @InjectMocks
     private NotificationServiceImpl notificationService;
@@ -78,6 +83,42 @@ class NotificationServiceImplTest {
         when(notificationMapper.markAllRead(4L)).thenReturn(3);
 
         assertEquals(3, notificationService.markAllRead(4L));
+    }
+
+    @Test
+    @DisplayName("支付通知-按商家拆分金额推送")
+    void notifyOrderPaidToMerchants() {
+        when(merchantMapper.selectOrderMerchants(50001L)).thenReturn(List.of(
+                java.util.Map.of("userId", 2L, "merchantId", 1L, "amount", 1990L)));
+
+        notificationService.notifyOrderPaidToMerchants(50001L, "20261116");
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationMapper).insert(captor.capture());
+        Notification saved = captor.getValue();
+        assertEquals(2L, saved.getUserId());
+        assertEquals("新订单待发货", saved.getTitle());
+        assertEquals(1, saved.getRelatedType());
+        assertEquals(50001L, saved.getRelatedId());
+        assertTrue(saved.getContent().contains("¥19.90"));
+    }
+
+    @Test
+    @DisplayName("退款申请-通知商品所属商家")
+    void notifyRefundApplied() {
+        when(merchantMapper.selectById(1L))
+                .thenReturn(Merchant.builder().id(1L).userId(2L).build());
+
+        notificationService.notifyRefundApplied(1L, 70001L, 50001L, "测试商品", 1990L);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationMapper).insert(captor.capture());
+        Notification saved = captor.getValue();
+        assertEquals(2L, saved.getUserId());
+        assertEquals(3, saved.getType());
+        assertEquals(2, saved.getRelatedType());
+        assertEquals(70001L, saved.getRelatedId());
+        assertTrue(saved.getContent().contains("测试商品"));
     }
 
     @Test
