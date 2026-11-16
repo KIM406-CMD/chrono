@@ -534,7 +534,8 @@ flowchart TD
     M -->|过期| N["返回错误: 卡已过期"]
     M -->|未过期| O["模拟扣款 → 插入支付记录(状态=成功)"]
     O --> P["更新订单状态为: 已支付<br/>记录支付时间"]
-    P --> Q["更新商品销量 +1"]
+    P --> P1["写入站内通知<br/>买家: 支付成功 / 商家: 新订单待发货"]
+    P1 --> Q["更新商品销量 +1"]
     Q --> R["返回支付成功"]
 ```
 
@@ -564,7 +565,8 @@ flowchart TD
     G -->|已支付| H["直接返回: 已支付（幂等）"]
     G -->|未支付| I["插入支付记录(方式=二维码, 状态=成功)"]
     I --> J["更新订单状态为: 已支付"]
-    J --> K["Redis 删除: qrcode:{orderId}"]
+    J --> J1["写入站内通知<br/>买家: 支付成功 / 商家: 新订单待发货"]
+    J1 --> K["Redis 删除: qrcode:{orderId}"]
     K --> L["更新商品销量"]
     L --> M["返回支付成功"]
 ```
@@ -718,7 +720,8 @@ flowchart TD
     I --> J{"已有退款记录?"}
     J -->|是| K["返回错误: 已申请过退款"]
     J -->|否| L["插入退款记录(status=待审核)"]
-    L --> M["返回成功"]
+    L --> L1["通知退款商品所属商家<br/>「新的退款申请」"]
+    L1 --> M["返回成功"]
 ```
 
 ### 9.2 退款列表 — `GET /api/refund/my`、`GET /api/merchant/refunds`、`GET /api/admin/refunds`
@@ -764,9 +767,10 @@ flowchart TD
     H -->|通过| K{"退款类型?"}
     K -->|仅退款| L["更新退款状态: 已通过<br/>订单置为: 已退款"]
     K -->|退货| M["更新退款状态: 待寄回<br/>等待买家填写退货物流"]
-    L --> N["返回成功"]
-    M --> N
-    J --> N
+    L --> N1["通知买家审核结果"]
+    M --> N1
+    J --> N1
+    N1 --> N["返回成功"]
 ```
 
 ### 9.5 填写退货物流 — `PUT /api/refund/{id}/return`
@@ -778,7 +782,8 @@ flowchart TD
     C --> D{"属于当前用户且状态 == 待寄回?"}
     D -->|否| E["返回错误: 当前状态不可填写物流"]
     D -->|是| F["保存退货物流信息<br/>退款状态更新为: 待商家收货"]
-    F --> G["返回成功"]
+    F --> F1["通知商家「买家已寄回商品」"]
+    F1 --> G["返回成功"]
 ```
 
 ### 9.6 确认收到退货 — `PUT /api/refund/{id}/return-received`
@@ -792,7 +797,8 @@ flowchart TD
     D -->|是| F{"退款状态 == 待商家收货?"}
     F -->|否| G["返回错误: 当前状态不可确认收货"]
     F -->|是| H["退款状态更新为: 退货完成<br/>订单标记为: 已退款"]
-    H --> I["返回成功"]
+    H --> H1["通知买家「退款已完成」"]
+    H1 --> I["返回成功"]
 ```
 
 ---
@@ -1301,6 +1307,7 @@ flowchart TD
 | `search_history` | 搜索 | 用户搜索历史 |
 | `conversation` | 即时通讯 | 会话列表 |
 | `message` | 即时通讯 | 消息记录 |
+| `notification` | 站内通知 | 订单/支付/退款节点通知、已读状态 |
 | `seckill_coupon` | 秒杀券 | 券定义、总量/剩余量、活动时间窗 |
 | `user_coupon` | 秒杀券 | 用户领券记录、使用状态 |
 | `operation_log` | 管理后台 | AOP 操作日志（表结构预留，当前未启用） |
@@ -1433,6 +1440,40 @@ flowchart LR
 
 ---
 
+## 二十一、站内通知模块
+
+### 21.1 通知生成
+
+交易服务在事务内调用 `NotificationService`，通知记录写入 `notification` 表；通知写入失败只记录日志，不回滚主业务。
+
+| 触发点 | 服务方法 | 接收人 |
+|--------|----------|--------|
+| 下单成功 | `OrderServiceImpl.createOrder` → `notifyOrderCreated` | 买家 |
+| 支付成功 | `PaymentServiceImpl.payByCard/confirmQrcode` → `notifyOrderPaid` | 买家 |
+| 支付成功 | 同上 → `notifyOrderPaidToMerchants` | 各商品所属商家（按商家小计） |
+| 商家发货 | `MerchantServiceImpl.ship` → `notifyOrderShipped` | 买家 |
+| 申请退款/退货 | `RefundServiceImpl.apply` → `notifyRefundApplied` | 退款商品所属商家 |
+| 审核退款 | `RefundServiceImpl.review` → `notifyRefundReviewed` | 买家 |
+| 填写退货物流 | `RefundServiceImpl.submitReturn` → `notifyReturnSubmitted` | 商家 |
+| 确认收到退货 | `RefundServiceImpl.confirmReturnReceived` → `notifyRefundCompleted` | 买家 |
+
+### 21.2 查询与已读
+
+```
+GET  /api/notification/list?unreadOnly=&page=&size=
+GET  /api/notification/unread-count
+PUT  /api/notification/{id}/read
+PUT  /api/notification/read-all
+```
+
+查询与已读 SQL 均带 `user_id = 当前用户` 条件；`markRead` 影响 0 行时返回 404。
+
+### 21.3 前端展示
+
+`NotificationView.vue` 以“全部/未读”筛选展示通知，点击后标记已读并按 `relatedType` 跳转：订单通知 → 买家订单详情/商家订单/管理员订单，退款通知 → 对应退款列表。
+
+---
+
 ## 总结
 
 | 模块 | 函数数 | 说明 |
@@ -1447,7 +1488,8 @@ flowchart LR
 | 评论 | 4 | 列表/初评/追评/商家回复 |
 | 退款/退货 | 6 | 申请/列表/详情/审核/寄回/确认收货 |
 | 即时通讯 | 5 | 会话列表/历史消息/创建会话/标记已读/未读数（WebSocket 端点另计） |
-| 商家 | 7 | 入驻申请/信息/商品/订单/发货/退款/统计 |
+| 站内通知 | 4 | 通知列表/未读数/单条已读/全部已读 |
+| 商家 | 9 | 入驻申请/信息/商品列表/商品详情/评论/订单/发货/退款/统计 |
 | 管理员 | 15 | 用户/禁用启用/商家审核/分类/商品/订单/退款/报表/重建索引 |
 | 文件上传 | 1 | 图片上传 |
 | 搜索 | 5 | 建议/搜索/历史/清空历史/热门搜索 |

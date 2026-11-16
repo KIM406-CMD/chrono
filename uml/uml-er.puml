@@ -249,6 +249,19 @@ entity message <<消息>> {
   created_at : DATETIME
 }
 
+entity notification <<站内通知>> {
+  * id : BIGINT <<PK>>
+  --
+  * user_id : BIGINT <<FK 接收用户>>
+  type : TINYINT <<1订单/2系统/3售后>>
+  title : VARCHAR(100)
+  content : VARCHAR(500)
+  related_type : TINYINT <<1订单/2退款>>
+  related_id : BIGINT <<关联业务ID>>
+  is_read : TINYINT <<0未读/1已读>>
+  created_at : DATETIME
+}
+
 entity operation_log <<操作日志>> {
   * id : BIGINT <<PK>>
   --
@@ -302,6 +315,10 @@ order_item ||--o{ refund : "部分退款/退货"
 comment ||--o{ comment : "回复/追评"
 
 conversation ||--o{ message : "会话消息"
+
+user ||--o{ notification : "接收通知"
+order ||--o{ notification : "订单通知"
+refund ||--o{ notification : "售后通知"
 
 seckill_coupon ||--o{ user_coupon : "券实例"
 

@@ -187,7 +187,13 @@ onMounted(() => {
 
           <div class="order-body" @click="handleViewDetail(order)">
             <div class="order-img">
-              <span class="img-placeholder">暂无图片</span>
+              <img
+                v-if="order.firstItemImage"
+                :src="order.firstItemImage"
+                :alt="order.firstItemName"
+                class="order-img-el"
+              />
+              <span v-else class="img-placeholder">暂无图片</span>
             </div>
             <div class="order-info">
               <p class="order-name">{{ order.firstItemName }}</p>
@@ -365,6 +371,13 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.order-img-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
 }
 
 .img-placeholder {

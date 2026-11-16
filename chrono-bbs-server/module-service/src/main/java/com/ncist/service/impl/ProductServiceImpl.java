@@ -107,42 +107,18 @@ public class ProductServiceImpl implements ProductService {
         if (product == null || product.getStatus() == null || product.getStatus() != 1) {
             throw new BusinessException(ProductErrorCode.PRODUCT_NOT_FOUND);
         }
-        // SKU 列表
-        List<ProductSkuVO> skuList = productSkuMapper.selectByProductId(id).stream()
-                .map(sku -> ProductSkuVO.builder()
-                        .id(sku.getId())
-                        .specIds(sku.getSpecIds())
-                        .specText(sku.getSpecText())
-                        .price(sku.getPrice())
-                        .stock(sku.getStock())
-                        .build())
-                .collect(Collectors.toList());
-        // 分类名/店铺名
-        String categoryName = null;
-        Category category = categoryMapper.selectById(product.getCategoryId());
-        if (category != null) {
-            categoryName = category.getName();
-        }
-        String shopName = null;
-        Merchant merchant = product.getMerchantId() == null ? null : merchantMapper.selectById(product.getMerchantId());
-        if (merchant != null) {
-            shopName = merchant.getShopName();
-        }
-        return ProductDetailVO.builder()
-                .id(product.getId())
-                .name(product.getName())
-                .description(product.getDescription())
-                .images(parseImages(product.getImages()))
-                .brand(product.getBrand())
-                .categoryId(product.getCategoryId())
-                .categoryName(categoryName)
-                .merchantId(product.getMerchantId())
-                .merchantUserId(merchant == null ? null : merchant.getUserId())
-                .shopName(shopName)
-                .status(product.getStatus())
-                .sales(product.getSales())
-                .skuList(skuList)
-                .build();
+        return buildDetail(product);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>与公开详情不同，商家可查看自己已下架的商品，便于在卖家中心回填编辑表单。</p>
+     */
+    @Override
+    public ProductDetailVO getMerchantProductDetail(Long id, Long userId) {
+        Merchant merchant = requireApprovedMerchant(userId);
+        return buildDetail(requireOwnership(id, merchant.getId()));
     }
 
     /**
@@ -194,15 +170,18 @@ public class ProductServiceImpl implements ProductService {
         if (dto.getSkuList() != null && !dto.getSkuList().isEmpty()) {
             validateSkus(dto.getSkuList());
         }
-        // 更新基本信息（动态 SQL，null 字段不覆盖）
-        productMapper.update(Product.builder()
+        // 更新基本信息（动态 SQL，null 字段不覆盖；WHERE 同时限定商家归属）
+        int updated = productMapper.updateByMerchant(Product.builder()
                 .id(id)
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .images(dto.getImages() == null ? null : toImagesJson(dto.getImages()))
                 .brand(dto.getBrand())
                 .categoryId(dto.getCategoryId())
-                .build());
+                .build(), merchant.getId());
+        if (updated == 0) {
+            throw new BusinessException(ProductErrorCode.NO_PERMISSION_OPERATE);
+        }
         // 全量替换 SKU
         if (dto.getSkuList() != null && !dto.getSkuList().isEmpty()) {
             productSkuMapper.deleteByProductId(id);
@@ -222,7 +201,10 @@ public class ProductServiceImpl implements ProductService {
         // 校验商家与归属
         Merchant merchant = requireApprovedMerchant(userId);
         requireOwnership(id, merchant.getId());
-        productMapper.updateStatus(id, status);
+        // WHERE 同时限定商家归属，避免越权修改他人商品状态
+        if (productMapper.updateStatusByMerchant(id, status, merchant.getId()) == 0) {
+            throw new BusinessException(ProductErrorCode.NO_PERMISSION_OPERATE);
+        }
         // 上下架后同步搜索索引：上架写入、下架移除
         productSearchIndexService.syncProduct(id);
     }
@@ -244,7 +226,10 @@ public class ProductServiceImpl implements ProductService {
             throw new BusinessException(ProductErrorCode.PRODUCT_REFERENCED);
         }
         try {
-            productMapper.deleteById(id);
+            // WHERE 同时限定商家归属，避免越权删除他人商品
+            if (productMapper.deleteByIdAndMerchant(id, merchant.getId()) == 0) {
+                throw new BusinessException(ProductErrorCode.NO_PERMISSION_OPERATE);
+            }
             productSkuMapper.deleteByProductId(id);
         } catch (DataIntegrityViolationException e) {
             // 兜底：未来若补充外键约束，仍由约束拒绝删除
@@ -380,6 +365,51 @@ public class ProductServiceImpl implements ProductService {
         } catch (Exception e) {
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * 将商品实体组装为详情视图对象，包含 SKU、分类名与店铺名。
+     *
+     * @param product 商品实体
+     * @return 商品详情视图对象
+     */
+    private ProductDetailVO buildDetail(Product product) {
+        // SKU 列表
+        List<ProductSkuVO> skuList = productSkuMapper.selectByProductId(product.getId()).stream()
+                .map(sku -> ProductSkuVO.builder()
+                        .id(sku.getId())
+                        .specIds(sku.getSpecIds())
+                        .specText(sku.getSpecText())
+                        .price(sku.getPrice())
+                        .stock(sku.getStock())
+                        .build())
+                .collect(Collectors.toList());
+        // 分类名/店铺名
+        String categoryName = null;
+        Category category = categoryMapper.selectById(product.getCategoryId());
+        if (category != null) {
+            categoryName = category.getName();
+        }
+        String shopName = null;
+        Merchant merchant = product.getMerchantId() == null ? null : merchantMapper.selectById(product.getMerchantId());
+        if (merchant != null) {
+            shopName = merchant.getShopName();
+        }
+        return ProductDetailVO.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .images(parseImages(product.getImages()))
+                .brand(product.getBrand())
+                .categoryId(product.getCategoryId())
+                .categoryName(categoryName)
+                .merchantId(product.getMerchantId())
+                .merchantUserId(merchant == null ? null : merchant.getUserId())
+                .shopName(shopName)
+                .status(product.getStatus())
+                .sales(product.getSales())
+                .skuList(skuList)
+                .build();
     }
 
     /**

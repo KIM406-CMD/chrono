@@ -367,7 +367,13 @@ onMounted(() => {
             class="od-item"
           >
             <div class="od-item-img">
-              <span class="img-placeholder">暂无图片</span>
+              <img
+                v-if="item.productImage"
+                :src="item.productImage"
+                :alt="item.productName"
+                class="od-item-img-el"
+              />
+              <span v-else class="img-placeholder">暂无图片</span>
             </div>
             <div class="od-item-info">
               <p class="od-item-name">{{ item.productName }}</p>
@@ -752,6 +758,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.od-item-img-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
 }
 
 .img-placeholder {

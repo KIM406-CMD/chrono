@@ -84,7 +84,8 @@ com.ncist.controller/
     ├── AdminController.java         # 管理员接口
     ├── SeckillController.java       # 秒杀券接口
     ├── UploadController.java        # 文件上传接口
-    └── ChatController.java          # 即时通讯接口
+    ├── ChatController.java          # 即时通讯接口
+    └── NotificationController.java  # 站内通知接口
 com.ncist.websocket/                 # WebSocket 端点（@ServerEndpoint）
 com.ncist.vo/                        # 出参 VO
 com.ncist.interceptor/               # 拦截器（JWT 鉴权）
@@ -98,6 +99,8 @@ com.ncist.service/
     ├── impl/AuthServiceImpl.java    # 实现
     ├── ProductService.java
     ├── impl/ProductServiceImpl.java
+    ├── NotificationService.java     # 站内通知接口
+    ├── impl/NotificationServiceImpl.java
     └── ...（同上按模块划分）
 com.ncist.dto/                       # 入参 DTO
 com.ncist.scheduler/                 # 定时任务（秒杀券状态刷新）
@@ -106,8 +109,8 @@ com.ncist.scheduler/                 # 定时任务（秒杀券状态刷新）
 以 `module-mapper` 为例：
 
 ```
-com.ncist.entity/                    # 实体类
-com.ncist.mapper/                    # Mapper 接口
+com.ncist.entity/                    # 实体类（含 Notification）
+com.ncist.mapper/                    # Mapper 接口（含 NotificationMapper）
 resources/mapper/                    # MyBatis XML
 ```
 
@@ -829,3 +832,47 @@ flowchart TD
 - 用户接口：券列表/详情（游客可查看）、抢领、我的优惠券（登录用户）。
 
 > 表结构见 [db-design.md](./db-design.md) 第十章，接口契约见 [api-doc.md](./api-doc.md) 第 16 章。
+---
+
+## 十七、站内通知与消息中心
+
+### 17.1 设计目标
+
+- 交易节点（下单、支付、发货、退款/退货）自动生成站内通知，用户无需依赖实时聊天即可查看进度。
+- 买家与商家共用通知中心，按接收人 `user_id` 隔离；商家只收到与自己商品相关的通知。
+- 通知与聊天消息分表存储，避免占用 `conversation` / `message` 会话资源。
+
+### 17.2 通知事件
+
+| 事件 | 接收人 | 标题 | 关联对象 |
+|------|--------|------|----------|
+| 下单成功 | 买家 | 订单提交成功 | 订单 |
+| 支付成功 | 买家 | 订单支付成功 | 订单 |
+| 支付成功 | 订单内各商品所属商家 | 新订单待发货 | 订单 |
+| 商家发货 | 买家 | 订单已发货 | 订单 |
+| 买家申请退款/退货 | 退款商品所属商家 | 新的退款申请 | 退款单 |
+| 审核通过/拒绝 | 买家 | 退款申请已通过 / 退款申请被拒绝 | 退款单 |
+| 买家填写退货物流 | 商家 | 买家已寄回商品 | 退款单 |
+| 商家确认收到退货 | 买家 | 退款已完成 | 退款单 |
+
+商家订单通知按 `order_item JOIN product JOIN merchant` 聚合，只统计该商家自己的商品小计，避免多商家订单金额串店。
+
+### 17.3 服务与表
+
+- 表：`notification`（`user_id`、`type`、`title`、`content`、`related_type`、`related_id`、`is_read`、`created_at`）。
+- 服务：`NotificationService` / `NotificationServiceImpl`，业务服务在事务内调用 `notifyXxx`；通知写入失败只记日志，不影响下单/支付/退款主流程。
+- 数据访问：`NotificationMapper`，查询与已读均带 `user_id` 条件，防止越权。
+
+### 17.4 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/notification/list` | 分页查询本人通知，支持 `unreadOnly` |
+| GET | `/api/notification/unread-count` | 未读数量 |
+| PUT | `/api/notification/{id}/read` | 单条已读 |
+| PUT | `/api/notification/read-all` | 全部已读 |
+
+### 17.5 前端入口
+
+- 商城顶部“🔔 通知”按钮显示未读角标，路由 `/notifications`。
+- 商家中心侧边栏增加“消息通知”入口；按角色点击通知跳转到买家订单详情、商家订单/退款页或管理员订单/退款页。

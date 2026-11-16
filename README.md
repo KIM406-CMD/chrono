@@ -62,6 +62,7 @@
 | **构建工具** | Vite | 开发热更新 + Rollup 打包 |
 | **认证鉴权** | JWT + Redis | 拦截器认证 + Service 层角色/数据归属校验 |
 | **即时通讯** | WebSocket (JSR 356) | 用户与商家实时聊天 |
+| **站内通知** | MySQL + REST | 订单/支付/退款节点通知，买家与商家共用通知中心 |
 | **接口文档** | springdoc-openapi + knife4j-ui | 自动生成 API 文档 |
 | **图片存储** | 本地目录 / 阿里云 OSS + Thumbnailator | 开发默认本地，支持 OSS，800px 压缩 |
 | **容器化** | Docker + Docker Compose | 中间件一键编排 |
@@ -225,8 +226,8 @@ mysql -u root -p < initial/demo-data.sql
 
 脚本位于 `initial/`，创建 `chrono_bbs_dev` 库；默认管理员 `admin` / `admin123`，演示商家与用户见下方测试账号。
 
-> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行）；需要演示数据时再执行 `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql`（可重复执行）；商品名称/图片不一致时执行 `initial/rename-products.sql`（可重复执行）；批量商品或演示商品价格需要校正时执行 `initial/update-product-prices.sql`（可重复执行）。
-> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql → rename-products.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
+> 已有数据库升级：执行 `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql`（可重复执行），再执行 `initial/migration-2026-11-16.sql`（站内通知表）与 `initial/migration-2026-11-16-merchant-split.sql`（演示商品按类目归属）；需要演示数据时再执行 `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql`（可重复执行）；商品名称/图片不一致时执行 `initial/rename-products.sql`（可重复执行）；批量商品或演示商品价格需要校正时执行 `initial/update-product-prices.sql`（可重复执行）。
+> Docker 模式首次启动会按 `schema.sql → data.sql → migration-2026-11-09.sql → migration-2026-11-16.sql → demo-data.sql → rename-products.sql → migration-2026-11-16-merchant-split.sql` 顺序自动执行，无需手动导入。修改初始化脚本后需执行 `./script/stop-middleware.sh --volumes`（Windows：`script\stop-middleware.bat --volumes`）删除数据卷，重新启动后才会再次执行。
 > 开发环境默认将图片写入后端本地 `uploads/` 目录（`upload.mode=local`），无需配置 OSS 即可上传；需要对象存储时，复制 `script/.env.example` 为根目录 `.env` 填写密钥并设置 `UPLOAD_MODE=oss`。
 
 ### 6. 默认测试账号
@@ -236,6 +237,7 @@ mysql -u root -p < initial/demo-data.sql
 | 管理员 | `admin` | `admin123` | 初始管理员 |
 | 商家 | `merchant1` | `admin123` | 鲜果直供旗舰店（已审核） |
 | 商家 | `merchant2` | `admin123` | 数码优选专营店（已审核） |
+| 商家 | `merchant3` | `admin123` | 家居服饰馆（已审核） |
 | 普通用户 | `user1` | `admin123` | 含地址、购物车、订单、退款与评论 |
 
 > 演示账号由 `initial/demo-data.sql` 创建；普通用户也可通过前端注册功能自行创建。
@@ -287,8 +289,8 @@ npm run build
 |----|------|------|
 | [uml-usecase.puml](./uml/uml-usecase.puml) | PlantUML | 用例图 — 游客/用户/商家/管理员 4 角色 |
 | [uml-component.puml](./uml/uml-component.puml) | PlantUML | 组件图 — Maven 模块 + 外部依赖 |
-| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 20 张表关联关系 |
-| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | 时序图 — 注册登录 / 购物下单 / 支付 / WebSocket |
+| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 21 张表关联关系 |
+| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | 时序图 — 注册登录 / 购物下单 / 支付 / WebSocket / 站内通知 |
 | [uml-activity.puml](./uml/uml-activity.puml) | PlantUML | 活动图 — 订单状态流转 / 商家入驻 / 退款退货 |
 
 ---
@@ -308,6 +310,7 @@ npm run build
 | 🏬 商家后台 | 入驻审核、商品/库存管理、发货、退款审核、销售统计 |
 | 🛡 管理员后台 | 用户管理、商家审核、分类管理、全局报表（6 类） |
 | 💬 即时通讯 | WebSocket 用户与商家实时聊天（低优先级） |
+| 🔔 站内通知 | 下单/支付/发货/退款节点通知，买家与商家均可查看处理 |
 
 ---
 

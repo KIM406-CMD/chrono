@@ -1298,6 +1298,7 @@ flowchart TD
 | `search_history` | Search | User search history |
 | `conversation` | Instant Messaging | Conversation list |
 | `message` | Instant Messaging | Message records |
+| `notification` | In-app Notifications | Order/payment/refund notifications and read status |
 | `seckill_coupon` | Flash-sale Coupon | Coupon definition, total/remaining quantity, activity time window |
 | `user_coupon` | Flash-sale Coupon | User coupon claim records, usage status |
 | `operation_log` | Admin Backend | AOP operation log (table structure reserved, not enabled) |
@@ -1430,6 +1431,40 @@ flowchart LR
 
 ---
 
+## XXI. In-app Notification Module
+
+### 21.1 Notification Generation
+
+Business services call `NotificationService` inside their transactions; records are written to the `notification` table. A notification write failure is logged only and does not roll back the primary flow.
+
+| Trigger | Service method | Receiver |
+|------|----------|----------|
+| Order created | `OrderServiceImpl.createOrder` → `notifyOrderCreated` | Buyer |
+| Payment succeeded | `PaymentServiceImpl.payByCard/confirmQrcode` → `notifyOrderPaid` | Buyer |
+| Payment succeeded | Same → `notifyOrderPaidToMerchants` | Each merchant (own item subtotal) |
+| Merchant shipped | `MerchantServiceImpl.ship` → `notifyOrderShipped` | Buyer |
+| Refund/return requested | `RefundServiceImpl.apply` → `notifyRefundApplied` | Merchant owning the product |
+| Refund reviewed | `RefundServiceImpl.review` → `notifyRefundReviewed` | Buyer |
+| Return tracking submitted | `RefundServiceImpl.submitReturn` → `notifyReturnSubmitted` | Merchant |
+| Return receipt confirmed | `RefundServiceImpl.confirmReturnReceived` → `notifyRefundCompleted` | Buyer |
+
+### 21.2 Query and Read APIs
+
+```
+GET  /api/notification/list?unreadOnly=&page=&size=
+GET  /api/notification/unread-count
+PUT  /api/notification/{id}/read
+PUT  /api/notification/read-all
+```
+
+Queries and read operations always include `user_id = current user`; `markRead` returns 404 when no row is updated.
+
+### 21.3 Frontend
+
+`NotificationView.vue` shows notifications with an All/Unread filter. Clicking an item marks it read and navigates by `relatedType`: order notifications go to the buyer order detail, merchant orders, or administrator orders; refund notifications go to the corresponding refund list.
+
+---
+
 ## Summary
 
 | Module | Number of Functions | Description |
@@ -1444,9 +1479,10 @@ flowchart LR
 | Comment | 4 | List/initial review/follow-up review/merchant reply |
 | Refund/Return | 6 | Apply/list/details/review/submit return/confirm receipt |
 | Instant Messaging | 5 | Conversation list/message history/create conversation/mark read/unread count (WebSocket endpoint counted separately) |
-| Merchant | 7 | Onboarding application/information/products/orders/shipment/refunds/statistics |
+| In-app Notifications | 4 | List/unread count/mark one read/mark all read |
+| Merchant | 9 | Onboarding application/information/product list/product detail/comments/orders/shipment/refunds/statistics |
 | Administrator | 15 | Users/disable-enable/merchant review/categories/products/orders/refunds/report/rebuild index |
 | File Upload | 1 | Image upload |
 | Search | 5 | Suggestions/search/history/clear history/hot searches |
 | Flash-sale Coupon | 8 | List/details/claim/my coupons/create/update/delete/calculate |
-| **Total** | **92** | |
+| **Total** | **98** | |

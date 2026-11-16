@@ -226,10 +226,11 @@ class ProductServiceImplTest {
     void statusSuccess() {
         when(merchantMapper.selectByUserId(1L)).thenReturn(approvedMerchant());
         when(productMapper.selectById(66L)).thenReturn(ownProduct());
+        when(productMapper.updateStatusByMerchant(66L, 1, 88L)).thenReturn(1);
 
         productService.updateStatus(66L, 1, 1L);
 
-        verify(productMapper).updateStatus(66L, 1);
+        verify(productMapper).updateStatusByMerchant(66L, 1, 88L);
     }
 
     @Test
@@ -242,7 +243,7 @@ class ProductServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> productService.deleteProduct(66L, 1L));
         assertEquals("商品已被交易引用，无法删除，请下架", ex.getMessage());
-        verify(productMapper, never()).deleteById(66L);
+        verify(productMapper, never()).deleteByIdAndMerchant(66L, 88L);
     }
 
     @Test
@@ -251,9 +252,11 @@ class ProductServiceImplTest {
         when(merchantMapper.selectByUserId(1L)).thenReturn(approvedMerchant());
         when(productMapper.selectById(66L)).thenReturn(ownProduct());
         when(categoryMapper.selectById(11L)).thenReturn(Category.builder().id(11L).build());
+        when(productMapper.updateByMerchant(any(Product.class), eq(88L))).thenReturn(1);
 
         productService.updateProduct(66L, createDTO(), 1L);
 
+        verify(productMapper).updateByMerchant(any(Product.class), eq(88L));
         verify(productSkuMapper).deleteByProductId(66L);
         verify(productSkuMapper).insertBatch(anyList());
     }

@@ -17,14 +17,16 @@ USE chrono_bbs_dev;
 INSERT IGNORE INTO `user` (`id`, `username`, `password`, `nickname`, `phone`, `email`, `role`, `status`) VALUES
 (2, 'merchant1', '$2a$10$GwJpq50PdP9bSlAKy8Jg5.qvNMdUEehQjAoJ2ciQ3U8rgei6Sx50u', '鲜果直供', '13900000001', 'merchant1@chrono.local', 2, 1),
 (3, 'merchant2', '$2a$10$GwJpq50PdP9bSlAKy8Jg5.qvNMdUEehQjAoJ2ciQ3U8rgei6Sx50u', '数码优选', '13900000002', 'merchant2@chrono.local', 2, 1),
-(4, 'user1', '$2a$10$GwJpq50PdP9bSlAKy8Jg5.qvNMdUEehQjAoJ2ciQ3U8rgei6Sx50u', '张小明', '13800138000', 'user1@chrono.local', 1, 1);
+(4, 'user1', '$2a$10$GwJpq50PdP9bSlAKy8Jg5.qvNMdUEehQjAoJ2ciQ3U8rgei6Sx50u', '张小明', '13800138000', 'user1@chrono.local', 1, 1),
+(101, 'merchant3', '$2a$10$GwJpq50PdP9bSlAKy8Jg5.qvNMdUEehQjAoJ2ciQ3U8rgei6Sx50u', '家居服饰', '13900000003', 'merchant3@chrono.local', 2, 1);
 
 -- =====================================================
 -- 2. 商家店铺（已审核通过）
 -- =====================================================
 INSERT IGNORE INTO `merchant` (`id`, `user_id`, `shop_name`, `business_license`, `contact_phone`, `status`, `review_reason`, `reviewed_at`) VALUES
 (1, 2, '鲜果直供旗舰店', 'https://picsum.photos/seed/license-fruit/800/600', '13900000001', 1, '资质齐全，审核通过', '2026-10-20 10:00:00'),
-(2, 3, '数码优选专营店', 'https://picsum.photos/seed/license-digital/800/600', '13900000002', 1, '资质齐全，审核通过', '2026-10-20 10:10:00');
+(2, 3, '数码优选专营店', 'https://picsum.photos/seed/license-digital/800/600', '13900000002', 1, '资质齐全，审核通过', '2026-10-20 10:10:00'),
+(3, 101, '家居服饰馆', 'https://picsum.photos/seed/license-home/800/600', '13900000003', 1, '资质齐全，审核通过', '2026-10-20 10:20:00');
 
 -- =====================================================
 -- 3. 商品

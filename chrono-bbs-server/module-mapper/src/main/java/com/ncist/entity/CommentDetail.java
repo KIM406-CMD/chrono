@@ -18,4 +18,6 @@ public class CommentDetail extends Comment {
     private String nickname;
     /** 评论人头像 URL。 */
     private String avatar;
+    /** 商品名称，商家评论管理列表展示用。 */
+    private String productName;
 }

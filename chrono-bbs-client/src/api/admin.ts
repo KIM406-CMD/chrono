@@ -19,7 +19,8 @@ export const getAdminUsers = (params: { page?: number; size?: number; keyword?: 
 }
 
 export const setUserStatus = (id: number, status: number) => {
-  return service.put(`/admin/users/${id}/status`, { status })
+  // 后端使用 @RequestParam 接收 status，需通过 query 传递
+  return service.put(`/admin/users/${id}/status`, null, { params: { status } })
 }
 
 export interface AdminMerchant {

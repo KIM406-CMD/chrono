@@ -45,7 +45,8 @@ chrono-bbs-client/
 │   ├── upload.ts                     # Upload Mock
 │   ├── search.ts                     # Search Mock
 │   ├── comment.ts                    # Comment Mock
-│   └── seckill.ts                    # Flash-sale Coupon Mock
+│   ├── seckill.ts                    # Flash-sale Coupon Mock
+│   └── notification.ts               # In-app Notification Mock
 ├── public/
 │   ├── favicon.svg
 │   ├── icons.svg
@@ -68,6 +69,7 @@ chrono-bbs-client/
     │   ├── search.ts                    # Search APIs
     │   ├── comment.ts                   # Comment APIs
     │   ├── seckill.ts                   # Flash-sale Coupon APIs
+    │   ├── notification.ts              # In-app Notification APIs
     │   └── upload.ts                    # Upload APIs
     ├── router/                          # ===== Route layer =====
     │   └── index.ts                     # Route configuration + guards + role metadata
@@ -93,6 +95,8 @@ chrono-bbs-client/
     │   │   └── PaymentRecordView.vue    # Payment records
     │   ├── refund/                      # Refunds / after-sales
     │   │   └── RefundListView.vue       # My refunds/after-sales
+    │   ├── notification/                # In-app notifications
+    │   │   └── NotificationView.vue     # Notification center (buyer/merchant/admin)
     │   ├── user/                        # User module
     │   │   ├── LoginView.vue            # Login
     │   │   ├── RegisterView.vue         # Register
@@ -176,7 +180,8 @@ Used for the **Guest** and **Registered User** perspective, with an e-commerce s
 ```
 
 - Not logged in: display the "Login/Register" button.
-- Logged in: display the user avatar and nickname; the dropdown menu contains "My Orders", "Shipping Address", and "Logout".
+- Logged in: display the user avatar and nickname; the dropdown menu contains "My Orders", "Notifications", "Shipping Address", and "Logout".
+- The top “🔔 Notifications” button shows an unread badge and routes to `/notifications`.
 
 ### 3.2 Merchant Backend Layout `MerchantLayout.vue`
 
@@ -191,11 +196,13 @@ Used for the **Merchant** role, with an admin panel style:
 │  Order Management      │                                            │
 │  Refund Review         │                                            │
 │  Sales Statistics      │                                            │
+│  Notifications         │                                            │
 └────────────────────────┴────────────────────────────────────────────┘
 ```
 
 - Fixed sidebar on the left.
 - The content area displays the corresponding management page.
+- The “Notifications” entry shows an unread badge; notifications navigate to the merchant order/refund page according to the current role.
 
 ### 3.3 Administrator Backend Layout `AdminLayout.vue`
 
@@ -391,6 +398,7 @@ const userRoutes: RouteRecordRaw[] = [
       { path: 'checkout', name: 'Checkout', meta: { title: 'Checkout', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/CheckoutView.vue') },
       { path: 'orders', name: 'OrderList', meta: { title: 'My Orders', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderListView.vue') },
       { path: 'payments', name: 'PaymentRecords', meta: { title: 'Payment Records', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentRecordView.vue') },
+      { path: 'notifications', name: 'Notifications', meta: { title: 'Notifications', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/notification/NotificationView.vue') },
       { path: 'order/:id', name: 'OrderDetail', meta: { title: 'Order Details', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderDetailView.vue') },
       { path: 'payment/:orderId', name: 'Payment', meta: { title: 'Payment', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentView.vue') },
       { path: 'merchant/apply', name: 'MerchantApply', meta: { title: 'Merchant Onboarding', roles: ['USER', 'MERCHANT'] }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
@@ -912,6 +920,7 @@ server {
 | `/payments` | Payment Records | User/Merchant/Administrator | Payment method, amount and time |
 | `/order/:id` | Order Details | User/Merchant | Includes refund/return entry |
 | `/refunds` | My Refunds/After-sales | User/Merchant/Administrator | Refund/return request list |
+| `/notifications` | Notifications | User/Merchant/Administrator | In-app notifications, unread filter and read actions |
 | `/profile` | Personal Information | User/Merchant/Administrator | Redirects to `/settings` |
 | `/settings` | Account Settings | User/Merchant/Administrator | Preferences + avatar upload |
 | `/address` | Shipping Address | User/Merchant | Create, read, update, delete |
@@ -919,7 +928,7 @@ server {
 | `/help/:type` | Help Center | Guest/User | Static help page |
 | `/merchant/apply` | Merchant Onboarding | User | Submit onboarding application |
 | `/merchant/products` | Product Management | Merchant | Create, read, update, delete; list/unlist |
-| `/merchant/comments` | Comment Management | Merchant | View and reply to comments/follow-up comments by product |
+| `/merchant/comments` | Comment Management | Merchant | All own-product comments by default, filterable by product, with replies |
 | `/merchant/orders` | Order Management | Merchant | Shipping operations |
 | `/merchant/refunds` | Refund Review | Merchant | Review refunds and returns |
 | `/merchant/stats` | Sales Statistics | Merchant | Own sales data |
@@ -1009,8 +1018,13 @@ server {
 | Merchant refund list | GET | `/api/merchant/refunds` | `?page=&size=&status=` |
 | Merchant product list | GET | `/api/merchant/products` | `?page=&size=&status=` |
 | Merchant order list | GET | `/api/merchant/orders` | `?page=&size=&status=` |
+| Merchant product detail | GET | `/api/merchant/products/{id}` | Own products only, including off-shelf |
+| Merchant comment list | GET | `/api/merchant/comments` | `?productId=&page=&size=` (all products by default) |
 | Ship order | PUT | `/api/merchant/ship/{orderId}` | — |
 | Merchant sales statistics | GET | `/api/merchant/stats` | `?startDate=&endDate=` |
+| Notification list | GET | `/api/notification/list` | `?unreadOnly=&page=&size=` |
+| Unread notification count | GET | `/api/notification/unread-count` | — |
+| Mark notifications read | PUT | `/api/notification/{id}/read`, `/api/notification/read-all` | — |
 | Create product | POST | `/api/product` | `{ ...ProductFormData }` |
 | Update product | PUT | `/api/product/{id}` | Same as above |
 | List/unlist product | PUT | `/api/product/{id}/status` | `{ status }` |
@@ -1113,3 +1127,11 @@ All items below are connected to the real backend; `npm run dev:mock` can still 
 - After a return refund is approved it enters "Awaiting Return"; the buyer submits the courier company and tracking number on the refunds/after-sales page, and the merchant/admin confirms receipt on the refund review page to complete the refund.
 - The admin global product list supports editing products and SKU price/stock; the backend provides `PUT /api/admin/products/{id}`.
 - Posting a review supports up to 4 images, which are displayed in the product detail comment list.
+
+## 16. In-app Notification Center
+
+- Page: `views/notification/NotificationView.vue`, route `/notifications`, shared by buyers, merchants, and administrators.
+- Entries: the mall header “🔔 Notifications” button with an unread badge and the dropdown item “Notifications”; the merchant center sidebar also has a “Notifications” entry.
+- List: All/Unread filter, pagination, mark one as read, mark all as read; each item shows a type icon, title, body, time, and product/order tag.
+- Navigation: order notifications route to `/order/{id}` (buyer), `/merchant/orders` (merchant), or `/admin/orders` (administrator); refund notifications route to `/refunds`, `/merchant/refunds`, or `/admin/refunds`.
+- The unread badge is loaded from `/api/notification/unread-count`; after a read operation the `notification-unread-changed` event refreshes both the mall header and the merchant sidebar.

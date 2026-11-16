@@ -77,6 +77,44 @@ public interface CommentMapper {
     long countFirst(@Param("productId") Long productId, @Param("star") Integer star);
 
     /**
+     * 分页查询某商家所有商品的一级评论，并联查评论人与商品名称。
+     *
+     * <p>仅返回归属该商家的商品评论；productId 非空时只查指定商品。</p>
+     *
+     * @param merchantId 商家 ID
+     * @param productId 商品 ID，为 null 时查询该商家全部商品
+     * @param offset 偏移量，从 0 开始
+     * @param size 每页条数
+     * @return 一级评论明细列表，按时间倒序
+     */
+    @Select("<script> SELECT " + DETAIL_COLUMNS + ", p.name AS productName "
+            + "FROM comment c "
+            + "JOIN user u ON c.user_id = u.id "
+            + "JOIN product p ON p.id = c.product_id "
+            + "WHERE p.merchant_id = #{merchantId} "
+            + "AND c.parent_id IS NULL AND c.is_append = 0 AND c.status = 0 "
+            + "<if test='productId != null'> AND c.product_id = #{productId} </if> "
+            + "ORDER BY c.created_at DESC, c.id DESC LIMIT #{offset}, #{size} </script>")
+    List<CommentDetail> selectMerchantFirstPage(@Param("merchantId") Long merchantId,
+                                                @Param("productId") Long productId,
+                                                @Param("offset") int offset,
+                                                @Param("size") int size);
+
+    /**
+     * 统计某商家所有商品的一级评论数量，用于分页。
+     *
+     * @param merchantId 商家 ID
+     * @param productId 商品 ID，为 null 时统计该商家全部商品
+     * @return 符合条件的评论总数
+     */
+    @Select("<script> SELECT COUNT(*) FROM comment c "
+            + "JOIN product p ON p.id = c.product_id "
+            + "WHERE p.merchant_id = #{merchantId} "
+            + "AND c.parent_id IS NULL AND c.is_append = 0 AND c.status = 0 "
+            + "<if test='productId != null'> AND c.product_id = #{productId} </if> </script>")
+    long countMerchantFirst(@Param("merchantId") Long merchantId, @Param("productId") Long productId);
+
+    /**
      * 批量查询指定父评论下的子评论（追评与商家回复），并联查评论人信息。
      *
      * @param parentIds 父评论 ID 列表，不能为空

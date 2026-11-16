@@ -38,6 +38,18 @@ public interface ProductService {
     ProductDetailVO getProductDetail(Long id);
 
     /**
+     * 商家查询自己商品的详情，包含下架商品。
+     *
+     * <p>用于卖家中心编辑商品时回填完整字段；仅能查询归属当前商家的商品。</p>
+     *
+     * @param id     商品 ID
+     * @param userId 商家用户 ID，必须为审核通过的商家
+     * @return 商品详情
+     * @throws BusinessException 用户非商家/审核未通过、商品不存在或不属于该商家时抛出
+     */
+    ProductDetailVO getMerchantProductDetail(Long id, Long userId);
+
+    /**
      * 商家创建商品，初始状态为下架。
      *
      * @param dto    商品信息，包含名称、描述、图片、品牌、分类与 SKU 列表

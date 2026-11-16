@@ -20,6 +20,7 @@ import com.ncist.mapper.OrderItemMapper;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.ProductSkuMapper;
 import com.ncist.mapper.UserCouponMapper;
+import com.ncist.service.NotificationService;
 import com.ncist.service.SeckillService;
 import com.ncist.service.impl.OrderServiceImpl;
 import com.ncist.vo.CreateOrderVO;
@@ -87,6 +88,9 @@ class OrderServiceImplTest {
 
     @Mock
     private SeckillService seckillService;
+
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private StringRedisTemplate stringRedisTemplate;

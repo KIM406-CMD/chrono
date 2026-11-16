@@ -6,6 +6,7 @@
     <select id="selectMerchantProducts" resultType="java.util.Map">
         SELECT id, name, description, images, brand, category_id AS categoryId,
                merchant_id AS merchantId, status, sales,
+               (SELECT MIN(ps.price) FROM product_sku ps WHERE ps.product_id = product.id) AS minPrice,
                created_at AS createdAt, updated_at AS updatedAt
         FROM product
         WHERE merchant_id = #{merchantId}
@@ -24,9 +25,14 @@
         </if>
     </select>
 
-    <!-- 商家订单 ID 列表：通过 order_item JOIN product 找到包含该商家商品的订单 -->
+    <!--
+      商家订单 ID 列表：通过 order_item JOIN product 找到包含该商家商品的订单。
+      一个订单可能包含同一商家的多个商品，使用 GROUP BY 去重；
+      ORDER BY 使用聚合后的最大下单时间，避免 MySQL 8 下
+      “DISTINCT + ORDER BY 非 SELECT 列”导致的 3065 错误。
+    -->
     <select id="selectMerchantOrderIds" resultType="long">
-        SELECT DISTINCT o.id
+        SELECT o.id
         FROM `order` o
         INNER JOIN order_item oi ON oi.order_id = o.id
         INNER JOIN product p ON p.id = oi.product_id AND p.merchant_id = #{merchantId}
@@ -34,7 +40,8 @@
         <if test="status != null">
             AND o.status = #{status}
         </if>
-        ORDER BY o.created_at DESC
+        GROUP BY o.id
+        ORDER BY MAX(o.created_at) DESC
         LIMIT #{offset}, #{size}
     </select>
 

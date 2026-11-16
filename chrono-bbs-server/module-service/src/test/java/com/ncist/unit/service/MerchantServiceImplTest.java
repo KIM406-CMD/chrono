@@ -9,6 +9,7 @@ import com.ncist.entity.Merchant;
 import com.ncist.entity.Order;
 import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.OrderMapper;
+import com.ncist.service.NotificationService;
 import com.ncist.service.impl.MerchantServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,8 @@ class MerchantServiceImplTest {
     private MerchantMapper merchantMapper;
     @Mock
     private OrderMapper orderMapper;
+    @Mock
+    private NotificationService notificationService;
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 

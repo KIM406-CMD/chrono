@@ -201,6 +201,18 @@ void shouldThrowWhenCaptchaCodeIsWrong() { ... }
 void shouldThrowWhenUsernameExists() { ... }
 ```
 
+### 6.3 In-app Notification Scenarios
+
+| Scenario | Assertion |
+|------|------|
+| Notification list pagination | Returns total, current page, read status, and related object |
+| Unread-only filter | `unreadOnly=true` returns only `is_read=0` records |
+| Mark one as read | Own notification is updated; another user's notification returns 404 |
+| Mark all as read | Returns the updated count and unread count becomes zero |
+| Payment success | Buyer receives “Payment succeeded”; each merchant receives “New order awaiting shipment” with their own item subtotal |
+| Refund request | The merchant owning the product receives “New refund request” with the correct product name and amount |
+| Review/return | Buyer receives the review result; merchant receives the return shipping reminder; buyer receives “Refund completed” after receipt |
+
 ---
 
 ## 7. Test Report

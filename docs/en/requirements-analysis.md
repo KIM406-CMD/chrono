@@ -70,8 +70,8 @@ This document provides a comprehensive requirements analysis for the Online Supe
 | Role | Description | Core Permissions |
 |------|-------------|------------------|
 | **Guest** | A visitor who has not logged in | Browse product lists, filter by category, view product details, keyword search, register an account (buyer/merchant) |
-| **Registered User** | A user who has registered and logged in | Guest permissions + add to cart, manage cart, place orders, pay, confirm receipt, request refund/return, post comments |
-| **Merchant** | An approved merchant | User permissions + submit onboarding application, manage own products (CRUD/list/unlist/stock), manage orders (ship), review refunds/returns, view sales statistics |
+| **Registered User** | A user who has registered and logged in | Guest permissions + add to cart, manage cart, place orders, pay, confirm receipt, request refund/return, post comments, view in-app notifications |
+| **Merchant** | An approved merchant | User permissions + submit onboarding application, manage own products (CRUD/list/unlist/stock), manage orders (ship), review refunds/returns, view sales statistics, receive order/refund notifications |
 | **Administrator** | Highest system privileges | User management, merchant onboarding review, three-level category management, global product management, global order management, refund/return review, global sales reports |
 
 ### 2.1 Role Inheritance
@@ -228,6 +228,15 @@ Pending Payment(1) ──→ Cancelled(5) (user cancellation)
 | F-47 | User-Merchant Chat | WebSocket real-time text messages; support initiating a conversation from the product detail page | Low |
 | F-48 | Conversation List | Display all historical conversations and support unread message reminders | Low |
 
+### 3.13 In-app Notification Module
+
+| ID | Function | Description | Priority |
+|------|------|------|--------|
+| F-49 | View Notifications | Buyers/merchants/administrators view order, payment, shipping and refund/return notifications; support unread filtering and single/all read | Medium |
+| F-50 | Business Event Notifications | Payment success notifies the buyer and product merchants; refund requests notify merchants; review results, return shipping and refund completion notify buyers/merchants | Medium |
+
+**Isolation**: Notifications are isolated by receiver `user_id`; merchants only receive order/refund notifications related to their own products/shop.
+
 ---
 
 ## 4. Non-Functional Requirements
@@ -313,6 +322,7 @@ Customer side: Enter registration/login page → Request graphical captcha on pa
 | Refund/Return (refund) | Order item, applicant, type, amount, review status | Supports partial refunds |
 | Comment (comment) | Product, user, content, rating, images | Supports follow-up comments |
 | Conversation/Message (conversation/message) | User, merchant, message content | WebSocket communication |
+| In-app Notification (notification) | Receiver, type, title, body, related order/refund, read status | Generated automatically by order/payment/refund events |
 
 ---
 
@@ -348,6 +358,7 @@ Customer side: Enter registration/login page → Request graphical captcha on pa
 | F-40 | Merchant sales statistics |
 | F-41 | Administrator user management |
 | F-44 ~ F-45 | Administrator product/order management |
+| F-49 ~ F-50 | In-app notification center and business event notifications |
 | R-02 ~ R-06 | Best-selling ranking, category statistics, merchant statistics, order trends, average order value |
 
 ### 7.3 Low Priority (Do If Time Permits)

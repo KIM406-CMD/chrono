@@ -577,3 +577,30 @@
 | `image` | keyword (not indexed) | First image URL |
 | `status` | integer | 0-unlisted, 1-listed; only listed products are searchable |
 | `createdAt` | date | Product creation time, used for `time_desc` sorting |
+
+---
+
+## 15. In-app Notifications
+
+### `notification` Notification Table
+
+| Field | Type | Description |
+|------|------|------|
+| id | BIGINT PK | Primary key |
+| user_id | BIGINT | Receiver user ID |
+| type | TINYINT | 1-order, 2-system, 3-after-sale |
+| title | VARCHAR(100) | Notification title |
+| content | VARCHAR(500) | Notification body |
+| related_type | TINYINT | 1-order, 2-refund |
+| related_id | BIGINT | Related object ID (e.g., order ID) |
+| is_read | TINYINT | 0-unread, 1-read |
+| created_at | DATETIME | Creation time |
+
+> Notifications are written after order creation, payment, shipping and refund/return events. Buyers and merchants share the same notification center, isolated by `user_id`; chat messages remain in the separate `conversation`/`message` tables.
+
+### notification Indexes
+
+| Index Name | Type | Field | Purpose |
+|------|------|------|------|
+| `idx_user_read` | INDEX | (user_id, is_read) | Query unread notifications and count unread |
+| `idx_user_created` | INDEX | (user_id, created_at) | Paginate a user's notifications by time |

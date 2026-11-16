@@ -37,6 +37,7 @@ This document conducts a comprehensive analysis from four dimensions: **technica
 | Cache | Redis 7.x | ★★★☆☆ Moderate | Medium |
 | Search Engine | Elasticsearch 7.x/8.x | ★★☆☆☆ Unfamiliar | ⚠️ High |
 | Instant Messaging | WebSocket (backend @OnOpen / frontend native API) | ★★☆☆☆ Unfamiliar | ⚠️ Medium |
+| In-app Notifications | MySQL notification table + REST APIs (written in transaction) | ★★★★☆ Familiar | Low |
 | Containerization | Docker + Docker Compose | ★★☆☆☆ Unfamiliar | ⚠️ Medium |
 | Deployment | Nginx | ★★★☆☆ Moderate | Low |
 | Authentication & Authorization | JWT + Redis + service-layer RBAC | ★★★☆☆ Moderate | Medium |
@@ -77,6 +78,14 @@ This document conducts a comprehensive analysis from four dimensions: **technica
 | Scope of Impact | Multiple features such as authentication, order placement, flash-sale coupons, and instant messaging |
 | Learning Curve | Basic single-node Redis operations are simple; the `DECR` atomic deduction and the consume semantics of anti-duplicate tokens need careful design |
 | **Mitigation Measures** | 1. Use `SET key value EX seconds` for login state, captcha, and anti-duplicate tokens<br>2. Do not introduce a distributed lock for order placement; instead use "anti-duplicate token + conditional database status updates" to reduce concurrency-control complexity<br>3. Use Redis `DECR`/`INCR` for atomic deduction of flash-sale coupon stock, degrading to a `remain_count > 0` conditional update when Redis is unavailable |
+
+#### Risk 5: In-app Notifications Coupled to Primary Business (Low Risk)
+
+| Risk Item | Analysis |
+|--------|------|
+| Risk Description | Notifications are written inside order/payment/refund transactions; a notification table failure could affect the primary flow |
+| Scope of Impact | Order creation, payment, shipping, refund/return |
+| **Mitigation Measures** | 1. Wrap notification writes in try/catch and log only; never roll back the primary business<br>2. Notification queries and read operations always include `user_id` to prevent unauthorized access<br>3. Provide an idempotent migration `migration-2026-11-16.sql` to create the notification table |
 
 ### 2.3 Technical Feasibility Conclusion
 

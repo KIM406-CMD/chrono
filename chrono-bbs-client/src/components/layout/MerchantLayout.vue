@@ -1,9 +1,34 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { REFUND_AUDIT_ENABLED } from '@/config/features'
+import { getNotificationUnreadCount } from '@/api/notification'
 
 const route = useRoute()
 const router = useRouter()
+
+const unreadCount = ref(0)
+
+const loadUnread = () => {
+  getNotificationUnreadCount()
+    .then((res) => {
+      unreadCount.value = res.data?.count || 0
+    })
+    .catch(() => {
+      unreadCount.value = 0
+    })
+}
+
+const onUnreadChanged = () => loadUnread()
+
+onMounted(() => {
+  loadUnread()
+  window.addEventListener('notification-unread-changed', onUnreadChanged)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('notification-unread-changed', onUnreadChanged)
+})
 </script>
 
 <template>
@@ -16,6 +41,10 @@ const router = useRouter()
         <el-menu-item index="/merchant/orders">订单管理</el-menu-item>
         <el-menu-item v-if="REFUND_AUDIT_ENABLED" index="/merchant/refunds">退款审核</el-menu-item>
         <el-menu-item index="/merchant/stats">销售统计</el-menu-item>
+        <el-menu-item index="/notifications">
+          消息通知
+          <el-badge v-if="unreadCount > 0" :value="unreadCount" class="menu-badge" />
+        </el-menu-item>
       </el-menu>
       <div class="back-home">
         <el-button text @click="router.push('/home')">&larr; 返回首页</el-button>
@@ -51,6 +80,10 @@ const router = useRouter()
 .merchant-menu {
   border-right: none;
   flex: 1;
+}
+
+.menu-badge {
+  margin-left: 8px;
 }
 
 .back-home {

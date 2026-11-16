@@ -40,6 +40,13 @@ export const getMerchantProducts = (params?: { page?: number; size?: number; sta
   return service.get<any, { code: number; message: string; data: PageResult<any>; timestamp: number }>('/merchant/products', { params })
 }
 
+// 商家商品详情（仅自己的商品，含下架）
+export const getMerchantProductDetail = (id: number) => {
+  return service.get<any, { code: number; message: string; data: import('@/types/product').Product; timestamp: number }>(
+    `/merchant/products/${id}`,
+  )
+}
+
 // 11.4 商家订单列表
 export const getMerchantOrders = (params?: { page?: number; size?: number; status?: number }) => {
   return service.get<any, { code: number; message: string; data: PageResult<any>; timestamp: number }>('/merchant/orders', { params })

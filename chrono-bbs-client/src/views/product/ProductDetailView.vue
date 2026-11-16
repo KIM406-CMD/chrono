@@ -133,8 +133,14 @@ const handleContactShop = async () => {
   }
 }
 
-// 商品详情富文本（清洗后渲染，避免 XSS）
-const sanitizedDescription = computed(() => sanitizeHtml(product.value?.description || ''))
+// 商品详情富文本（清洗后渲染，避免 XSS）；纯文本描述保留换行
+const sanitizedDescription = computed(() => {
+  const raw = product.value?.description || ''
+  if (!raw) return ''
+  const looksLikeHtml = /<\/?[a-z][^>]*>/i.test(raw)
+  const html = looksLikeHtml ? raw : raw.replace(/\n/g, '<br>')
+  return sanitizeHtml(html)
+})
 
 // 顶部副标题使用去标签后的纯文本
 const plainDescription = computed(() =>

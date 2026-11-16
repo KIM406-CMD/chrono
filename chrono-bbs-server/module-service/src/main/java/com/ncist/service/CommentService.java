@@ -30,6 +30,18 @@ public interface CommentService {
     PageResult<CommentVO> listByProduct(Long productId, Integer star, Integer page, Integer size);
 
     /**
+     * 分页查询当前商家所有商品的评论。
+     *
+     * @param userId    商家用户 ID，必须为审核通过的商家
+     * @param productId 商品 ID 过滤，为空时查询该商家全部商品
+     * @param page      页码，从 1 开始；为空或小于 1 时按 1 处理
+     * @param size      每页条数；为空或小于 1 时按 10 处理
+     * @return 评论分页结果，每条含商品名称、追评与商家回复
+     * @throws BusinessException 用户非商家或商家资质未通过时抛出
+     */
+    PageResult<CommentVO> merchantComments(Long userId, Long productId, Integer page, Integer size);
+
+    /**
      * 发表商品评价。
      *
      * @param userId 用户 ID，必须为当前登录用户

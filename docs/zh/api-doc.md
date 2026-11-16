@@ -34,7 +34,8 @@
 - [16. 秒杀券](#16-秒杀券-apiseckill)
 - [17. WebSocket 通信](#17-websocket-通信)
 - [18. 错误码说明](#18-错误码说明)
-- [19. 接口权限总览](#19-接口权限总览)
+- [19. 站内通知](#19-站内通知-apinotification)
+- [20. 接口权限总览](#20-接口权限总览)
 
 ---
 
@@ -828,6 +829,8 @@ GET /api/payment/records
 
 **返回**：`PageResult<PaymentRecord>`，字段：`id`、`orderId`、`orderNo`、`payMethod`（1=银行卡，2=二维码）、`cardNo`（脱敏）、`amount`（分）、`status`（0=处理中，1=成功，2=失败）、`paidAt`、`createdAt`。
 
+> 支付成功后自动写入站内通知：买家收到“订单支付成功”，订单涉及的每个商家按自己的商品小计收到“新订单待发货”。
+
 ---
 
 ## 8. 收货地址 `/api/address`
@@ -1011,6 +1014,8 @@ POST /api/refund
 
 **返回**：`Result<Long>`，退款单 ID。
 
+> 申请提交后向退款商品所属商家推送“新的退款申请”通知，商家可在消息通知中直接进入退款审核页。
+
 ---
 
 ### 10.2 退款列表（我的）
@@ -1075,6 +1080,8 @@ PUT /api/refund/{id}/review
 | reviewReason | String | 否 | 审核意见 |
 
 > 仅退款（type=1）通过后状态变为 1（已通过）且订单标记已退款；退货退款（type=2）通过后状态变为 3（待寄回），订单保持退款中，等待买家填写物流。
+>
+> 审核完成后向买家推送站内通知（通过/拒绝）；买家填写退货物流后通知商家，商家确认收货后通知买家退款完成。
 
 ---
 
@@ -1180,7 +1187,7 @@ GET /api/merchant/products
 | size | Integer | 否 | 每页大小 |
 | status | Integer | 否 | 状态筛选 |
 
-**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、createdAt、updatedAt`；不返回 `minPrice`、`merchantName`。
+**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、minPrice（SKU 最低价，分）、createdAt、updatedAt`；不返回 `merchantName`。
 
 ---
 
@@ -1236,6 +1243,36 @@ GET /api/merchant/stats
 
 ---
 
+### 11.7 商家商品详情
+
+```
+GET /api/merchant/products/{id}
+```
+
+**权限**：已审核通过的商家，且商品必须属于当前商家（可查看自己的下架商品）。
+
+**返回**：`ProductDetailVO`，字段同 §4.2（`id、name、description、images、brand、categoryId、categoryName、merchantId、merchantUserId、shopName、status、sales、skuList`）。
+
+> 卖家中心编辑商品时使用该接口回填表单；与公开详情不同，允许查看自己的下架商品。
+
+---
+
+### 11.8 商家评论列表
+
+```
+GET /api/merchant/comments
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| productId | Long | 否 | 商品 ID 筛选，不传则查询该商家全部商品 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页条数，默认 10 |
+
+**返回**：`PageResult<CommentVO>`，每条一级评论额外包含 `productName`（商品名称），并聚合 `append`（追评）与 `replies`（商家回复）。仅返回当前商家自己商品的评论。
+
+---
+
 ## 12. 管理后台 `/api/admin`
 
 **Controller**：`AdminController`  
@@ -1268,7 +1305,9 @@ PUT /api/admin/users/{id}/status
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| status | Integer | 是 | 1=启用，0=禁用 |
+| status | Integer | 是 | 1=启用，0=禁用（query 参数） |
+
+> 管理员账号不允许被禁用，尝试禁用时返回错误码 4052。
 
 ---
 
@@ -2047,7 +2086,90 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 ---
 
-## 19. 接口权限总览
+## 19. 站内通知 `/api/notification`
+
+**Controller**：`NotificationController`  
+**权限**：登录用户，仅能读写本人的通知
+
+> 说明：下单、支付、发货、退款/退货等节点由后端自动写入通知，不占用聊天会话。买家与商家共用同一通知中心，按接收人 `user_id` 隔离；商家只能看到与自己的商品/店铺相关的通知。通知记录保存在 `notification` 表，支持按未读筛选与单条/全部已读。
+
+| 业务事件 | 接收人 | 通知标题 |
+|----------|--------|----------|
+| 下单成功 | 买家 | 订单提交成功 |
+| 支付成功 | 买家 | 订单支付成功 |
+| 支付成功 | 订单内各商品所属商家（按商家小计分别推送） | 新订单待发货 |
+| 商家发货 | 买家 | 订单已发货 |
+| 买家申请退款/退货 | 退款商品所属商家 | 新的退款申请 |
+| 商家/管理员审核退款 | 买家 | 退款申请已通过 / 退款申请被拒绝 |
+| 买家填写退货物流 | 商家 | 买家已寄回商品 |
+| 商家确认收到退货 | 买家 | 退款已完成 |
+
+### 19.1 我的通知列表
+
+```
+GET /api/notification/list
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| unreadOnly | Boolean | 否 | 仅查询未读，默认全部 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页条数，默认 10 |
+
+**返回**：`PageResult<NotificationVO>`，列表项字段：`id、type（1-订单/2-系统/3-售后）、title、content、relatedType（1-订单/2-退款）、relatedId、isRead（0-未读/1-已读）、createdAt`。
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 1,
+    "page": 1,
+    "size": 10,
+    "list": [
+      {
+        "id": 1,
+        "type": 1,
+        "title": "订单提交成功",
+        "content": "订单 20261116194833686836 已提交，应付金额 ¥2999.00，请尽快完成支付。",
+        "relatedType": 1,
+        "relatedId": 50005,
+        "isRead": 0,
+        "createdAt": "2026-11-16T19:48:33"
+      }
+    ]
+  }
+}
+```
+
+### 19.2 未读通知数量
+
+```
+GET /api/notification/unread-count
+```
+
+**返回**：
+
+```json
+{ "code": 200, "data": { "count": 2 } }
+```
+
+### 19.3 标记单条已读
+
+```
+PUT /api/notification/{id}/read
+```
+
+### 19.4 全部标记已读
+
+```
+PUT /api/notification/read-all
+```
+
+**返回**：`data` 为本次标记为已读的数量。
+
+---
+
+## 20. 接口权限总览
 
 | 模块 | 路径前缀 | 游客 | 注册用户 | 商家 | 管理员 |
 |------|----------|------|----------|------|--------|
@@ -2064,6 +2186,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 管理后台 | `/api/admin` | ❌ | ❌ | ❌ | ✅ 全部 |
 | 文件上传 | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | 即时通讯 | `/api/chat` | ❌ | ✅ | ✅ | — |
+| 站内通知 | `/api/notification` | ❌ | ✅ 本人通知 | ✅ 本人通知 | ✅ 本人通知 |
 | 商品搜索 | `/api/search` | ✅ 检索/建议/热搜 | ✅ + 搜索历史/清空 | ✅ | ✅ |
 | 秒杀券 | `/api/seckill` | ✅ 查看 | ✅ 抢领/我的券/计算 | ✅ 创建/编辑/删除 | ✅ 创建/编辑/删除 |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
@@ -2074,4 +2197,4 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 > **文档更新日期**：2026-11-16
 >
-> **对应版本**：v1.2.1
+> **对应版本**：v1.3.0

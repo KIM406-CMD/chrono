@@ -4,9 +4,13 @@ import com.ncist.common.context.UserContext;
 import com.ncist.common.result.PageResult;
 import com.ncist.common.result.Result;
 import com.ncist.dto.MerchantApplyDTO;
+import com.ncist.service.CommentService;
 import com.ncist.service.MerchantService;
+import com.ncist.service.ProductService;
 import com.ncist.service.RefundService;
+import com.ncist.vo.CommentVO;
 import com.ncist.vo.MerchantInfoVO;
+import com.ncist.vo.ProductDetailVO;
 import com.ncist.vo.RefundVO;
 import com.ncist.vo.MerchantOrderVO;
 import com.ncist.vo.MerchantStatsVO;
@@ -40,6 +44,8 @@ import java.util.Map;
 public class MerchantController {
 
     private final MerchantService merchantService;
+    private final ProductService productService;
+    private final CommentService commentService;
     private final RefundService refundService;
 
     /**
@@ -86,6 +92,43 @@ public class MerchantController {
             @RequestParam(required = false, defaultValue = "1") Integer page,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
         return Result.success(merchantService.listProducts(UserContext.getUserId(), status, page, size));
+    }
+
+    /**
+     * 查询当前商家自己的商品详情（含下架商品）。
+     *
+     * <p>卖家中心编辑商品时用于回填完整字段，服务端会校验商品归属，
+     * 不能查看其他商家的商品。</p>
+     *
+     * @param id 商品 ID
+     * @return 商品详情
+     */
+    @Operation(summary = "商家商品详情（仅自己的商品，含下架）")
+    @Parameter(name = "id", description = "商品 ID", example = "1")
+    @GetMapping("/products/{id}")
+    public Result<ProductDetailVO> productDetail(@PathVariable Long id) {
+        return Result.success(productService.getMerchantProductDetail(id, UserContext.getUserId()));
+    }
+
+    /**
+     * 分页查询当前商家所有商品的评论。
+     *
+     * <p>评论管理页默认展示自己全部商品的评论，可按商品筛选；
+     * 每条评论包含商品名称，便于商家定位评价来源。</p>
+     *
+     * @param productId 商品 ID 筛选，可为 {@code null} 表示全部商品
+     * @param page      页码，从 1 开始，默认 1
+     * @param size      每页条数，默认 10
+     * @return 评论分页结果
+     */
+    @Operation(summary = "商家评论列表（分页，默认全部商品）")
+    @GetMapping("/comments")
+    public Result<PageResult<CommentVO>> comments(
+            @RequestParam(required = false) @Parameter(description = "商品 ID，不传则查询全部商品") Long productId,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "10") Integer size) {
+        return Result.success(commentService.merchantComments(
+                UserContext.getUserId(), productId, page, size));
     }
 
     /**

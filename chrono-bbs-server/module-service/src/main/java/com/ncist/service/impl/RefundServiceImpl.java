@@ -19,6 +19,7 @@ import com.ncist.mapper.OrderItemMapper;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.ProductMapper;
 import com.ncist.mapper.RefundMapper;
+import com.ncist.service.NotificationService;
 import com.ncist.service.RefundService;
 import com.ncist.vo.RefundVO;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,8 @@ public class RefundServiceImpl implements RefundService {
     private final ProductMapper productMapper;
     /** 商家数据访问组件，用于校验商家审核资质。 */
     private final MerchantMapper merchantMapper;
+    /** 站内通知服务，用于退款/退货节点向买家与商家推送通知。 */
+    private final NotificationService notificationService;
 
     /**
      * {@inheritDoc}
@@ -99,6 +102,9 @@ public class RefundServiceImpl implements RefundService {
         refundMapper.insert(refund);
         // 5. 订单进入退款中（状态条件更新，失败不影响申请）
         orderMapper.markRefunding(orderItem.getOrderId());
+        // 6. 通知商家处理退款/退货申请
+        notificationService.notifyRefundApplied(refund.getMerchantId(), refund.getId(),
+                refund.getOrderId(), product == null ? null : product.getName(), refund.getAmount());
         return refund.getId();
     }
 
@@ -188,6 +194,9 @@ public class RefundServiceImpl implements RefundService {
         } else {
             orderMapper.revertRefunding(refund.getOrderId());
         }
+        // 4. 通知买家审核结果
+        notificationService.notifyRefundReviewed(refund.getUserId(), id, refund.getOrderId(),
+                approved, dto.getReviewReason(), isReturn);
     }
 
     /** {@inheritDoc} */
@@ -212,6 +221,9 @@ public class RefundServiceImpl implements RefundService {
         if (refundMapper.markReturned(id, userId, dto.getReturnCompany(), dto.getReturnLogisticsNo()) == 0) {
             throw new BusinessException(RefundErrorCode.RETURN_STATUS_ILLEGAL);
         }
+        // 通知商家买家已寄回商品
+        notificationService.notifyReturnSubmitted(refund.getMerchantId(), id,
+                refund.getOrderId(), refund.getProductName());
     }
 
     /** {@inheritDoc} */
@@ -230,6 +242,8 @@ public class RefundServiceImpl implements RefundService {
             throw new BusinessException(RefundErrorCode.RETURN_STATUS_ILLEGAL);
         }
         orderMapper.markRefunded(refund.getOrderId());
+        // 通知买家退货完成、退款到账
+        notificationService.notifyRefundCompleted(refund.getUserId(), id, refund.getOrderId());
     }
 
     /**

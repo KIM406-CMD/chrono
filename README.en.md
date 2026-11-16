@@ -62,6 +62,7 @@ Chrono BBS is a B2B2C multi-merchant online supermarket platform. Guests can bro
 | **Build tool** | Vite | HMR in development + Rollup production build |
 | **Authentication** | JWT + Redis | Interceptor authentication + service-layer role/ownership checks |
 | **Real-time messaging** | WebSocket (JSR 356) | User–merchant chat |
+| **In-app notifications** | MySQL + REST | Order/payment/refund notifications shared by buyers and merchants |
 | **API documentation** | springdoc-openapi + knife4j-ui | Auto-generated API docs |
 | **Image storage** | Local directory / Aliyun OSS + Thumbnailator | Local by default, OSS optional, 800px compression |
 | **Containerization** | Docker + Docker Compose | One-command middleware setup |
@@ -229,8 +230,8 @@ mysql -u root -p < initial/demo-data.sql
 
 The scripts are in `initial/` and create the `chrono_bbs_dev` database. The default administrator is `admin` / `admin123`; demo merchants and users are listed below.
 
-> To upgrade an existing database, run `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql` (idempotent); for demo data, also run `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql` (idempotent); if product names and images do not match, run `initial/rename-products.sql` (idempotent); to correct unrealistic batch/demo prices, run `initial/update-product-prices.sql` (idempotent).
-> In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → demo-data.sql → rename-products.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
+> To upgrade an existing database, run `mysql -u root -p chrono_bbs_dev < initial/migration-2026-11-09.sql` (idempotent), then `initial/migration-2026-11-16.sql` (notification table) and `initial/migration-2026-11-16-merchant-split.sql` (demo products reassigned by category); for demo data, also run `mysql -u root -p chrono_bbs_dev < initial/demo-data.sql` (idempotent); if product names and images do not match, run `initial/rename-products.sql` (idempotent); to correct unrealistic batch/demo prices, run `initial/update-product-prices.sql` (idempotent).
+> In Docker mode, the initialization scripts run in the order `schema.sql → data.sql → migration-2026-11-09.sql → migration-2026-11-16.sql → demo-data.sql → rename-products.sql → migration-2026-11-16-merchant-split.sql` on first startup. If you change them, run `./script/stop-middleware.sh --volumes` (Windows: `script\stop-middleware.bat --volumes`) to remove the data volume before restarting.
 > In development, images are written to the backend's local `uploads/` directory (`upload.mode=local`) and no OSS configuration is required. To use object storage, copy `script/.env.example` to `.env`, fill in the keys and set `UPLOAD_MODE=oss`.
 
 ### 6. Default test account
@@ -240,6 +241,7 @@ The scripts are in `initial/` and create the `chrono_bbs_dev` database. The defa
 | Administrator | `admin` | `admin123` | Initial administrator |
 | Merchant | `merchant1` | `admin123` | Fresh fruit flagship store (approved) |
 | Merchant | `merchant2` | `admin123` | Digital products store (approved) |
+| Merchant | `merchant3` | `admin123` | Home & apparel store (approved) |
 | Regular user | `user1` | `admin123` | Address, cart, orders, refund and comments included |
 
 > Demo accounts are created by `initial/demo-data.sql`; regular users can also register through the frontend.
@@ -291,8 +293,8 @@ Before starting the backend in production, configure `DB_PASSWORD`, `JWT_SECRET`
 |---------|------|-------------|
 | [uml-usecase.puml](./uml/uml-usecase.puml) | PlantUML | Use case diagram — guest/user/merchant/administrator |
 | [uml-component.puml](./uml/uml-component.puml) | PlantUML | Component diagram — Maven modules and external dependencies |
-| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER diagram — relationships among 20 tables |
-| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | Sequence diagram — registration/login, shopping/order, payment, WebSocket |
+| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER diagram — relationships among 21 tables |
+| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | Sequence diagram — registration/login, shopping/order, payment, WebSocket, notifications |
 | [uml-activity.puml](./uml/uml-activity.puml) | PlantUML | Activity diagram — order status flow, merchant onboarding, refund/return |
 
 ---
@@ -312,6 +314,7 @@ Before starting the backend in production, configure `DB_PASSWORD`, `JWT_SECRET`
 | 🏬 Merchant console | Onboarding review, product/stock management, shipping, refund review, sales statistics |
 | 🛡 Admin console | User management, merchant review, category management, global reports (6 types) |
 | 💬 Real-time chat | WebSocket chat between users and merchants (low priority) |
+| 🔔 In-app notifications | Order/payment/shipping/refund notifications for buyers and merchants |
 
 ---
 
