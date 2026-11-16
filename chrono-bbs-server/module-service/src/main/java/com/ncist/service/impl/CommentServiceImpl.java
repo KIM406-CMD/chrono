@@ -86,6 +86,35 @@ public class CommentServiceImpl implements CommentService {
     /**
      * {@inheritDoc}
      *
+     * <p>先校验当前用户是审核通过的商家，再按商品归属筛选评论；
+     * 与商品详情评论列表一样批量查询子评论，避免 N+1。</p>
+     */
+    @Override
+    public PageResult<CommentVO> merchantComments(Long userId, Long productId, Integer page, Integer size) {
+        Merchant merchant = merchantMapper.selectByUserId(userId);
+        if (merchant == null || !Integer.valueOf(1).equals(merchant.getStatus())) {
+            throw new BusinessException(CommentErrorCode.MERCHANT_INVALID);
+        }
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 10 : size;
+        long total = commentMapper.countMerchantFirst(merchant.getId(), productId);
+        if (total == 0) {
+            return PageResult.of(0L, p, s, List.of());
+        }
+        List<CommentDetail> firstPages = commentMapper.selectMerchantFirstPage(
+                merchant.getId(), productId, (p - 1) * s, s);
+        List<Long> parentIds = firstPages.stream().map(CommentDetail::getId).toList();
+        Map<Long, List<CommentDetail>> childrenByParent = commentMapper.selectChildrenByParentIds(parentIds)
+                .stream().collect(Collectors.groupingBy(CommentDetail::getParentId));
+        List<CommentVO> list = firstPages.stream()
+                .map(comment -> toVO(comment, childrenByParent.getOrDefault(comment.getId(), List.of())))
+                .toList();
+        return PageResult.of(total, p, s, list);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * <p>依次校验订单明细属主、商品匹配、订单已完成与评价幂等，全部通过后写入评论。</p>
      */
     @Override
@@ -248,6 +277,7 @@ public class CommentServiceImpl implements CommentService {
         CommentVO.CommentVOBuilder builder = CommentVO.builder()
                 .id(comment.getId())
                 .productId(comment.getProductId())
+                .productName(comment.getProductName())
                 .userId(comment.getUserId())
                 .username(comment.getUsername())
                 .nickname(comment.getNickname())

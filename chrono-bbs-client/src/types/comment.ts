@@ -1,6 +1,8 @@
 export interface CommentItem {
   id: number
   productId: number
+  /** 商品名称，商家评论管理列表展示用 */
+  productName?: string
   userId: number
   username: string
   nickname?: string

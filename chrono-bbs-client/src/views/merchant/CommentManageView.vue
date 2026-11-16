@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getMerchantProducts } from '@/api/merchant'
-import { getComments, replyComment } from '@/api/comment'
+import { getMerchantComments, replyComment } from '@/api/comment'
 import type { CommentItem } from '@/types/comment'
 
 interface MerchantProduct {
@@ -12,7 +12,8 @@ interface MerchantProduct {
 
 const products = ref<MerchantProduct[]>([])
 const productsLoading = ref(false)
-const selectedProductId = ref<number | null>(null)
+// 默认查询全部商品；选择具体商品后按商品筛选
+const selectedProductId = ref<number | ''>('')
 
 const comments = ref<CommentItem[]>([])
 const total = ref(0)
@@ -37,10 +38,6 @@ const loadProducts = async () => {
       list.push(...(res.data.list || []))
     }
     products.value = list.map((item) => ({ id: item.id, name: item.name }))
-    if (products.value.length > 0) {
-      selectedProductId.value = products.value[0].id
-      loadComments()
-    }
   } catch {
     products.value = []
   } finally {
@@ -49,10 +46,13 @@ const loadProducts = async () => {
 }
 
 const loadComments = async () => {
-  if (!selectedProductId.value) return
   commentsLoading.value = true
   try {
-    const res = await getComments(selectedProductId.value, { page: page.value, size })
+    const res = await getMerchantComments({
+      page: page.value,
+      size,
+      productId: selectedProductId.value || undefined,
+    })
     comments.value = res.data.list || []
     total.value = res.data.total
   } catch {
@@ -93,6 +93,7 @@ const handleSubmitReply = async () => {
 
 onMounted(() => {
   loadProducts()
+  loadComments()
 })
 </script>
 
@@ -103,10 +104,11 @@ onMounted(() => {
       <el-select
         v-model="selectedProductId"
         :loading="productsLoading"
-        placeholder="选择商品"
+        placeholder="全部商品"
         class="mc-select"
         @change="handleProductChange"
       >
+        <el-option label="全部商品" value="" />
         <el-option v-for="item in products" :key="item.id" :label="item.name" :value="item.id" />
       </el-select>
     </div>
@@ -120,6 +122,9 @@ onMounted(() => {
             <span class="mc-name">{{ item.nickname || item.username }}</span>
             <el-rate :model-value="item.star" disabled size="small" />
           </div>
+          <el-tag v-if="item.productName" size="small" type="info" effect="plain" class="mc-product">
+            {{ item.productName }}
+          </el-tag>
           <span class="mc-time">{{ item.createdAt }}</span>
         </div>
         <p class="mc-content">{{ item.content }}</p>
@@ -216,6 +221,13 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: #333;
+}
+
+.mc-product {
+  margin-left: 8px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mc-time {

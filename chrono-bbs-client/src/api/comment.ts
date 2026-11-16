@@ -7,6 +7,14 @@ export const getComments = (productId: number, params?: { page?: number; size?: 
   return service.get<any, { code: number; message: string; data: PageResult<CommentItem>; timestamp: number }>(`/comment/list/${productId}`, { params })
 }
 
+// 商家评论列表（默认全部商品）
+export const getMerchantComments = (params?: { productId?: number; page?: number; size?: number }) => {
+  return service.get<any, { code: number; message: string; data: PageResult<CommentItem>; timestamp: number }>(
+    '/merchant/comments',
+    { params },
+  )
+}
+
 // 9.2 发表评论
 export const addComment = (data: AddCommentRequest) => {
   return service.post('/comment', data)

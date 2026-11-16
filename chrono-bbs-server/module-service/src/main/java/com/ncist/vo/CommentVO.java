@@ -17,6 +17,8 @@ public class CommentVO {
 
     private Long id;
     private Long productId;
+    /** 商品名称，商家评论管理列表展示用；商品详情场景可为空。 */
+    private String productName;
     private Long userId;
     private String username;
     private String nickname;

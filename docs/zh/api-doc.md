@@ -1251,6 +1251,22 @@ GET /api/merchant/products/{id}
 
 ---
 
+### 11.8 商家评论列表
+
+```
+GET /api/merchant/comments
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| productId | Long | 否 | 商品 ID 筛选，不传则查询该商家全部商品 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页条数，默认 10 |
+
+**返回**：`PageResult<CommentVO>`，每条一级评论额外包含 `productName`（商品名称），并聚合 `append`（追评）与 `replies`（商家回复）。仅返回当前商家自己商品的评论。
+
+---
+
 ## 12. 管理后台 `/api/admin`
 
 **Controller**：`AdminController`  

@@ -229,7 +229,13 @@ onMounted(() => {
               class="checkout-item"
             >
               <div class="item-img">
-                <span class="img-placeholder">暂无图片</span>
+                <img
+                  v-if="item.productImage"
+                  :src="item.productImage"
+                  :alt="item.productName"
+                  class="item-img-el"
+                />
+                <span v-else class="img-placeholder">暂无图片</span>
               </div>
               <div class="item-detail">
                 <p class="item-name">{{ item.productName }}</p>
@@ -542,6 +548,13 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.item-img-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .img-placeholder {
