@@ -12,6 +12,7 @@ import com.ncist.entity.Order;
 import com.ncist.mapper.MerchantMapper;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.service.MerchantService;
+import com.ncist.service.NotificationService;
 import com.ncist.vo.MerchantInfoVO;
 import com.ncist.vo.MerchantOrderVO;
 import com.ncist.vo.MerchantStatsVO;
@@ -43,6 +44,8 @@ public class MerchantServiceImpl implements MerchantService {
     private final MerchantMapper merchantMapper;
     /** 订单数据访问组件，用于发货状态校验与更新。 */
     private final OrderMapper orderMapper;
+    /** 站内通知服务，发货成功后向买家推送通知。 */
+    private final NotificationService notificationService;
     /** JSON 序列化组件，用于解析地址快照与商品图片。 */
     private final ObjectMapper objectMapper;
 
@@ -155,6 +158,8 @@ public class MerchantServiceImpl implements MerchantService {
         if (orderMapper.markShipped(orderId) == 0) {
             throw new BusinessException(MerchantErrorCode.SHIPPED_STATUS_ILLEGAL);
         }
+        // 4. 通知买家订单已发货
+        notificationService.notifyOrderShipped(order.getUserId(), orderId, order.getOrderNo());
     }
 
     /** {@inheritDoc} */

@@ -6,6 +6,7 @@ import { Role } from '@/types/common'
 import { getCategoryTree } from '@/api/product'
 import { getCartList } from '@/api/cart'
 import { getUnreadCount } from '@/api/chat'
+import { getNotificationUnreadCount } from '@/api/notification'
 import { CHAT_ENABLED } from '@/config/features'
 import { chatSocket } from '@/utils/chatSocket'
 import CategoryFlyout from '@/components/category/CategoryFlyout.vue'
@@ -69,6 +70,27 @@ const loadUnreadCount = () => {
     })
 }
 
+// 未读通知数
+const unreadNotificationCount = ref(0)
+
+const loadNotificationUnreadCount = () => {
+  if (!userStore.isLoggedIn) {
+    unreadNotificationCount.value = 0
+    return
+  }
+  getNotificationUnreadCount()
+    .then((res) => {
+      unreadNotificationCount.value = res.data?.count || 0
+    })
+    .catch(() => {
+      unreadNotificationCount.value = 0
+    })
+}
+
+const onNotificationUnreadChanged = () => {
+  loadNotificationUnreadCount()
+}
+
 // 购物车商品数量
 const cartCount = ref(0)
 
@@ -102,18 +124,21 @@ const syncChatConnection = () => {
 onMounted(() => {
   loadCategories()
   window.addEventListener('chat-unread-changed', onUnreadChanged)
+  window.addEventListener('notification-unread-changed', onNotificationUnreadChanged)
   unsubscribeChatFrame = chatSocket.onFrame((frame) => {
     if (frame.type !== 'ERROR') loadUnreadCount()
   })
   syncChatConnection()
   if (userStore.isLoggedIn) {
     if (CHAT_ENABLED) loadUnreadCount()
+    loadNotificationUnreadCount()
     loadCartCount()
   }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('chat-unread-changed', onUnreadChanged)
+  window.removeEventListener('notification-unread-changed', onNotificationUnreadChanged)
   unsubscribeChatFrame?.()
   unsubscribeChatFrame = null
   chatSocket.disconnect()
@@ -122,11 +147,13 @@ onBeforeUnmount(() => {
 watch(() => route.fullPath, () => {
   loadCartCount()
   if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+  if (userStore.isLoggedIn) loadNotificationUnreadCount()
 })
 watch(() => [userStore.token, userStore.userInfo?.id], () => {
   syncChatConnection()
   loadCartCount()
   if (CHAT_ENABLED && userStore.isLoggedIn) loadUnreadCount()
+  loadNotificationUnreadCount()
 })
 
 const handleUserCommand = (command: string) => {
@@ -136,6 +163,9 @@ const handleUserCommand = (command: string) => {
         break
     case 'payments':
       router.push('/payments')
+      break
+    case 'notifications':
+      router.push('/notifications')
       break
     case 'refunds':
       router.push('/refunds')
@@ -201,6 +231,17 @@ const handleUserCommand = (command: string) => {
 
           <!-- 已登录 -->
           <template v-if="userStore.isLoggedIn">
+            <!-- 通知 -->
+            <el-badge
+              :value="unreadNotificationCount"
+              :hidden="unreadNotificationCount === 0"
+              class="cart-badge"
+            >
+              <el-button text class="nav-btn" @click="router.push('/notifications')">
+                🔔 通知
+              </el-button>
+            </el-badge>
+
             <!-- 消息 -->
             <el-badge v-if="CHAT_ENABLED" :value="unreadMsgCount" :hidden="unreadMsgCount === 0" class="cart-badge">
               <el-button text class="nav-btn" @click="router.push('/chat')">
@@ -243,6 +284,7 @@ const handleUserCommand = (command: string) => {
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="orders">📋 我的订单</el-dropdown-item>
+                  <el-dropdown-item command="notifications">🔔 消息通知</el-dropdown-item>
                   <el-dropdown-item command="payments">💳 支付记录</el-dropdown-item>
                   <el-dropdown-item command="refunds">🧾 退款/售后</el-dropdown-item>
                     <el-dropdown-item v-if="CHAT_ENABLED" command="chat">💬 我的消息</el-dropdown-item>

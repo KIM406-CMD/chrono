@@ -88,6 +88,25 @@ public interface ProductMapper {
     int update(Product product);
 
     /**
+     * 以商家身份更新商品基本信息，仅更新非 null 字段。
+     *
+     * <p>WHERE 条件同时限定商品 ID 与归属商家，即使上层校验被绕过，
+     * 数据库层也不会修改他人商品。</p>
+     *
+     * @param product    商品信息，id 必填，其余字段为 null 表示不修改
+     * @param merchantId 当前商家 ID
+     * @return 受影响行数，0 表示商品不存在或不属于该商家
+     */
+    @Update("<script> UPDATE product <set> "
+            + "<if test='product.name != null'> name = #{product.name}, </if> "
+            + "<if test='product.description != null'> description = #{product.description}, </if> "
+            + "<if test='product.images != null'> images = #{product.images}, </if> "
+            + "<if test='product.brand != null'> brand = #{product.brand}, </if> "
+            + "<if test='product.categoryId != null'> category_id = #{product.categoryId}, </if> "
+            + "</set> WHERE id = #{product.id} AND merchant_id = #{merchantId} </script>")
+    int updateByMerchant(@Param("product") Product product, @Param("merchantId") Long merchantId);
+
+    /**
      * 更新商品上下架状态。
      *
      * @param id 商品 ID
@@ -96,6 +115,21 @@ public interface ProductMapper {
      */
     @Update("UPDATE product SET status = #{status}, updated_at = NOW() WHERE id = #{id}")
     int updateStatus(@Param("id") Long id, @Param("status") Integer status);
+
+    /**
+     * 以商家身份更新商品上下架状态。
+     *
+     * <p>WHERE 条件同时限定商品 ID 与归属商家，防止越权操作他人商品。</p>
+     *
+     * @param id         商品 ID
+     * @param status     目标状态：0-下架，1-上架
+     * @param merchantId 当前商家 ID
+     * @return 受影响行数，0 表示商品不存在或不属于该商家
+     */
+    @Update("UPDATE product SET status = #{status}, updated_at = NOW() "
+            + "WHERE id = #{id} AND merchant_id = #{merchantId}")
+    int updateStatusByMerchant(@Param("id") Long id, @Param("status") Integer status,
+                               @Param("merchantId") Long merchantId);
 
     /**
      * 按主键删除商品（物理删除）。
@@ -107,6 +141,18 @@ public interface ProductMapper {
      */
     @Delete("DELETE FROM product WHERE id = #{id}")
     int deleteById(Long id);
+
+    /**
+     * 以商家身份按主键删除商品。
+     *
+     * <p>WHERE 条件同时限定商品 ID 与归属商家，防止越权删除他人商品。</p>
+     *
+     * @param id         商品 ID
+     * @param merchantId 当前商家 ID
+     * @return 受影响行数，0 表示商品不存在或不属于该商家
+     */
+    @Delete("DELETE FROM product WHERE id = #{id} AND merchant_id = #{merchantId}")
+    int deleteByIdAndMerchant(@Param("id") Long id, @Param("merchantId") Long merchantId);
 
     /**
      * 统计商品被购物车引用的数量。

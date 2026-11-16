@@ -5,8 +5,10 @@ import com.ncist.common.result.PageResult;
 import com.ncist.common.result.Result;
 import com.ncist.dto.MerchantApplyDTO;
 import com.ncist.service.MerchantService;
+import com.ncist.service.ProductService;
 import com.ncist.service.RefundService;
 import com.ncist.vo.MerchantInfoVO;
+import com.ncist.vo.ProductDetailVO;
 import com.ncist.vo.RefundVO;
 import com.ncist.vo.MerchantOrderVO;
 import com.ncist.vo.MerchantStatsVO;
@@ -40,6 +42,7 @@ import java.util.Map;
 public class MerchantController {
 
     private final MerchantService merchantService;
+    private final ProductService productService;
     private final RefundService refundService;
 
     /**
@@ -86,6 +89,22 @@ public class MerchantController {
             @RequestParam(required = false, defaultValue = "1") Integer page,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
         return Result.success(merchantService.listProducts(UserContext.getUserId(), status, page, size));
+    }
+
+    /**
+     * 查询当前商家自己的商品详情（含下架商品）。
+     *
+     * <p>卖家中心编辑商品时用于回填完整字段，服务端会校验商品归属，
+     * 不能查看其他商家的商品。</p>
+     *
+     * @param id 商品 ID
+     * @return 商品详情
+     */
+    @Operation(summary = "商家商品详情（仅自己的商品，含下架）")
+    @Parameter(name = "id", description = "商品 ID", example = "1")
+    @GetMapping("/products/{id}")
+    public Result<ProductDetailVO> productDetail(@PathVariable Long id) {
+        return Result.success(productService.getMerchantProductDetail(id, UserContext.getUserId()));
     }
 
     /**

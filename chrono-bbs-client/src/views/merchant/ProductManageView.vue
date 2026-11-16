@@ -2,16 +2,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
-import { getMerchantProducts } from '@/api/merchant'
+import { getMerchantProducts, getMerchantProductDetail } from '@/api/merchant'
 import { uploadImage } from '@/api/upload'
 import {
-  getProductDetail,
   createProduct,
   updateProduct,
   deleteProduct,
   updateProductStatus,
   getCategoryTree,
 } from '@/api/product'
+import { stripHtml } from '@/utils/stripHtml'
 import type { Product, Category, ProductFormData } from '@/types/product'
 
 const loading = ref(false)
@@ -233,14 +233,14 @@ const openEdit = async (product: Product) => {
   dialogMode.value = 'edit'
   editingId.value = product.id
   resetForm()
-  // 拉详情回填完整字段
+  // 拉详情回填完整字段（商家专用接口可查看自己的下架商品）
   try {
-    const res = await getProductDetail(product.id)
+    const res = await getMerchantProductDetail(product.id)
     const detail = res.data
     form.name = detail.name
     form.brand = detail.brand
     form.categoryId = detail.categoryId
-    form.description = detail.description
+    form.description = stripHtml(detail.description)
     const skus = detail.skuList || []
     specGroups.value = skus.length ? buildSpecGroups(skus) : defaultSpecGroups()
     skuRows.value = skus.length
@@ -255,10 +255,19 @@ const openEdit = async (product: Product) => {
     imageFileList.value = imageUrls.value.map((url) => ({ name: '商品图', url }))
   } catch {
     form.name = product.name
+    form.description = stripHtml(product.description)
     imageUrls.value = []
     imageFileList.value = []
   }
   dialogVisible.value = true
+}
+
+// 兼容级联选择器可能返回的路径数组，统一取最后一级分类 ID
+const normalizeCategoryId = (value: unknown): number => {
+  if (Array.isArray(value)) {
+    return Number(value[value.length - 1])
+  }
+  return Number(value)
 }
 
 const buildPayload = (): ProductFormData => ({
@@ -266,7 +275,7 @@ const buildPayload = (): ProductFormData => ({
   description: form.description || undefined,
   images: imageUrls.value.length ? [...imageUrls.value] : undefined,
   brand: form.brand || undefined,
-  categoryId: form.categoryId as number,
+  categoryId: normalizeCategoryId(form.categoryId),
   skuList: skuRows.value.map((sku) => ({
     specIds: sku.specIds,
     specText: sku.specText,
@@ -425,8 +434,7 @@ onMounted(() => {
           <el-cascader
             v-model="form.categoryId"
             :options="categories"
-            :props="{ value: 'id', label: 'name', children: 'children' }"
-            :emit-path="false"
+            :props="{ value: 'id', label: 'name', children: 'children', emitPath: false }"
             placeholder="请选择商品分类（三级）"
             clearable
             class="pm-cascader"

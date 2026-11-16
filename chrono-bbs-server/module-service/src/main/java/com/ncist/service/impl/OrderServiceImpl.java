@@ -21,6 +21,7 @@ import com.ncist.mapper.OrderItemMapper;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.ProductSkuMapper;
 import com.ncist.mapper.UserCouponMapper;
+import com.ncist.service.NotificationService;
 import com.ncist.service.OrderService;
 import com.ncist.service.SeckillService;
 import com.ncist.vo.CreateOrderVO;
@@ -81,6 +82,8 @@ public class OrderServiceImpl implements OrderService {
     private final UserCouponMapper userCouponMapper;
     /** 秒杀券服务，用于复用优惠计算逻辑。 */
     private final SeckillService seckillService;
+    /** 站内通知服务，下单成功后向买家推送通知。 */
+    private final NotificationService notificationService;
     /** Redis 字符串操作模板，用于防重复提交 Token。 */
     private final StringRedisTemplate stringRedisTemplate;
     /** JSON 序列化组件，用于写入与解析地址快照。 */
@@ -181,6 +184,9 @@ public class OrderServiceImpl implements OrderService {
                 && userCouponMapper.markUsed(dto.getUserCouponId(), order.getId()) == 0) {
             throw new BusinessException(SeckillErrorCode.COUPON_USED_OR_EXPIRED);
         }
+        // 10. 推送下单通知，使买家可在消息中心查看购买记录
+        notificationService.notifyOrderCreated(
+                userId, order.getId(), order.getOrderNo(), order.getTotalAmount());
         return CreateOrderVO.builder()
                 .orderId(order.getId())
                 .orderNo(order.getOrderNo())

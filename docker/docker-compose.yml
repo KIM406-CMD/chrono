@@ -37,8 +37,9 @@ services:
       - ../initial/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ../initial/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
       - ../initial/migration-2026-11-09.sql:/docker-entrypoint-initdb.d/03-migration.sql:ro
-      - ../initial/demo-data.sql:/docker-entrypoint-initdb.d/04-demo-data.sql:ro
-      - ../initial/rename-products.sql:/docker-entrypoint-initdb.d/05-rename-products.sql:ro
+      - ../initial/migration-2026-11-16.sql:/docker-entrypoint-initdb.d/04-migration.sql:ro
+      - ../initial/demo-data.sql:/docker-entrypoint-initdb.d/05-demo-data.sql:ro
+      - ../initial/rename-products.sql:/docker-entrypoint-initdb.d/06-rename-products.sql:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci

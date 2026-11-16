@@ -8,6 +8,7 @@ import {
   updateAdminProduct,
 } from '@/api/admin'
 import { getProductDetail, getCategoryTree } from '@/api/product'
+import { stripHtml } from '@/utils/stripHtml'
 
 const loading = ref(false)
 const products = ref<any[]>([])
@@ -84,7 +85,7 @@ const openEdit = async (row: any) => {
     editForm.name = detail.name
     editForm.brand = detail.brand
     editForm.categoryId = detail.categoryId
-    editForm.description = detail.description
+    editForm.description = stripHtml(detail.description)
     editImages.value = [...(detail.images || [])]
     editSkus.value = (detail.skuList || []).map((sku) => ({
       specIds: sku.specIds || '',
@@ -119,12 +120,16 @@ const handleEditSave = async () => {
   }
   editSaving.value = true
   try {
+    // 兼容级联选择器可能返回的路径数组，统一取最后一级分类 ID
+    const categoryId = Array.isArray(editForm.categoryId)
+      ? Number(editForm.categoryId[editForm.categoryId.length - 1])
+      : editForm.categoryId
     await updateAdminProduct(editForm.id, {
       name: editForm.name,
       description: editForm.description || undefined,
       images: editImages.value.length ? [...editImages.value] : undefined,
       brand: editForm.brand || undefined,
-      categoryId: editForm.categoryId,
+      categoryId,
       skuList: editSkus.value.map((sku) => ({
         specIds: sku.specIds,
         specText: sku.specText,
@@ -257,8 +262,7 @@ onMounted(() => {
             <el-cascader
               v-model="editForm.categoryId"
               :options="categories"
-              :props="{ value: 'id', label: 'name', children: 'children' }"
-              :emit-path="false"
+              :props="{ value: 'id', label: 'name', children: 'children', emitPath: false }"
               placeholder="请选择商品分类（三级）"
               clearable
               style="width: 100%"

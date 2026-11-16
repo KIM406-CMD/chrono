@@ -10,6 +10,7 @@ import com.ncist.entity.Payment;
 import com.ncist.entity.PaymentDetail;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.PaymentMapper;
+import com.ncist.service.NotificationService;
 import com.ncist.service.impl.PaymentServiceImpl;
 import com.ncist.vo.PaymentQrVO;
 import com.ncist.vo.PaymentRecordVO;
@@ -53,6 +54,9 @@ class PaymentServiceImplTest {
 
     @Mock
     private PaymentMapper paymentMapper;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;

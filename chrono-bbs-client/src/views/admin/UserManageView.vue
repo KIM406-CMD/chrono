@@ -121,12 +121,14 @@ onMounted(() => { loadUsers() })
       <el-table-column label="操作" width="120" align="center" fixed="right">
         <template #default="{ row }">
           <el-button
+            v-if="row.role !== 3"
             size="small"
             :type="row.status === 1 ? 'danger' : 'success'"
             @click="handleToggleStatus(row)"
           >
             {{ row.status === 1 ? '禁用' : '启用' }}
           </el-button>
+          <span v-else class="um-protected">管理员不可禁用</span>
         </template>
       </el-table-column>
     </el-table>
@@ -165,6 +167,11 @@ onMounted(() => { loadUsers() })
   border-radius: 8px;
   overflow: hidden;
 }
+.um-protected {
+  color: #bbb;
+  font-size: 12px;
+}
+
 .um-pagination {
   display: flex;
   justify-content: flex-end;

@@ -93,6 +93,12 @@ const userRoutes: RouteRecordRaw[] = [
         meta: { title: '支付记录', roles: ['USER', 'MERCHANT', 'ADMIN'] },
       },
       {
+        path: 'notifications',
+        name: 'Notifications',
+        component: () => import('@/views/notification/NotificationView.vue'),
+        meta: { title: '消息通知', roles: ['USER', 'MERCHANT', 'ADMIN'] },
+      },
+      {
         path: 'order/:id',
         name: 'OrderDetail',
         component: () => import('@/views/order/OrderDetailView.vue'),

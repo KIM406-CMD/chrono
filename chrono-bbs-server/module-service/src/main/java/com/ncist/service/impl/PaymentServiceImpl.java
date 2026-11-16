@@ -10,6 +10,7 @@ import com.ncist.entity.Payment;
 import com.ncist.entity.PaymentDetail;
 import com.ncist.mapper.OrderMapper;
 import com.ncist.mapper.PaymentMapper;
+import com.ncist.service.NotificationService;
 import com.ncist.service.PaymentService;
 import com.ncist.vo.PaymentQrVO;
 import com.ncist.vo.PaymentRecordVO;
@@ -45,6 +46,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final OrderMapper orderMapper;
     /** 支付记录数据访问组件。 */
     private final PaymentMapper paymentMapper;
+    /** 站内通知服务，支付成功后向买家推送通知。 */
+    private final NotificationService notificationService;
 
     /**
      * {@inheritDoc}
@@ -72,6 +75,8 @@ public class PaymentServiceImpl implements PaymentService {
         if (orderMapper.markPaid(order.getId(), userId) == 0) {
             throw new BusinessException(PaymentErrorCode.ORDER_NOT_PAYABLE);
         }
+        notificationService.notifyOrderPaid(
+                userId, order.getId(), order.getOrderNo(), order.getTotalAmount());
         return PayResultVO.builder().status(2).paidAt(paidAt).build();
     }
 
@@ -97,7 +102,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public PayResultVO confirmQrcode(Long userId, Long orderId) {
-        requirePayableOrder(orderId, userId);
+        Order order = requirePayableOrder(orderId, userId);
         LocalDateTime paidAt = LocalDateTime.now();
         paymentMapper.insert(Payment.builder()
                 .orderId(orderId)
@@ -108,6 +113,8 @@ public class PaymentServiceImpl implements PaymentService {
         if (orderMapper.markPaid(orderId, userId) == 0) {
             throw new BusinessException(PaymentErrorCode.ORDER_NOT_PAYABLE);
         }
+        notificationService.notifyOrderPaid(
+                userId, order.getId(), order.getOrderNo(), order.getTotalAmount());
         return PayResultVO.builder().status(2).paidAt(paidAt).build();
     }
 

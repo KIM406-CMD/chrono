@@ -34,7 +34,8 @@
 - [16. 秒杀券](#16-秒杀券-apiseckill)
 - [17. WebSocket 通信](#17-websocket-通信)
 - [18. 错误码说明](#18-错误码说明)
-- [19. 接口权限总览](#19-接口权限总览)
+- [19. 站内通知](#19-站内通知-apinotification)
+- [20. 接口权限总览](#20-接口权限总览)
 
 ---
 
@@ -1180,7 +1181,7 @@ GET /api/merchant/products
 | size | Integer | 否 | 每页大小 |
 | status | Integer | 否 | 状态筛选 |
 
-**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、createdAt、updatedAt`；不返回 `minPrice`、`merchantName`。
+**返回**：`PageResult`，列表项字段：`id、name、description、images（图片 JSON 数组字符串）、brand、categoryId、merchantId、status、sales、minPrice（SKU 最低价，分）、createdAt、updatedAt`；不返回 `merchantName`。
 
 ---
 
@@ -1236,6 +1237,20 @@ GET /api/merchant/stats
 
 ---
 
+### 11.7 商家商品详情
+
+```
+GET /api/merchant/products/{id}
+```
+
+**权限**：已审核通过的商家，且商品必须属于当前商家（可查看自己的下架商品）。
+
+**返回**：`ProductDetailVO`，字段同 §4.2（`id、name、description、images、brand、categoryId、categoryName、merchantId、merchantUserId、shopName、status、sales、skuList`）。
+
+> 卖家中心编辑商品时使用该接口回填表单；与公开详情不同，允许查看自己的下架商品。
+
+---
+
 ## 12. 管理后台 `/api/admin`
 
 **Controller**：`AdminController`  
@@ -1268,7 +1283,9 @@ PUT /api/admin/users/{id}/status
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| status | Integer | 是 | 1=启用，0=禁用 |
+| status | Integer | 是 | 1=启用，0=禁用（query 参数） |
+
+> 管理员账号不允许被禁用，尝试禁用时返回错误码 4052。
 
 ---
 
@@ -2047,7 +2064,79 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 
 ---
 
-## 19. 接口权限总览
+## 19. 站内通知 `/api/notification`
+
+**Controller**：`NotificationController`  
+**权限**：登录用户，仅能读写本人的通知
+
+> 说明：下单、支付、发货成功后由后端自动写入通知，不占用聊天会话。通知记录保存在 `notification` 表，支持按未读筛选与单条/全部已读。
+
+### 19.1 我的通知列表
+
+```
+GET /api/notification/list
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| unreadOnly | Boolean | 否 | 仅查询未读，默认全部 |
+| page | Integer | 否 | 页码，默认 1 |
+| size | Integer | 否 | 每页条数，默认 10 |
+
+**返回**：`PageResult<NotificationVO>`，列表项字段：`id、type（1-订单/2-系统/3-售后）、title、content、relatedType（1-订单/2-退款）、relatedId、isRead（0-未读/1-已读）、createdAt`。
+
+```json
+{
+  "code": 200,
+  "data": {
+    "total": 1,
+    "page": 1,
+    "size": 10,
+    "list": [
+      {
+        "id": 1,
+        "type": 1,
+        "title": "订单提交成功",
+        "content": "订单 20261116194833686836 已提交，应付金额 ¥2999.00，请尽快完成支付。",
+        "relatedType": 1,
+        "relatedId": 50005,
+        "isRead": 0,
+        "createdAt": "2026-11-16T19:48:33"
+      }
+    ]
+  }
+}
+```
+
+### 19.2 未读通知数量
+
+```
+GET /api/notification/unread-count
+```
+
+**返回**：
+
+```json
+{ "code": 200, "data": { "count": 2 } }
+```
+
+### 19.3 标记单条已读
+
+```
+PUT /api/notification/{id}/read
+```
+
+### 19.4 全部标记已读
+
+```
+PUT /api/notification/read-all
+```
+
+**返回**：`data` 为本次标记为已读的数量。
+
+---
+
+## 20. 接口权限总览
 
 | 模块 | 路径前缀 | 游客 | 注册用户 | 商家 | 管理员 |
 |------|----------|------|----------|------|--------|
@@ -2064,6 +2153,7 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | 管理后台 | `/api/admin` | ❌ | ❌ | ❌ | ✅ 全部 |
 | 文件上传 | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | 即时通讯 | `/api/chat` | ❌ | ✅ | ✅ | — |
+| 站内通知 | `/api/notification` | ❌ | ✅ 本人通知 | ✅ 本人通知 | ✅ 本人通知 |
 | 商品搜索 | `/api/search` | ✅ 检索/建议/热搜 | ✅ + 搜索历史/清空 | ✅ | ✅ |
 | 秒杀券 | `/api/seckill` | ✅ 查看 | ✅ 抢领/我的券/计算 | ✅ 创建/编辑/删除 | ✅ 创建/编辑/删除 |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |

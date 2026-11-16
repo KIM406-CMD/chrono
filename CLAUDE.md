@@ -109,6 +109,6 @@ MyBatis 配置在 `application.yaml`：`map-underscore-to-camel-case: true`，Ma
 
 ## 关键文档
 
-设计文档集中在 `docs/zh/`（中文）与 `docs/en/`（英文）：`db-design.md`（20 张表）、`server-design.md`、`client-design.md`、`api-doc.md`、`git-commit-convention.md`、`test-specification.md` 等。UML 图在 `uml/*.puml`（PlantUML）。
+设计文档集中在 `docs/zh/`（中文）与 `docs/en/`（英文）：`db-design.md`（21 张表）、`server-design.md`、`client-design.md`、`api-doc.md`、`git-commit-convention.md`、`test-specification.md` 等。UML 图在 `uml/*.puml`（PlantUML）。
 
 测试分层：`common` 的 `JwtUtilTest`（单元）、`module-service` 的 `*ServiceImplTest`（Mockito 单元）、`module-start` 的 `AuthServiceIntegrationTest` 与 `AuthControllerE2ETest`（`@SpringBootTest` + `@ActiveProfiles("test")`，使用 `chrono_bbs_test` MySQL 库与本地 Redis）。

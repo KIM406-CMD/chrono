@@ -9,8 +9,19 @@
 
 ## [Unreleased]
 
+### Added
+- 站内通知中心：新增 `notification` 表与 `/api/notification/*` 接口，下单、支付、发货后自动生成订单通知，商城顶部新增“🔔 通知”入口与未读角标，通知可跳转订单详情并支持单条/全部已读
+- 商家商品详情接口 `GET /api/merchant/products/{id}`：卖家中心编辑商品时可回填自己的下架商品，且服务端校验商品归属
+- 商家商品列表补充 `minPrice`（SKU 最低价），卖家中心价格列不再显示“—”
+- 数据库增量脚本 `initial/migration-2026-11-16.sql`（幂等创建通知表）
+
 ### Fixed
 - 修正未读消息总数接口响应示例为 `{ count }`（中英文详细设计）
+- 管理员用户管理：状态切换接口改为通过 query 传递 `status`，管理员账号隐藏禁用按钮，后端继续拒绝禁用管理员
+- 商家添加/编辑商品：级联分类选择器将 `emitPath: false` 放入 `props`，避免提交 `categoryId` 数组导致“请求体格式错误”；编辑表单回填描述时去除 HTML 标签
+- 商家订单列表查询：以 `GROUP BY o.id + ORDER BY MAX(o.created_at)` 替代 `DISTINCT + ORDER BY 非 SELECT 列`，修复 MySQL 8 错误 3065
+- 商家商品写操作增加数据库层归属条件（`WHERE id = ? AND merchant_id = ?`），防止越权修改/上下架/删除他人商品
+- 商品描述为纯文本时详情页保留换行，编辑表单不再展示 `<p>` 等 HTML 源码
 
 ---
 
