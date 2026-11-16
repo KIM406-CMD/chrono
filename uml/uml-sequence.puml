@@ -158,6 +158,8 @@ alt 卡号不合法
 else 卡号合法
   PS -> DB : INSERT INTO payment (pay_method=1, card_no 脱敏后4位, status=1)
   PS -> DB : UPDATE order SET status=2, paid_at=NOW() WHERE status=1 (条件更新防重)
+  PS -> DB : INSERT notification (买家: 支付成功)
+  PS -> DB : INSERT notification (各商品所属商家: 新订单待发货, 按商家小计)
   PS --> PC : Result.success("支付成功")
 end
 
@@ -180,6 +182,7 @@ PC -> PS : confirmQrcode(userId, orderId)
 PS -> DB : SELECT order 校验属主 + status=1待支付
 PS -> DB : INSERT INTO payment (pay_method=2, status=1)
 PS -> DB : UPDATE order SET status=2, paid_at=NOW() WHERE status=1 (条件更新防重)
+PS -> DB : INSERT notification (买家: 支付成功 / 商家: 新订单待发货)
 PS --> PC : Result.success
 PC --> Vue : 支付成功
 Vue --> User : 跳转订单详情
@@ -269,6 +272,7 @@ RS -> DB : 校验订单状态(已支付/已发货/已完成)
 RS -> DB : 校验该 order_item 是否已有进行中的退款
 RS -> DB : INSERT INTO refund (status=0待审核)
 RS -> DB : UPDATE order SET status=6退款中
+RS -> DB : INSERT notification (商品所属商家: 新的退款申请)
 RS --> RC : RefundVO
 RC --> User : "申请已提交"
 
@@ -280,12 +284,14 @@ alt 审核通过
   Merchant -> RC : PUT /api/refund/{id}/review { approved=1, reviewReason? }
   RS -> DB : UPDATE refund SET status (退款→1已通过 / 退货→3待寄回)
   RS -> DB : UPDATE order SET status=7已退款 (仅退款类型；退货待寄回)
+  RS -> DB : INSERT notification (买家: 审核通过)
   RC --> Merchant : "审核通过"
 
 else 审核拒绝
   Merchant -> RC : PUT /api/refund/{id}/review { approved=0, reviewReason }
   RS -> DB : UPDATE refund SET status=2已拒绝
   RS -> DB : UPDATE order SET status=4已完成 (恢复)
+  RS -> DB : INSERT notification (买家: 审核拒绝)
   RC --> Merchant : "已拒绝"
 end
 
@@ -293,12 +299,14 @@ end
 User -> RC : PUT /api/refund/{id}/return { returnCompany, returnLogisticsNo }
 RC -> RS : submitReturn(userId, dto)
 RS -> DB : UPDATE refund SET status=4待商家收货
+RS -> DB : INSERT notification (商家: 买家已寄回商品)
 RC --> User : 已提交退货物流
 
 Merchant -> RC : PUT /api/refund/{id}/return-received
 RC -> RS : confirmReturnReceived(userId, id)
 RS -> DB : UPDATE refund SET status=5退货完成
 RS -> DB : UPDATE order SET status=7已退款
+RS -> DB : INSERT notification (买家: 退款已完成)
 RC --> Merchant : 确认收货，退款完成
 
 User -> RC : GET /api/refund/{id}
@@ -353,5 +361,54 @@ SS -> DB : 校验券状态 + 最低门槛
 SS -> SS : 计算优惠金额
 SS --> SC : CalculateResult
 SC --> Vue : { originalAmount, discountAmount, finalAmount }
+
+@enduml
+
+@startuml 站内通知
+title 站内通知生成与查看时序图
+
+actor 买家 as Buyer
+actor 商家 as Merchant
+participant "业务服务\n(Order/Payment/Refund/Merchant)" as Biz
+participant "NotificationService" as NS
+database "MySQL\nnotification" as DB
+participant "通知接口\n/api/notification" as API
+participant "Vue前端\nNotificationView" as Vue
+
+== 支付成功 → 买家与商家通知 ==
+Buyer -> Biz : 支付订单
+Biz -> Biz : 更新订单状态 = 已支付
+Biz -> NS : notifyOrderPaid(order)
+NS -> DB : INSERT notification(user_id=买家)
+Biz -> NS : notifyOrderPaidToMerchants(order)
+NS -> DB : SELECT 订单涉及的商家 + 各商家商品小计
+NS -> DB : INSERT notification(user_id=各商家用户)
+Note over NS : 一个订单含多个商家时按商家分别推送
+
+== 退款/退货节点 ==
+Buyer -> Biz : 申请退款/退货
+Biz -> NS : notifyRefundApplied(merchantId, refundId, productName, amount)
+NS -> DB : SELECT merchant.user_id
+NS -> DB : INSERT notification(user_id=商家)
+Merchant -> Biz : 审核退款
+Biz -> NS : notifyRefundReviewed(userId=买家, approved)
+NS -> DB : INSERT notification(user_id=买家)
+Buyer -> Biz : 填写退货物流
+Biz -> NS : notifyReturnSubmitted(merchantId)
+NS -> DB : INSERT notification(user_id=商家)
+Merchant -> Biz : 确认收到退货
+Biz -> NS : notifyRefundCompleted(userId=买家)
+NS -> DB : INSERT notification(user_id=买家)
+
+== 查看通知 ==
+Buyer -> Vue : 打开"消息通知"
+Vue -> API : GET /api/notification/list
+API -> DB : SELECT ... WHERE user_id=当前用户
+DB --> API : 通知列表
+API --> Vue : PageResult<NotificationVO>
+Buyer -> Vue : 点击通知
+Vue -> API : PUT /api/notification/{id}/read
+API -> DB : UPDATE ... WHERE id=? AND user_id=?
+Vue -> Vue : 按 relatedType + 角色跳转订单/退款页
 
 @enduml

@@ -62,6 +62,7 @@ Chrono BBS is a B2B2C multi-merchant online supermarket platform. Guests can bro
 | **Build tool** | Vite | HMR in development + Rollup production build |
 | **Authentication** | JWT + Redis | Interceptor authentication + service-layer role/ownership checks |
 | **Real-time messaging** | WebSocket (JSR 356) | User–merchant chat |
+| **In-app notifications** | MySQL + REST | Order/payment/refund notifications shared by buyers and merchants |
 | **API documentation** | springdoc-openapi + knife4j-ui | Auto-generated API docs |
 | **Image storage** | Local directory / Aliyun OSS + Thumbnailator | Local by default, OSS optional, 800px compression |
 | **Containerization** | Docker + Docker Compose | One-command middleware setup |
@@ -292,8 +293,8 @@ Before starting the backend in production, configure `DB_PASSWORD`, `JWT_SECRET`
 |---------|------|-------------|
 | [uml-usecase.puml](./uml/uml-usecase.puml) | PlantUML | Use case diagram — guest/user/merchant/administrator |
 | [uml-component.puml](./uml/uml-component.puml) | PlantUML | Component diagram — Maven modules and external dependencies |
-| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER diagram — relationships among 20 tables |
-| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | Sequence diagram — registration/login, shopping/order, payment, WebSocket |
+| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER diagram — relationships among 21 tables |
+| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | Sequence diagram — registration/login, shopping/order, payment, WebSocket, notifications |
 | [uml-activity.puml](./uml/uml-activity.puml) | PlantUML | Activity diagram — order status flow, merchant onboarding, refund/return |
 
 ---
@@ -313,6 +314,7 @@ Before starting the backend in production, configure `DB_PASSWORD`, `JWT_SECRET`
 | 🏬 Merchant console | Onboarding review, product/stock management, shipping, refund review, sales statistics |
 | 🛡 Admin console | User management, merchant review, category management, global reports (6 types) |
 | 💬 Real-time chat | WebSocket chat between users and merchants (low priority) |
+| 🔔 In-app notifications | Order/payment/shipping/refund notifications for buyers and merchants |
 
 ---
 

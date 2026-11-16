@@ -2237,3 +2237,37 @@ User enters the help center
 - Returns: the refund page supports submitting return tracking; the merchant/admin review page supports confirming receipt.
 - Admin products: the global product list supports editing products and SKUs.
 - Reviews: posting a review supports image upload, and the comment list displays images.
+
+### 5.13 In-app Notification Module
+
+#### 5.13.1 Notification Page
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Notifications                         [All] [Unread 2]     │
+│  Order, payment and shipping updates appear here.  [Mark all read] │
+├─────────────────────────────────────────────────────────────┤
+│  📦 Order submitted  [Order]  ●                              │
+│     Order 202611161948... submitted, amount ¥2999.00...      │
+│     2026-11-16 19:48:33                                      │
+├─────────────────────────────────────────────────────────────┤
+│  🧾 New refund request  [After-sale]                        │
+│     Product "Gannan navel orange" received a refund request...│
+│     2026-11-16 20:10:02                                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+- Entries: the mall header “🔔 Notifications” unread badge and the merchant center sidebar “Notifications” unread badge.
+- Filters: All / Unread; action: Mark all read.
+- Clicking an item marks it read and navigates to the matching order or refund page for the current role.
+- Empty state: `ElEmpty` with “No notifications”.
+
+#### 5.13.2 Responsive
+
+- ≤900px: the list becomes single-column and title/time may wrap; the filter and “Mark all read” button wrap onto separate rows.
+- Unread dots, type icons, and badges keep sufficient contrast in light and dark themes.
+
+#### 5.13.3 Accessibility
+
+- Unread state uses both a dot and `aria-label="unread"`, not color alone.
+- Notification items use `role="button"` and support keyboard Enter/Space.

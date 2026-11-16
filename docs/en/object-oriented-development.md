@@ -100,8 +100,8 @@ This system targets the online supermarket business. Its core goals are:
 | Role | Goal | Main Use Cases |
 |------|------|----------|
 | Guest | Browse products and decide whether to register | Browse products, view details, filter by category, view comments, browse the coupon center |
-| Registered User | Complete purchases, after-sales, and interaction | Login, cart, place order, pay, confirm receipt, refund, comment, claim coupons |
-| Merchant | Run the store and handle orders and after-sales | Onboarding application, product management, inventory management, order shipment, refund review, comment reply, sales statistics |
+| Registered User | Complete purchases, after-sales, and interaction | Login, cart, place order, pay, confirm receipt, refund, comment, claim coupons, view notifications |
+| Merchant | Run the store and handle orders and after-sales | Onboarding application, product management, inventory management, order shipment, refund review, comment reply, sales statistics, view order/refund notifications |
 | Administrator | Maintain platform order and data | User management, merchant review, category management, platform-wide product/order management, refund review, coupon management, sales reports |
 
 ### 3.3 Use Case Diagram
@@ -126,6 +126,7 @@ flowchart LR
     U --> UC10["Apply for Refund / Return"]
     U --> UC11["Post Comment"]
     U --> UC12["Claim Coupon"]
+    U --> UC27["View Notifications"]
 
     M --> UC13["Submit Onboarding Application"]
     M --> UC14["Manage Products and Inventory"]
@@ -133,6 +134,7 @@ flowchart LR
     M --> UC16["Review Refunds"]
     M --> UC17["Reply to Comments"]
     M --> UC18["View Sales Statistics"]
+    M --> UC27["View Notifications"]
 
     A --> UC19["Manage Users"]
     A --> UC20["Review Merchants"]
@@ -285,6 +287,7 @@ Use "noun analysis": find nouns in use case descriptions and determine whether e
 | User Coupon | Coupon claimed by a user | User, coupon, status, used order, claim time, use time | Record claim and redemption status |
 | Conversation | Dialogue between user and merchant | Participants, last message, unread count | Organize messages and maintain unread status |
 | Message | A single chat message | Conversation, sender, content, type, read status | Save messages and read facts |
+| In-app Notification | Transaction progress reminder | Receiver, type, title, body, related object, read status | Push order/payment/refund progress to the related buyer and merchant |
 | Operation Log | Backend operation record | Operator, module, action, parameters, result, duration | Support auditing and issue tracking |
 
 ### 4.2 Domain Object Relationships
@@ -322,6 +325,9 @@ flowchart TB
     USERCOUPON -->|"0..1 used for"| ORDER
 
     CONVERSATION -->|"1:N contains"| MESSAGE["Message"]
+    USER -->|"1:N receives"| NOTIFICATION["In-app Notification"]
+    ORDER -->|"1:N triggers"| NOTIFICATION
+    REFUND -->|"1:N triggers"| NOTIFICATION
 ```
 
 ### 4.3 Aggregates and Consistency Boundaries

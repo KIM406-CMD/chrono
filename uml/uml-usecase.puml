@@ -56,6 +56,12 @@ rectangle "网上超市系统" {
     usecase "查看销售统计" as UC30
   }
 
+  ' ===== 通知用例（买家/商家/管理员共用） =====
+  package "通知功能" {
+    usecase "查看站内通知（订单/支付/退款）" as UC43
+    usecase "消息已读（单条/全部）" as UC44
+  }
+
   ' ===== 管理员用例 =====
   package "管理员功能" {
     usecase "管理用户" as UC31
@@ -94,6 +100,8 @@ user --> UC18
 user --> UC19
 user --> UC39
 user --> UC40
+user --> UC43
+user --> UC44
 
 merchant --> UC20
 merchant --> UC21
@@ -106,6 +114,8 @@ merchant --> UC27
 merchant --> UC28
 merchant --> UC29
 merchant --> UC30
+merchant --> UC43
+merchant --> UC44
 
 admin --> UC31
 admin --> UC32
@@ -116,6 +126,8 @@ admin --> UC36
 admin --> UC37
 admin --> UC38
 admin --> UC41
+admin --> UC43
+admin --> UC44
 
 ' 用户继承游客
 user --|> visitor
@@ -136,6 +148,9 @@ UC19 ..> UC02 : <<extend>>
 
 ' 商家自助注册扩展自注册账号
 UC42 ..> UC05 : <<extend>>
+
+' 已读属于查看通知
+UC44 ..> UC43 : <<extend>>
 
 note bottom of UC28
   UC28 删除不当评论、UC36 管理所有评论、

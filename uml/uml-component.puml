@@ -57,6 +57,7 @@ package "chrono-bbs-server (父项目)" {
     [SeckillController] as Seckill
     [UploadController] as Upload
     [ChatController] as Chat
+    [NotificationController\n(站内通知)] as Notify
     [ChatWebSocketEndpoint\n(原生WS /chat/{userId})] as Ws
     [GlobalExceptionHandler\n(全局异常处理)] as ExHandler
   }
@@ -77,6 +78,7 @@ package "chrono-bbs-server (父项目)" {
     interface "SeckillService" as SeckS
     interface "UploadService" as UpS
     interface "ChatService" as ChatS
+    interface "NotificationService" as NotifyS
 
     [AuthServiceImpl] as AuthI
     [ProductServiceImpl] as ProdI
@@ -93,6 +95,7 @@ package "chrono-bbs-server (父项目)" {
     [SeckillServiceImpl] as SeckI
     [UploadServiceImpl] as UpI
     [ChatServiceImpl] as ChatI
+    [NotificationServiceImpl] as NotifyI
     [SeckillStatusScheduler\n(秒杀状态定时任务)] as SeckSch
 
     [DTO / VO\n(入参 / 出参)] as DTO
@@ -106,6 +109,7 @@ package "chrono-bbs-server (父项目)" {
     [PaymentMapper / RefundMapper] as PayM
     [AddressMapper / CommentMapper] as AddrM
     [ConversationMapper / MessageMapper] as ChatM
+    [NotificationMapper] as NotifyM
     [SearchHistoryMapper] as SearchM
     [SeckillCouponMapper / UserCouponMapper] as SeckM
     [OperationLogMapper\n(预留)] as OpLogM
@@ -149,6 +153,7 @@ AdminS <|.. AdminI
 SeckS <|.. SeckI
 UpS <|.. UpI
 ChatS <|.. ChatI
+NotifyS <|.. NotifyI
 
 ' ===== Controller / WebSocket 依赖 Service =====
 Auth --> AuthS
@@ -167,6 +172,8 @@ Seckill --> SeckS
 Upload --> UpS
 Chat --> ChatS
 Ws --> ChatS
+Notify --> NotifyS
+NotifyM --> MySQL
 
 ' ===== 外部依赖 =====
 Mapper --> MySQL : MyBatis JDBC

@@ -62,6 +62,7 @@
 | **构建工具** | Vite | 开发热更新 + Rollup 打包 |
 | **认证鉴权** | JWT + Redis | 拦截器认证 + Service 层角色/数据归属校验 |
 | **即时通讯** | WebSocket (JSR 356) | 用户与商家实时聊天 |
+| **站内通知** | MySQL + REST | 订单/支付/退款节点通知，买家与商家共用通知中心 |
 | **接口文档** | springdoc-openapi + knife4j-ui | 自动生成 API 文档 |
 | **图片存储** | 本地目录 / 阿里云 OSS + Thumbnailator | 开发默认本地，支持 OSS，800px 压缩 |
 | **容器化** | Docker + Docker Compose | 中间件一键编排 |
@@ -288,8 +289,8 @@ npm run build
 |----|------|------|
 | [uml-usecase.puml](./uml/uml-usecase.puml) | PlantUML | 用例图 — 游客/用户/商家/管理员 4 角色 |
 | [uml-component.puml](./uml/uml-component.puml) | PlantUML | 组件图 — Maven 模块 + 外部依赖 |
-| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 20 张表关联关系 |
-| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | 时序图 — 注册登录 / 购物下单 / 支付 / WebSocket |
+| [uml-er.puml](./uml/uml-er.puml) | PlantUML | ER 图 — 21 张表关联关系 |
+| [uml-sequence.puml](./uml/uml-sequence.puml) | PlantUML | 时序图 — 注册登录 / 购物下单 / 支付 / WebSocket / 站内通知 |
 | [uml-activity.puml](./uml/uml-activity.puml) | PlantUML | 活动图 — 订单状态流转 / 商家入驻 / 退款退货 |
 
 ---
@@ -309,6 +310,7 @@ npm run build
 | 🏬 商家后台 | 入驻审核、商品/库存管理、发货、退款审核、销售统计 |
 | 🛡 管理员后台 | 用户管理、商家审核、分类管理、全局报表（6 类） |
 | 💬 即时通讯 | WebSocket 用户与商家实时聊天（低优先级） |
+| 🔔 站内通知 | 下单/支付/发货/退款节点通知，买家与商家均可查看处理 |
 
 ---
 

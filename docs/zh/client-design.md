@@ -46,7 +46,8 @@ chrono-bbs-client/
 │   ├── upload.ts                    # 上传 Mock
 │   ├── search.ts                    # 搜索 Mock
 │   ├── comment.ts                   # 评论 Mock
-│   └── seckill.ts                   # 秒杀券 Mock
+│   ├── seckill.ts                   # 秒杀券 Mock
+│   └── notification.ts              # 站内通知 Mock
 ├── public/
 │   ├── favicon.svg
 │   ├── icons.svg
@@ -69,6 +70,7 @@ chrono-bbs-client/
     │   ├── search.ts                    # 搜索接口
     │   ├── comment.ts                   # 评论接口
     │   ├── seckill.ts                   # 秒杀券接口
+    │   ├── notification.ts              # 站内通知接口
     │   └── upload.ts                    # 上传接口
     ├── router/                          # ===== 路由层 =====
     │   └── index.ts                     # 路由配置 + 守卫 + 角色元信息
@@ -94,6 +96,8 @@ chrono-bbs-client/
     │   │   └── PaymentRecordView.vue    # 支付记录
     │   ├── refund/                      # 退款/售后
     │   │   └── RefundListView.vue       # 我的退款/售后
+    │   ├── notification/                # 站内通知
+    │   │   └── NotificationView.vue     # 消息通知中心（买家/商家/管理员共用）
     │   ├── user/                        # 用户模块
     │   │   ├── LoginView.vue            # 登录
     │   │   ├── RegisterView.vue         # 注册
@@ -177,7 +181,8 @@ chrono-bbs-client/
 ```
 
 - 未登录：显示"登录/注册"按钮
-- 已登录：显示用户头像、昵称，下拉菜单含"我的订单""收货地址""退出登录"
+- 已登录：显示用户头像、昵称，下拉菜单含"我的订单""消息通知""收货地址""退出登录"
+- 顶部“🔔 通知”按钮显示未读角标，点击进入 `/notifications`
 
 ### 3.2 商家后台布局 `MerchantLayout.vue`
 
@@ -192,12 +197,14 @@ chrono-bbs-client/
 │  订单管理   │                                │
 │  退款审核   │                                │
 │  销售统计   │                                │
+│  消息通知   │                                │
 │            │                                │
 └────────────┴────────────────────────────────┘
 ```
 
 - 左侧固定侧边栏
 - 内容区显示对应管理页面
+- “消息通知”入口带未读角标，点击进入 `/notifications`；通知按角色跳转到商家订单/退款页
 
 ### 3.3 管理员后台布局 `AdminLayout.vue`
 
@@ -393,6 +400,7 @@ const userRoutes: RouteRecordRaw[] = [
       { path: 'checkout', name: 'Checkout', meta: { title: '结算', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/CheckoutView.vue') },
       { path: 'orders', name: 'OrderList', meta: { title: '我的订单', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderListView.vue') },
       { path: 'payments', name: 'PaymentRecords', meta: { title: '支付记录', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentRecordView.vue') },
+      { path: 'notifications', name: 'Notifications', meta: { title: '消息通知', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/notification/NotificationView.vue') },
       { path: 'order/:id', name: 'OrderDetail', meta: { title: '订单详情', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderDetailView.vue') },
       { path: 'payment/:orderId', name: 'Payment', meta: { title: '支付', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentView.vue') },
       { path: 'merchant/apply', name: 'MerchantApply', meta: { title: '商家入驻', roles: ['USER', 'MERCHANT'] }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
@@ -910,6 +918,7 @@ server {
 | `/payments` | 支付记录 | 用户/商家/管理员 | 支付方式、金额与时间 |
 | `/order/:id` | 订单详情 | 用户/商家 | 含退款/退货入口 |
 | `/refunds` | 我的退款/售后 | 用户/商家/管理员 | 退款/退货申请列表 |
+| `/notifications` | 消息通知 | 用户/商家/管理员 | 站内通知列表、未读筛选与已读 |
 | `/profile` | 个人信息 | 用户/商家/管理员 | 重定向至 `/settings` |
 | `/settings` | 账户设置 | 用户/商家/管理员 | 偏好设置 + 头像上传 |
 | `/address` | 收货地址 | 用户/商家 | 增删改查 |
@@ -917,7 +926,7 @@ server {
 | `/help/:type` | 帮助中心 | 游客/用户 | 静态帮助页 |
 | `/merchant/apply` | 商家入驻 | 用户 | 提交入驻申请 |
 | `/merchant/products` | 商品管理 | 商家 | 增删改查、上下架 |
-| `/merchant/comments` | 评论管理 | 商家 | 按商品查看评论/追评并回复 |
+| `/merchant/comments` | 评论管理 | 商家 | 默认汇总全部商品评论，可按商品筛选并回复 |
 | `/merchant/orders` | 订单管理 | 商家 | 发货操作 |
 | `/merchant/refunds` | 退款审核 | 商家 | 审核退款退货 |
 | `/merchant/stats` | 销售统计 | 商家 | 自己的销售数据 |
@@ -1007,8 +1016,13 @@ server {
 | 商家退款列表 | GET | `/api/merchant/refunds` | `?page=&size=&status=` |
 | 商家商品列表 | GET | `/api/merchant/products` | `?page=&size=&status=` |
 | 商家订单列表 | GET | `/api/merchant/orders` | `?page=&size=&status=` |
+| 商家商品详情 | GET | `/api/merchant/products/{id}` | 仅自己的商品，含下架 |
+| 商家评论列表 | GET | `/api/merchant/comments` | `?productId=&page=&size=`（默认全部商品） |
 | 发货 | PUT | `/api/merchant/ship/{orderId}` | — |
 | 商家销售统计 | GET | `/api/merchant/stats` | `?startDate=&endDate=` |
+| 通知列表 | GET | `/api/notification/list` | `?unreadOnly=&page=&size=` |
+| 未读通知数 | GET | `/api/notification/unread-count` | — |
+| 通知已读 | PUT | `/api/notification/{id}/read`、`/api/notification/read-all` | — |
 | 添加商品 | POST | `/api/product` | `{ ...ProductFormData }` |
 | 修改商品 | PUT | `/api/product/{id}` | 同上 |
 | 商品上下架 | PUT | `/api/product/{id}/status` | `{ status }` |
@@ -1110,3 +1124,10 @@ server {
 - 退货退款审核通过后进入“待寄回”，买家在退款/售后页填写快递公司与物流单号；商家/管理员在退款审核页确认收货后完成退款。
 - 管理员全平台商品列表支持编辑商品与 SKU 价格/库存，后端提供 `PUT /api/admin/products/{id}`。
 - 发表评价支持上传最多 4 张图片，商品详情评论列表展示图片。
+## 十六、站内通知中心
+
+- 页面：`views/notification/NotificationView.vue`，路由 `/notifications`，买家、商家、管理员共用。
+- 入口：商城顶部“🔔 通知”按钮（带未读角标）与下拉菜单“消息通知”；商家中心侧边栏“消息通知”。
+- 列表：全部/未读筛选、分页、单条已读、全部已读；每条展示类型图标、标题、正文、时间与商品/订单标签。
+- 跳转：订单通知按角色跳转 `/order/{id}`（买家）、`/merchant/orders`（商家）、`/admin/orders`（管理员）；退款通知跳转 `/refunds`、`/merchant/refunds`、`/admin/refunds`。
+- 未读角标通过 `/api/notification/unread-count` 获取，已读操作后触发 `notification-unread-changed` 事件，商城顶部与商家侧边栏同步刷新。

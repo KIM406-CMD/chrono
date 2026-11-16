@@ -83,7 +83,8 @@ com.ncist.controller/
     ├── AdminController.java         # Administrator APIs
     ├── SeckillController.java       # Flash-sale coupon APIs
     ├── UploadController.java        # File upload APIs
-    └── ChatController.java          # Instant messaging APIs
+    ├── ChatController.java          # Instant messaging APIs
+    └── NotificationController.java  # In-app notification APIs
 com.ncist.websocket/                 # WebSocket endpoint (@ServerEndpoint)
 com.ncist.vo/                        # Output VOs
 com.ncist.interceptor/               # Interceptor (JWT authorization, in module-start)
@@ -97,6 +98,8 @@ com.ncist.service/
     ├── impl/AuthServiceImpl.java    # Implementation
     ├── ProductService.java
     ├── impl/ProductServiceImpl.java
+    ├── NotificationService.java     # In-app notification interface
+    ├── impl/NotificationServiceImpl.java
     └── ... (same pattern, divided by module)
 com.ncist.dto/                       # Input DTOs
 com.ncist.scheduler/                 # Scheduled tasks (flash-sale coupon status refresh)
@@ -832,3 +835,48 @@ flowchart TD
 - User APIs: coupon list/details (guests can view), claim, my coupons (logged-in users).
 
 > For table structures, see Chapter 10 of [db-design.md](./db-design.md); for API contracts, see Chapter 16 of [api-doc.md](./api-doc.md).
+
+---
+
+## 17. In-app Notifications and Message Center
+
+### 17.1 Goals
+
+- Transaction events (order creation, payment, shipping, refund/return) generate in-app notifications, so buyers and merchants can follow progress without relying on real-time chat.
+- Buyers and merchants share the same notification center, isolated by receiver `user_id`; merchants only receive notifications related to their own products/shop.
+- Notifications use the dedicated `notification` table instead of `conversation`/`message`.
+
+### 17.2 Events
+
+| Event | Receiver | Title | Related object |
+|------|----------|------|----------------|
+| Order created | Buyer | Order submitted | Order |
+| Payment succeeded | Buyer | Payment succeeded | Order |
+| Payment succeeded | Each merchant in the order | New order awaiting shipment | Order |
+| Merchant shipped | Buyer | Order shipped | Order |
+| Refund/return requested | Merchant owning the product | New refund request | Refund |
+| Refund reviewed | Buyer | Refund approved / Refund rejected | Refund |
+| Buyer submitted return tracking | Merchant | Buyer has shipped the return | Refund |
+| Merchant confirmed return receipt | Buyer | Refund completed | Refund |
+
+Merchant order notifications are aggregated with `order_item JOIN product JOIN merchant`, so each merchant only sees their own item subtotal in multi-merchant orders.
+
+### 17.3 Services and Table
+
+- Table: `notification` (`user_id`, `type`, `title`, `content`, `related_type`, `related_id`, `is_read`, `created_at`).
+- Services: `NotificationService` / `NotificationServiceImpl`; business services call `notifyXxx` inside their transactions. Notification write failures are logged only and never roll back the primary business flow.
+- Mapper: `NotificationMapper`; queries and read operations always include `user_id`.
+
+### 17.4 APIs
+
+| Method | Path | Description |
+|------|------|------|
+| GET | `/api/notification/list` | Paginated notifications of the current user (`unreadOnly` supported) |
+| GET | `/api/notification/unread-count` | Unread count |
+| PUT | `/api/notification/{id}/read` | Mark one as read |
+| PUT | `/api/notification/read-all` | Mark all as read |
+
+### 17.5 Frontend
+
+- The mall header shows a “🔔 Notifications” button with an unread badge, routed to `/notifications`.
+- The merchant center sidebar has a “Notifications” entry with an unread badge; clicking a notification navigates to the buyer order detail, merchant order/refund page, or administrator order/refund page according to the current role.
