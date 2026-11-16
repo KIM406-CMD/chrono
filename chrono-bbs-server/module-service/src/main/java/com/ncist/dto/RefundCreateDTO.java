@@ -10,7 +10,7 @@ import lombok.Data;
 /**
  * 申请退款入参（api-doc 10.1）。
  *
- * <p>用户对已支付订单中的某一明细申请部分退款或退货退款时使用。</p>
+ * <p>用户对已支付、已发货或已完成订单中的某一明细申请部分退款或退货退款时使用。</p>
  */
 @Data
 public class RefundCreateDTO {

@@ -137,4 +137,10 @@ UC19 ..> UC02 : <<extend>>
 ' 商家自助注册扩展自注册账号
 UC42 ..> UC05 : <<extend>>
 
+note bottom of UC28
+  UC28 删除不当评论、UC36 管理所有评论、
+  UC38 查看操作日志为规划用例，
+  当前版本尚未实现。
+end note
+
 @enduml

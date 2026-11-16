@@ -31,17 +31,17 @@ import java.util.List;
  * 退款服务实现。
  *
  * <p>退款申请与审核均使用 {@code @Transactional} 保证退款单与订单状态的一致性。
- * 审核通过后订单标记为已退款，拒绝后恢复为原订单状态；
+ * 审核通过后订单标记为已退款，拒绝后恢复为已完成(4)状态；
  * 状态条件更新保证同一退款单仅能被审核一次。</p>
  *
  * <p>权限规则：管理员可直接审核；商家必须资质有效且退款商品归属自己。
- * 申请要求订单处于已支付、已发货或已收货状态，且同一订单明细仅能申请一次。</p>
+ * 申请要求订单处于已支付、已发货或已完成（已收货）状态，且同一订单明细仅能申请一次。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class RefundServiceImpl implements RefundService {
 
-    /** 允许申请退款的订单状态：2-已支付，3-已发货，4-已收货。 */
+    /** 允许申请退款的订单状态：2-已支付，3-已发货，4-已完成（已收货）。 */
     private static final List<Integer> REFUNDABLE_STATUS = List.of(2, 3, 4);
 
     /** 退款数据访问组件。 */
@@ -162,7 +162,7 @@ public class RefundServiceImpl implements RefundService {
      * {@inheritDoc}
      *
      * <p>先做角色/资质/商品归属校验，再通过状态条件更新审核结果；
-     * 通过时订单标记为已退款，拒绝时恢复为原状态，均在同一事务中完成。</p>
+     * 通过时订单标记为已退款，拒绝时恢复为已完成(4)，均在同一事务中完成。</p>
      */
     @Override
     @Transactional(rollbackFor = Exception.class)

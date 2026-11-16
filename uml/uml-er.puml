@@ -7,10 +7,12 @@ entity user {
   --
   * username : VARCHAR(50) <<UK>>
   password : VARCHAR(255)
+  nickname : VARCHAR(50)
   phone : VARCHAR(20)
+  email : VARCHAR(100)
   avatar : VARCHAR(500)
-  role : TINYINT <<游客/用户/商家/管理员>>
-  status : TINYINT
+  role : TINYINT <<1用户/2商家/3管理员>>
+  status : TINYINT <<1正常/0禁用>>
   created_at : DATETIME
   updated_at : DATETIME
 }
@@ -20,9 +22,11 @@ entity merchant {
   --
   * user_id : BIGINT <<FK>>
   shop_name : VARCHAR(100)
-  license : VARCHAR(500)
-  phone : VARCHAR(20)
-  status : TINYINT <<待审核/已通过/已拒绝>>
+  business_license : VARCHAR(500)
+  contact_phone : VARCHAR(20)
+  status : TINYINT <<0待审核/1已通过/2已拒绝>>
+  review_reason : VARCHAR(500)
+  reviewed_at : DATETIME
   created_at : DATETIME
   updated_at : DATETIME
 }
@@ -48,6 +52,7 @@ entity category <<三级分类>> {
   name : VARCHAR(50)
   level : TINYINT <<1/2/3>>
   sort_order : INT
+  icon : VARCHAR(500)
   created_at : DATETIME
 }
 
@@ -70,9 +75,11 @@ entity product_sku <<SKU>> {
   * id : BIGINT <<PK>>
   --
   * product_id : BIGINT <<FK>>
-  spec_values : VARCHAR(500)
-  price : DECIMAL(10,2)
+  spec_ids : VARCHAR(200)
+  spec_text : VARCHAR(200)
+  price : INT <<单位:分>>
   stock : INT
+  status : TINYINT <<0禁用/1启用>>
   created_at : DATETIME
 }
 
@@ -88,17 +95,18 @@ entity spec_value {
   --
   * template_id : BIGINT <<FK>>
   value : VARCHAR(50)
-  created_at : DATETIME
+  sort_order : INT
 }
 
 entity cart_item {
   * id : BIGINT <<PK>>
   --
   * user_id : BIGINT <<FK>>
+  * product_id : BIGINT <<FK>>
   * sku_id : BIGINT <<FK>>
   quantity : INT
+  selected : TINYINT <<0未选中/1已选中>>
   created_at : DATETIME
-  updated_at : DATETIME
 }
 
 entity order <<主订单>> {
@@ -106,10 +114,15 @@ entity order <<主订单>> {
   --
   * order_no : VARCHAR(32) <<UK>>
   * user_id : BIGINT <<FK>>
-  * address_id : BIGINT <<FK>>
-  total_amount : DECIMAL(10,2)
-  status : TINYINT <<待支付/已取消/已支付/已发货/已收货/已完成>>
+  address_snapshot : VARCHAR(500)
+  total_amount : INT <<单位:分>>
+  status : TINYINT <<1待支付/2已支付/3已发货/4已完成/5已取消/6退款中/7已退款>>
   remark : VARCHAR(500)
+  cancel_reason : VARCHAR(500)
+  paid_at : DATETIME
+  shipped_at : DATETIME
+  received_at : DATETIME
+  completed_at : DATETIME
   created_at : DATETIME
   updated_at : DATETIME
 }
@@ -120,22 +133,18 @@ entity order_item <<订单明细>> {
   * order_id : BIGINT <<FK>>
   product_id : BIGINT <<FK>>
   sku_id : BIGINT <<FK>>
-  price : DECIMAL(10,2)
   quantity : INT
-  product_name : VARCHAR(200)
-  product_image : VARCHAR(500)
-  spec_values : VARCHAR(500)
-  created_at : DATETIME
+  unit_price : INT <<单位:分>>
+  subtotal : INT <<单位:分>>
 }
 
 entity payment <<支付记录>> {
   * id : BIGINT <<PK>>
   --
-  * order_id : BIGINT <<FK,UK>>
-  pay_type : TINYINT <<卡号/二维码>>
-  card_no : VARCHAR(50)
-  amount : DECIMAL(10,2)
-  status : TINYINT
+  * order_id : BIGINT <<FK>>
+  pay_method : TINYINT <<1卡号/2二维码>>
+  card_no : VARCHAR(20)
+  status : TINYINT <<0处理中/1成功/2失败>>
   paid_at : DATETIME
   created_at : DATETIME
 }
@@ -143,14 +152,22 @@ entity payment <<支付记录>> {
 entity refund <<退款/退货>> {
   * id : BIGINT <<PK>>
   --
+  * order_id : BIGINT <<FK>>
   * order_item_id : BIGINT <<FK>>
   * user_id : BIGINT <<FK>>
+  merchant_id : BIGINT <<FK>>
+  type : TINYINT <<1退款/2退货>>
   reason : VARCHAR(500)
-  amount : DECIMAL(10,2)
-  type : TINYINT <<退款/退货>>
-  status : TINYINT <<申请/审核中/通过/拒绝>>
+  amount : INT <<单位:分>>
+  status : TINYINT <<0待审核/1已通过/2已拒绝/3待寄回/4待商家收货/5退货完成>>
+  reviewer_id : BIGINT <<FK 审核人>>
+  review_reason : VARCHAR(500)
+  reviewed_at : DATETIME
+  return_company : VARCHAR(50)
+  return_logistics_no : VARCHAR(50)
+  returned_at : DATETIME
+  return_received_at : DATETIME
   created_at : DATETIME
-  updated_at : DATETIME
 }
 
 entity comment <<评论/追评>> {
@@ -158,14 +175,14 @@ entity comment <<评论/追评>> {
   --
   * product_id : BIGINT <<FK>>
   * user_id : BIGINT <<FK>>
-  parent_id : BIGINT <<FK, 自关联回复/追评>>
-  content : VARCHAR(2000)
-  rating : TINYINT <<1-5星>>
+  order_item_id : BIGINT <<FK>>
+  parent_id : BIGINT <<FK, 自关联回复>>
+  content : VARCHAR(1000)
+  star : TINYINT <<1-5星>>
   images : VARCHAR(2000)
-  type : TINYINT <<首评/追评>>
-  status : TINYINT
+  is_append : TINYINT <<0首评/1追评>>
+  status : TINYINT <<0正常/1已删除>>
   created_at : DATETIME
-  updated_at : DATETIME
 }
 
 entity search_history {
@@ -209,8 +226,8 @@ entity user_coupon <<用户券>> {
 entity conversation <<会话>> {
   * id : BIGINT <<PK>>
   --
-  * user_id : BIGINT <<FK>>
-  * merchant_id : BIGINT <<FK>>
+  * user_id : BIGINT <<FK 买家用户ID>>
+  * merchant_id : BIGINT <<FK 商家用户ID(user.id)>>
   product_id : BIGINT <<FK>>
   last_message : VARCHAR(500)
   last_message_time : DATETIME
@@ -225,9 +242,9 @@ entity message <<消息>> {
   --
   * conversation_id : BIGINT <<FK>>
   * sender_id : BIGINT <<FK>>
-  sender_role : TINYINT <<用户/商家>>
+  sender_role : TINYINT <<0用户/1商家>>
   content : VARCHAR(2000)
-  type : TINYINT <<文本/图片>>
+  type : TINYINT <<1文本/2图片>>
   is_read : TINYINT
   created_at : DATETIME
 }
@@ -255,7 +272,7 @@ user ||--o{ refund : "发起退款"
 user ||--o{ comment : "评论"
 user ||--o{ search_history : "搜索历史"
 user ||--o{ conversation : "发起会话(买家)"
-user ||--o{ conversation : "接收会话(商家)"
+user ||--o{ conversation : "接收会话(商家用户)"
 user ||--o{ message : "发送消息"
 user ||--o{ operation_log : "操作日志"
 user ||--o{ user_coupon : "领取的券"
@@ -264,6 +281,7 @@ category ||--o| category : "父分类"
 category ||--o{ product : "分类下的商品"
 
 merchant ||--o{ product : "商家的商品"
+merchant ||--o{ refund : "商家处理退款"
 
 product ||--o{ product_sku : "多规格SKU"
 product ||--o{ order_item : "订单中的商品"
@@ -275,10 +293,9 @@ spec_template ||--o{ spec_value : "规格值"
 product_sku ||--o{ cart_item : "购物车中的SKU"
 product_sku ||--o{ order_item : "订单中的SKU"
 
-address ||--o{ order : "订单收货地址"
-
 order ||--o{ order_item : "订单明细"
 order ||--o| payment : "支付记录"
+order ||--o{ refund : "订单退款"
 
 order_item ||--o{ refund : "部分退款/退货"
 
