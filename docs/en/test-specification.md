@@ -9,12 +9,12 @@ This project adopts a three-layer test system, progressively verifying system co
 | Layer | Scope | Dependency Handling | Execution Speed | Stability |
 |------|------|----------|----------|--------|
 | **Unit Test** | Single class/method logic | All mocked | Milliseconds | Very high |
-| **Integration Test** | Multi-component collaboration (Service + Mapper + DB) | Partially real (H2 in-memory DB) | Seconds | High |
+| **Integration Test** | Multi-component collaboration (Service + Mapper + DB) | Real MySQL test database + Redis | Seconds | High |
 | **E2E Test** | Complete HTTP request chain | All real | Milliseconds to seconds | Medium |
 
 ### 1.1 Unit Test
 
-- Test target: Service-layer business logic
+- Test target: Service-layer business logic (`module-service`) and utility classes (`common`, e.g. `JwtUtilTest`)
 - External dependencies (database, Redis) are all mocked with Mockito
 - Does not start the Spring container; only validates Java code logic
 
@@ -216,11 +216,11 @@ mvn test
 # Run a specific module
 mvn test -pl module-start
 
-# Run a specific test class
-mvn test -pl module-start -Dtest=AuthServiceImplTest
+# Run a specific test class (-am also builds its dependency modules)
+mvn -pl module-service -am test -Dtest=AuthServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false
 
 # Run a specific test method
-mvn test -pl module-start -Dtest=AuthServiceImplTest#shouldRegisterNewUser
+mvn -pl module-service -am test -Dtest=AuthServiceImplTest#shouldDeleteCaptchaAfterSuccessfulRegister -Dsurefire.failIfNoSpecifiedTests=false
 
 # Frontend quality checks
 cd chrono-bbs-client
@@ -232,9 +232,11 @@ npm run test:e2e   # first run: npx playwright install chromium
 ### 7.2 Report Location
 
 ```
-module-start/target/surefire-reports/
-├── com.ncist.service.AuthServiceImplTest.txt    # Text report
-└── TEST-com.ncist.service.AuthServiceImplTest.xml # XML report
+module-service/target/surefire-reports/
+├── com.ncist.unit.service.AuthServiceImplTest.txt    # Text report
+└── TEST-com.ncist.unit.service.AuthServiceImplTest.xml # XML report
+
+module-start/target/surefire-reports/   # integration / E2E reports
 ```
 
 ### 7.3 Output Example
@@ -252,7 +254,7 @@ BUILD SUCCESS
 |------|----------|
 | Development phase | Run the target test class/method directly from the local IDE |
 | Pre-commit check | Run all tests with `mvn test` |
-| Integration tests | `mvn test -P integration` activates the integration test profile |
+| Integration tests | Run the `module-start` tests (`mvn -pl module-start -am test`); they use the `test` profile |
 
 ---
 
@@ -278,11 +280,15 @@ Use the dual naming approach of **semantic English names** + **concise Chinese `
 ### 9.3 Package Structure
 
 ```
+common/src/test/java/com/ncist/common/utils/
+└── JwtUtilTest.java              # Utility unit tests
+
+module-service/src/test/java/com/ncist/unit/service/
+└── *ServiceImplTest.java         # Service unit tests (Mockito)
+
 module-start/src/test/java/com/ncist/
-├── service/          # Service unit tests
-│   └── AuthServiceImplTest.java
-├── integration/      # Integration tests
+├── integration/                  # Integration tests
 │   └── AuthServiceIntegrationTest.java
-└── e2e/              # E2E tests
+└── e2e/                          # E2E tests
     └── AuthControllerE2ETest.java
 ```

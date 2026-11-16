@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Changed
+- 英文文档同步：`docs/en/` 下设计、需求、数据库、API、HMI、测试等文档对齐当前实现与中文版（订单/退款状态、原生 WebSocket、评论 `star`、会话 `merchant_id`、ES 搜索、操作日志预留状态等）
+
 ---
 
 ## [1.2.0] - 2026-11-16

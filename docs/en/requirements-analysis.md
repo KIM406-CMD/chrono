@@ -69,7 +69,7 @@ This document provides a comprehensive requirements analysis for the Online Supe
 
 | Role | Description | Core Permissions |
 |------|-------------|------------------|
-| **Guest** | A visitor who has not logged in | Browse product lists, filter by category, view product details, keyword search |
+| **Guest** | A visitor who has not logged in | Browse product lists, filter by category, view product details, keyword search, register an account (buyer/merchant) |
 | **Registered User** | A user who has registered and logged in | Guest permissions + add to cart, manage cart, place orders, pay, confirm receipt, request refund/return, post comments |
 | **Merchant** | An approved merchant | User permissions + submit onboarding application, manage own products (CRUD/list/unlist/stock), manage orders (ship), review refunds/returns, view sales statistics |
 | **Administrator** | Highest system privileges | User management, merchant onboarding review, three-level category management, global product management, global order management, refund/return review, global sales reports |
@@ -95,7 +95,7 @@ Guest ──(Login)──→ Registered User ──(Onboarding Review)──→ 
 
 | ID | Function | Description | Priority |
 |------|------|------|--------|
-| F-01 | User Registration | Register an account by entering a username, password, phone number, email, and graphical captcha | High |
+| F-01 | User Registration | Register an account by entering a username, password, phone number, email, and graphical captcha; may optionally register as a merchant and provide a shop name, creating a pending merchant record | High |
 | F-02 | User Login | Log in with username + password + graphical captcha and generate an authentication token | High |
 | F-03 | User Logout | Clear the login state and redirect to the home page | High |
 | F-04 | Personal Information Management | View and modify personal information (nickname, phone number, email) | Medium |
@@ -143,20 +143,27 @@ Guest ──(Login)──→ Registered User ──(Onboarding Review)──→ 
 | F-22 | Order List | View own orders with status filtering and pagination | High |
 | F-23 | Order Details | View complete order information (products, address, amount, status, timeline) | High |
 | F-24 | Cancel Order | Cancel an order in Pending Payment status and restore stock | High |
-| F-25 | Confirm Receipt | Manually confirm receipt when the order is in Shipped status | High |
+| F-25 | Confirm Receipt | Manually confirm receipt when the order is in Shipped status; the order becomes Completed directly | High |
 | F-26 | Duplicate Submission Prevention | Obtain an anti-duplicate token before placing an order to prevent multiple orders caused by repeated clicks | Medium |
 
-**Order state transitions**:
+**Order state transitions** (status codes 1-7):
 
 ```
-Pending Payment ──→ Cancelled (user cancellation / timeout cancellation)
+Pending Payment(1) ──→ Cancelled(5) (user cancellation)
   │
-  └──→ Paid ──→ Shipped ──→ Received ──→ Completed
-                   │            │
-                   │            └──→ Refund/Return Request ──→ Under Review ──→ Approved (refund completed)
-                   │
-                   └──→ Refund/Return Request ──→ Under Review ──→ Approved (refund completed)
+  └──→ Paid(2) ──→ Shipped(3) ──→ Completed(4) (confirm receipt)
+            │            │              │
+            └────────────┴──────────────┴──→ Refunding(6)
+                                                │
+                                 Approved ──────┴────── Rejected
+                                     │                    │
+                                Refunded(7)      Restored to Completed(4)
 ```
+
+- Refunds or returns can be requested from Paid/Shipped/Completed; once the request succeeds, the order enters Refunding(6).
+- After a refund review is approved, the order becomes Refunded(7); if rejected, it is restored to Completed(4) (the current implementation always restores it to Completed).
+- Only Pending Payment orders can be cancelled; Completed or Cancelled orders can be deleted.
+- The current version does not enable a "timeout auto-cancellation" scheduled task; cancellation is triggered manually by the user.
 
 ### 3.6 Payment Module (Simulated Payment)
 
@@ -170,9 +177,9 @@ Pending Payment ──→ Cancelled (user cancellation / timeout cancellation)
 
 | ID | Function | Description | Priority |
 |------|------|------|--------|
-| F-30 | Request Refund/Return | Users initiate a refund or return request for orders in Shipped/Received status and fill in the reason | Medium |
-| F-31 | Refund/Return Review | The merchant or administrator reviews the request, approves or rejects it, and fills in the reason | Medium |
-| F-32 | Return Shipment Confirmation | After the return request is approved, the merchant confirms receipt of the returned product → executes the refund | Medium |
+| F-30 | Request Refund/Return | Users initiate a refund or return request for order items in Paid/Shipped/Completed orders, filling in the reason and amount | Medium |
+| F-31 | Refund/Return Review | The merchant or administrator reviews the request, approves or rejects it, and fills in the reason; a refund approval → Approved, a return approval → Awaiting Return | Medium |
+| F-32 | Return Shipment Confirmation | The buyer fills in the return logistics → the merchant confirms receipt of the return → return completed and the order is marked as Refunded | Medium |
 
 ### 3.8 Comment Module
 
@@ -231,7 +238,7 @@ Pending Payment ──→ Cancelled (user cancellation / timeout cancellation)
 | **Security** | Passwords stored with BCrypt encryption; JWT + Redis dual-validation authentication; SQL injection prevention (MyBatis parameterization); API permission validation |
 | **Availability** | Frontend adapted to PC browsers (Chrome / Edge) with a responsive layout |
 | **Maintainability** | Backend: Controller → Service → Mapper layering; frontend: component-based development; unified exception handling |
-| **Reliability** | Order placement uses distributed locks to prevent concurrency; payment is idempotent; stock deduction uses Optimistic Locking (`WHERE stock >= ?`) |
+| **Reliability** | Order placement uses a Redis anti-duplicate token to prevent duplicate submission; payment guarantees idempotency through conditional updates of the order status; stock deduction uses Optimistic Locking (`WHERE stock >= ?`) |
 
 ---
 
@@ -256,10 +263,12 @@ Browse products (category/search)
 ### 5.2 Refund/Return Process
 
 ```
-Customer side: Confirm receipt → Order details → Request refund/return (select type + fill in reason)
+Customer side: Order details (Paid/Shipped/Completed) → Select an order item → Request refund/return (type + reason + amount)
 Merchant/administrator side: Review request → Approve/Reject
-  ├── Approve: User ships the product back → Merchant confirms receipt → Refund → Restore stock
-  └── Reject: Fill in rejection reason → Process terminates
+  ├── Refund approved: Refund request Approved → Order marked as Refunded
+  ├── Return approved: Refund request Awaiting Return → Buyer fills in courier company/tracking number (Awaiting Merchant Receipt)
+  │                  → Merchant confirms receipt of the return (Return Completed) → Order marked as Refunded
+  └── Reject: Refund request Rejected → Order restored to Completed(4)
 ```
 
 ### 5.3 Merchant Onboarding Process

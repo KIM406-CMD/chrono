@@ -1683,7 +1683,7 @@ GET /api/search/suggest?keyword=iph
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| keyword | String | 是 | 前缀关键词 |
+| keyword | String | 否 | 前缀关键词；为空时返回空列表 |
 
 **返回**：
 

@@ -563,7 +563,7 @@
 
 ## 十四、搜索引擎（Elasticsearch）
 
-> **实现状态**：`SearchServiceImpl` 目前为占位实现，尚未接入 ES；下表为规划。
+> **实现状态**：已通过 `ElasticsearchClient` 接入 ES，索引名 `chrono_product`；应用启动时自动创建 mapping（replicas=0），索引为空时全量同步上架商品；商品上架/更新时按商品 ID 覆盖写入，下架/删除时删除文档；ES 异常只记日志，不影响 MySQL 主业务。
 
 索引名 `chrono_product`（Spring Boot 启动时自动创建 mapping，replicas=0）。
 

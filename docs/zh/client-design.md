@@ -1004,7 +1004,6 @@ server {
 | 下单优惠计算 | POST | `/api/seckill/calculate` | `{ ... }` |
 | 商家入驻申请 | POST | `/api/merchant/apply` | `{ shopName, contactPhone, businessLicense }` |
 | 商家信息 | GET | `/api/merchant/info` | — |
-| 更新商家信息 | PUT | `/api/merchant/info` | `{ shopName, contactPhone }` |
 | 商家退款列表 | GET | `/api/merchant/refunds` | `?page=&size=&status=` |
 | 商家商品列表 | GET | `/api/merchant/products` | `?page=&size=&status=` |
 | 商家订单列表 | GET | `/api/merchant/orders` | `?page=&size=&status=` |
@@ -1075,9 +1074,6 @@ server {
 
 - `npm run dev` 连接真实后端；`npm run dev:mock` 使用 `mock/` 目录，互不影响。
 - Mock 商品创建/编辑已持久化多 SKU，并自动计算最低/最高价；管理员报表字段与后端 `AdminReportVO` 对齐。
-
-> 说明：商家退款审核列表、管理员商品上下架/删除等能力仍受后端扩展接口限制，相关入口在 `dev:mock` 下通过 Mock 演示。
-
 
 ### 15.8 聊天联调
 

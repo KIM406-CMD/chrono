@@ -47,7 +47,9 @@ chrono-bbs-client/
 │   ├── comment.ts                    # Comment Mock
 │   └── seckill.ts                    # Flash-sale Coupon Mock
 ├── public/
-│   └── favicon.ico
+│   ├── favicon.svg
+│   ├── icons.svg
+│   └── img/products/                # Product images
 └── src/
     ├── main.ts                          # Entry file
     ├── App.vue                          # Root component
@@ -69,6 +71,8 @@ chrono-bbs-client/
     │   └── upload.ts                    # Upload APIs
     ├── router/                          # ===== Route layer =====
     │   └── index.ts                     # Route configuration + guards + role metadata
+    ├── config/                          # ===== Feature flags =====
+    │   └── features.ts                  # CHAT_ENABLED / REFUND_AUDIT_ENABLED
     ├── stores/                          # ===== State management layer =====
     │   └── user.ts                      # User login state (token + userInfo)
     ├── views/                           # ===== Page view layer =====
@@ -85,17 +89,20 @@ chrono-bbs-client/
     │   │   ├── CheckoutView.vue         # Checkout/Submit order
     │   │   ├── OrderListView.vue        # Order list
     │   │   ├── OrderDetailView.vue      # Order details
-    │   │   └── PaymentView.vue          # Payment page
+    │   │   ├── PaymentView.vue          # Payment page
+    │   │   └── PaymentRecordView.vue    # Payment records
+    │   ├── refund/                      # Refunds / after-sales
+    │   │   └── RefundListView.vue       # My refunds/after-sales
     │   ├── user/                        # User module
     │   │   ├── LoginView.vue            # Login
     │   │   ├── RegisterView.vue         # Register
     │   │   ├── ForgotPasswordView.vue   # Forgot password
-    │   │   ├── ProfileView.vue          # Personal information
-    │   │   ├── SettingsView.vue         # Account settings
+    │   │   ├── SettingsView.vue         # Account settings (/profile redirects here)
     │   │   └── AddressView.vue          # Shipping address management
     │   ├── merchant/                    # Merchant backend
     │   │   ├── MerchantApplyView.vue    # Onboarding application
     │   │   ├── ProductManageView.vue    # Product management
+    │   │   ├── CommentManageView.vue    # Comment management
     │   │   ├── OrderManageView.vue      # Order management
     │   │   ├── RefundManageView.vue     # Refund/Return review
     │   │   └── SalesStatsView.vue       # Sales statistics
@@ -124,8 +131,12 @@ chrono-bbs-client/
     ├── utils/                           # ===== Utility functions =====
     │   ├── token.ts                     # Token storage (localStorage)
     │   ├── settings.ts                  # User preference settings (localStorage)
+    │   ├── chatSocket.ts                # WebSocket client (singleton, auto-reconnect)
     │   ├── luhn.ts                      # Card formatting and Luhn/expiry/CVV validation
-    │   └── sanitizeHtml.ts              # Product description HTML sanitizer
+    │   ├── region.ts                    # Province/city/district data
+    │   ├── sanitizeHtml.ts              # Product description HTML sanitizer
+    │   ├── luhn.spec.ts                 # Luhn unit tests
+    │   └── sanitizeHtml.spec.ts         # HTML sanitizer unit tests
     ├── styles/                          # ===== Global styles =====
     │   ├── variables.css                # CSS variable system (design tokens)
     │   └── global.css                   # Global base styles
@@ -246,10 +257,9 @@ In `App.vue`, the layout component is dynamically selected based on the `meta.la
 ### 4.1 Axios Instance `api/index.ts`
 
 ```typescript
-import axios from 'axios'
-import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios'
-import { getToken, removeToken } from '@/utils/token'
+import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
+import { getToken, removeToken } from '@/utils/token'
 import router from '@/router'
 
 const service: AxiosInstance = axios.create({
@@ -257,37 +267,44 @@ const service: AxiosInstance = axios.create({
   timeout: 15000,
 })
 
-// Request interceptor
+// Request interceptor: attach the token automatically
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getToken()
-    if (token && config.headers) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 )
 
-// Response interceptor
+// Response interceptor: handle business codes and 401 uniformly
 service.interceptors.response.use(
   (response: AxiosResponse) => {
     const res = response.data
-    if (res.code !== 200) {
+    if (res.code !== undefined && res.code !== 200) {
       ElMessage.error(res.message || 'Request failed')
-      // 401 not logged in → Redirect to login page
       if (res.code === 401) {
         removeToken()
         router.push('/login')
       }
-      return Promise.reject(new Error(res.message))
+      return Promise.reject(new Error(res.message || 'Request failed'))
     }
     return res
   },
   (error) => {
-    ElMessage.error(error.message || 'Network error')
+    const status = error.response?.status
+    const message = error.response?.data?.message || error.message || 'Network error'
+    if (status === 401) {
+      removeToken()
+      router.push('/login')
+      ElMessage.error('Session expired, please sign in again')
+    } else {
+      ElMessage.error(message)
+    }
     return Promise.reject(error)
-  }
+  },
 )
 
 export default service
@@ -296,27 +313,37 @@ export default service
 ### 4.2 API Module Example `api/cart.ts`
 
 ```typescript
-import request from './index'
-import type { CartItem } from '@/types/cart'
+import service from '@/api'
+import type { CartItem, AddCartRequest, UpdateCartRequest, SelectCartRequest } from '@/types/cart'
 
-export function getCartList(): Promise<CartItem[]> {
-  return request.get('/cart/list')
+// Get the cart list
+export const getCartList = () => {
+  return service.get<any, { code: number; message: string; data: CartItem[]; timestamp: number }>('/cart/list')
 }
 
-export function addToCart(skuId: number, quantity: number) {
-  return request.post('/cart/add', { skuId, quantity })
+// Add an item to the cart
+export const addToCart = (data: AddCartRequest) => {
+  return service.post('/cart/add', data)
 }
 
-export function updateQuantity(cartItemId: number, quantity: number) {
-  return request.put('/cart/update', { cartItemId, quantity })
+// Update the cart item quantity
+export const updateCartQuantity = (data: UpdateCartRequest) => {
+  return service.put('/cart/update', data)
 }
 
-export function removeFromCart(cartItemId: number) {
-  return request.delete(`/cart/${cartItemId}`)
+// Remove a cart item
+export const removeFromCart = (cartItemId: number) => {
+  return service.delete(`/cart/${cartItemId}`)
 }
 
-export function selectCartItems(cartItemIds: number[]) {
-  return request.put('/cart/select', { cartItemIds })
+// Select/deselect cart items
+export const selectCartItems = (data: SelectCartRequest) => {
+  return service.put('/cart/select', data)
+}
+
+// Select all/deselect all
+export const selectAllCart = (selected: number) => {
+  return service.put('/cart/select-all', { selected })
 }
 ```
 
@@ -327,9 +354,8 @@ export function selectCartItems(cartItemIds: number[]) {
 ### 5.1 Static Routes + Role Metadata `router/index.ts`
 
 ```typescript
-import { createRouter, createWebHistory } from 'vue-router'
-import type { RouteRecordRaw } from 'vue-router'
-import { getToken } from '@/utils/token'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 // Route meta type extension
@@ -342,50 +368,51 @@ declare module 'vue-router' {
   }
 }
 
-// Public routes (no login required)
+// Public routes (no login required): mall browsing + login/registration
 const publicRoutes: RouteRecordRaw[] = [
-  {
-    path: '/',
-    component: () => import('@/components/layout/MallLayout.vue'),
-    children: [
-      { path: '', name: 'Home', component: () => import('@/views/home/HomeView.vue') },
-      { path: 'product/:id', name: 'ProductDetail', component: () => import('@/views/product/ProductDetailView.vue') },
-      { path: 'search', name: 'SearchResult', component: () => import('@/views/product/SearchResultView.vue') },
-    ]
-  },
-  { path: '/login', name: 'Login', component: () => import('@/views/user/LoginView.vue') },
-  { path: '/register', name: 'Register', component: () => import('@/views/user/RegisterView.vue') },
-  { path: '/forgot-password', name: 'ForgotPassword', component: () => import('@/views/user/ForgotPasswordView.vue') },
+  { path: '/login', name: 'Login', component: () => import('@/views/user/LoginView.vue'), meta: { title: 'Login' } },
+  { path: '/register', name: 'Register', component: () => import('@/views/user/RegisterView.vue'), meta: { title: 'Register' } },
+  { path: '/forgot-password', name: 'ForgotPassword', component: () => import('@/views/user/ForgotPasswordView.vue'), meta: { title: 'Forgot Password' } },
+  { path: '/product/:id', name: 'ProductDetail', component: () => import('@/views/product/ProductDetailView.vue'), meta: { title: 'Product Details' } },
 ]
 
-// Routes requiring login (regular users)
+// Mall layout routes (public children such as home/search/coupons + children requiring login)
 const userRoutes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/components/layout/MallLayout.vue'),
-    meta: { roles: ['USER', 'MERCHANT', 'ADMIN'] },
+    meta: { layout: 'mall' },
     children: [
-      { path: 'cart', name: 'Cart', meta: { title: 'Cart' }, component: () => import('@/views/cart/CartView.vue') },
-      { path: 'checkout', name: 'Checkout', meta: { title: 'Checkout' }, component: () => import('@/views/order/CheckoutView.vue') },
-      { path: 'orders', name: 'OrderList', meta: { title: 'My Orders' }, component: () => import('@/views/order/OrderListView.vue') },
-      { path: 'order/:id', name: 'OrderDetail', meta: { title: 'Order Details' }, component: () => import('@/views/order/OrderDetailView.vue') },
-      { path: 'payment/:orderId', name: 'Payment', meta: { title: 'Payment' }, component: () => import('@/views/order/PaymentView.vue') },
-      { path: 'profile', name: 'Profile', meta: { title: 'Personal Information' }, component: () => import('@/views/user/ProfileView.vue') },
-      { path: 'address', name: 'Address', meta: { title: 'Shipping Address' }, component: () => import('@/views/user/AddressView.vue') },
-      { path: 'chat/:conversationId?', name: 'Chat', meta: { title: 'Chat' }, component: () => import('@/views/chat/ChatView.vue') },
+      { path: '', redirect: '/home' },
+      { path: 'home', name: 'Home', component: () => import('@/views/home/HomeView.vue'), meta: { title: 'Home' } },
+      { path: 'coupons', name: 'CouponCenter', component: () => import('@/views/coupon/CouponCenterView.vue'), meta: { title: 'Coupon Center' } },
+      { path: 'search', name: 'SearchResult', component: () => import('@/views/product/SearchResultView.vue'), meta: { title: 'Search Results' } },
+      { path: 'cart', name: 'Cart', meta: { title: 'Cart', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/cart/CartView.vue') },
+      { path: 'checkout', name: 'Checkout', meta: { title: 'Checkout', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/CheckoutView.vue') },
+      { path: 'orders', name: 'OrderList', meta: { title: 'My Orders', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderListView.vue') },
+      { path: 'payments', name: 'PaymentRecords', meta: { title: 'Payment Records', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentRecordView.vue') },
+      { path: 'order/:id', name: 'OrderDetail', meta: { title: 'Order Details', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/OrderDetailView.vue') },
+      { path: 'payment/:orderId', name: 'Payment', meta: { title: 'Payment', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/order/PaymentView.vue') },
+      { path: 'merchant/apply', name: 'MerchantApply', meta: { title: 'Merchant Onboarding', roles: ['USER', 'MERCHANT'] }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
+      { path: 'refunds', name: 'RefundList', meta: { title: 'Refunds / After-sales', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/refund/RefundListView.vue') },
+      { path: 'profile', name: 'Profile', redirect: '/settings' },
+      { path: 'settings', name: 'Settings', meta: { title: 'Account Settings', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/user/SettingsView.vue') },
+      { path: 'address', name: 'Address', meta: { title: 'Shipping Address', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/user/AddressView.vue') },
+      { path: 'chat/:conversationId?', name: 'Chat', meta: { title: 'Chat', roles: ['USER', 'MERCHANT', 'ADMIN'] }, component: () => import('@/views/chat/ChatView.vue') },
+      { path: 'help/:type', name: 'Help', meta: { title: 'Help Center' }, component: () => import('@/views/common/HelpView.vue') },
     ]
   },
 ]
 
-// Merchant routes
+// Merchant backend routes
 const merchantRoutes: RouteRecordRaw[] = [
   {
     path: '/merchant',
     component: () => import('@/components/layout/MerchantLayout.vue'),
-    meta: { roles: ['MERCHANT'] },
+    meta: { layout: 'merchant', roles: ['MERCHANT'] },
     children: [
-      { path: 'apply', name: 'MerchantApply', meta: { title: 'Merchant Onboarding', roles: ['USER', 'MERCHANT'] }, component: () => import('@/views/merchant/MerchantApplyView.vue') },
       { path: 'products', name: 'ProductManage', meta: { title: 'Product Management' }, component: () => import('@/views/merchant/ProductManageView.vue') },
+      { path: 'comments', name: 'MerchantComments', meta: { title: 'Comment Management' }, component: () => import('@/views/merchant/CommentManageView.vue') },
       { path: 'orders', name: 'MerchantOrders', meta: { title: 'Order Management' }, component: () => import('@/views/merchant/OrderManageView.vue') },
       { path: 'refunds', name: 'RefundManage', meta: { title: 'Refund Review' }, component: () => import('@/views/merchant/RefundManageView.vue') },
       { path: 'stats', name: 'SalesStats', meta: { title: 'Sales Statistics' }, component: () => import('@/views/merchant/SalesStatsView.vue') },
@@ -393,26 +420,36 @@ const merchantRoutes: RouteRecordRaw[] = [
   },
 ]
 
-// Administrator routes
+// Administrator backend routes
 const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/admin',
     component: () => import('@/components/layout/AdminLayout.vue'),
-    meta: { roles: ['ADMIN'] },
+    meta: { layout: 'admin', roles: ['ADMIN'] },
     children: [
+      { path: '', redirect: '/admin/users' },
+      { path: 'dashboard', redirect: '/admin/users' },
       { path: 'users', name: 'UserManage', meta: { title: 'User Management' }, component: () => import('@/views/admin/UserManageView.vue') },
       { path: 'merchants', name: 'MerchantAudit', meta: { title: 'Merchant Review' }, component: () => import('@/views/admin/MerchantAuditView.vue') },
       { path: 'categories', name: 'CategoryManage', meta: { title: 'Category Management' }, component: () => import('@/views/admin/CategoryManageView.vue') },
       { path: 'products', name: 'ProductAll', meta: { title: 'Product Management' }, component: () => import('@/views/admin/ProductAllView.vue') },
       { path: 'orders', name: 'OrderAll', meta: { title: 'Order Management' }, component: () => import('@/views/admin/OrderAllView.vue') },
+      { path: 'refunds', name: 'AdminRefundAudit', meta: { title: 'Refund Review' }, component: () => import('@/views/merchant/RefundManageView.vue') },
       { path: 'report', name: 'SalesReport', meta: { title: 'Sales Reports' }, component: () => import('@/views/admin/SalesReportView.vue') },
+      { path: 'coupons', name: 'CouponManage', meta: { title: 'Flash-sale Coupon Management' }, component: () => import('@/views/admin/CouponManageView.vue') },
     ]
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [...publicRoutes, ...userRoutes, ...merchantRoutes, ...adminRoutes],
+  routes: [
+    ...publicRoutes,
+    ...userRoutes,
+    ...merchantRoutes,
+    ...adminRoutes,
+    { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/views/NotFound.vue'), meta: { title: 'Page Not Found' } },
+  ],
 })
 ```
 
@@ -420,31 +457,27 @@ const router = createRouter({
 
 ```typescript
 router.beforeEach((to, _from, next) => {
-  document.title = (to.meta.title as string) || 'Online Supermarket'
+  document.title = `${to.meta.title || 'Online Supermarket'} - Chrono BBS`
+  const userStore = useUserStore()
 
-  const token = getToken()
-
+  // Logged-in users cannot access the login/registration pages
   if (to.path === '/login' || to.path === '/register') {
-    if (token) return next('/')       // Logged-in users cannot access the login page
+    if (userStore.token) return next('/home')
     return next()
   }
 
-  // Target route requires no role → allow (public page)
-  if (!to.meta.roles || to.meta.roles.length === 0) {
+  const roles = to.meta.roles
+  if (!roles || roles.length === 0) {
     return next()
   }
 
-  // Target route requires a role → check login
-  if (!token) {
+  if (!userStore.token) {
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
 
-  // Check whether the role matches
-  const userStore = useUserStore()
-  const userRole = userStore.userInfo?.role
-  if (to.meta.roles && !to.meta.roles.includes(userRole || '')) {
+  if (!roles.includes(userStore.roleName)) {
     ElMessage.warning('Access denied')
-    return next('/')
+    return next('/home')
   }
 
   next()
@@ -527,10 +560,10 @@ export const useUserStore = defineStore('user', () => {
 
 ### 7.1 Backend WebSocket Contract
 
-The backend uses JSR 356 annotations (`@OnOpen` / `@OnClose` / `@OnMessage`). The connection URL format is:
+The backend uses JSR 356 annotations (`@OnOpen` / `@OnClose` / `@OnMessage`). The connection URL format is (same origin as the current page; the protocol automatically switches between `ws`/`wss`, and the token is passed as a query parameter):
 
 ```
-ws://localhost:8080/chat/{userId}
+/chat/{userId}?token={jwt}
 ```
 
 Message format (JSON):
@@ -539,15 +572,19 @@ Message format (JSON):
 {
   "type": "TEXT",
   "conversationId": 123,
+  "messageId": 1001,
+  "senderId": 10,
+  "senderRole": 0,
   "content": "Hello, is this product in stock?",
   "productId": 456,
+  "isRead": 0,
   "timestamp": 1700000000000
 }
 ```
 
 ### 7.2 Frontend Wrapper `utils/chatSocket.ts`
 
-A global `chatSocket` singleton is owned by the mall layout and shared with the chat page:
+A global `chatSocket` singleton is held by the mall layout and shared with the chat page:
 
 - `connect(userId, token)` opens `/chat/{userId}?token=...` against the current origin and reuses an existing connection;
 - `send({ conversationId, content })` sends a `TEXT` frame when the connection is ready and returns `false` otherwise;
@@ -595,6 +632,27 @@ export interface SearchParams {
   size?: number
 }
 
+// Search result item
+export interface SearchItem {
+  id: number
+  name: string
+  description?: string
+  brand?: string
+  categoryId?: number
+  categoryName?: string
+  minPrice: number
+  sales: number
+  image?: string
+}
+
+// Paginated search result structure
+export interface SearchResult {
+  total: number
+  page: number
+  size: number
+  list: SearchItem[]
+}
+
 export const searchProducts = (params: SearchParams) =>
   service.get<any, SearchResponse<SearchResult>>('/search', { params })
 
@@ -617,70 +675,70 @@ export const getHotSearch = () =>
 
 ## 9. Image Upload (Frontend → Backend → Local Directory / OSS)
 
-### 9.1 Upload Component `components/ImageUpload.vue`
+### 9.1 Upload API `api/upload.ts` and Inline Page Usage
+
+> The frontend does not extract a standalone `ImageUpload` component. Pages (product management, account settings, category management, order details, etc.) use `el-upload` inline and upload manually through `api/upload.ts`. The authorization header is injected by the Axios interceptor and does not need to be set manually.
+
+Upload API wrapper:
+
+```typescript
+// api/upload.ts
+import service from '@/api'
+
+export interface UploadImageResponse {
+  url: string
+}
+
+export const uploadImage = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return service.post<any, { code: number; message: string; data: UploadImageResponse; timestamp: number }>(
+    '/upload/image',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+}
+```
+
+Inline usage in a page (product management `ProductManageView.vue` as an example):
 
 ```vue
-<template>
-  <div class="image-upload">
-    <el-upload
-      :action="uploadUrl"
-      :headers="uploadHeaders"
-      list-type="picture-card"
-      :limit="limit"
-      :on-success="handleSuccess"
-      :on-error="handleError"
-      :before-upload="beforeUpload"
-      :file-list="fileList"
-      multiple
-    >
-      <el-icon><Plus /></el-icon>
-    </el-upload>
-  </div>
-</template>
+<el-upload
+  v-model:file-list="imageFileList"
+  list-type="picture-card"
+  :auto-upload="false"
+  :limit="4"
+  :on-change="handleImageChange"
+  :on-remove="handleImageRemove"
+>
+  <el-icon><Plus /></el-icon>
+</el-upload>
+```
 
-<script setup lang="ts">
-import { computed, ref } from 'vue'
-import { getToken } from '@/utils/token'
-import { ElMessage } from 'element-plus'
-import type { UploadProps, UploadFile } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+```typescript
+import { uploadImage } from '@/api/upload'
+import type { UploadUserFile } from 'element-plus'
 
-const props = defineProps<{
-  modelValue: string[]          // List of uploaded URLs
-  limit?: number
-}>()
-
-const emit = defineEmits<{
-  (e: 'update:modelValue', urls: string[]): void
-}>()
-
-const uploadUrl = '/api/upload/image'
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${getToken()}`,
-}))
-
-const fileList = ref<UploadFile[]>(
-  props.modelValue.map((url, idx) => ({ uid: idx, name: `image-${idx}`, url, status: 'success' }))
-)
-
-const handleSuccess: UploadProps['onSuccess'] = (response: any, _file, _fileList) => {
-  const urls = _fileList.filter(f => f.url || f.response?.url).map(f => f.url || f.response?.url)
-  emit('update:modelValue', urls)
+const handleImageChange = async (file: UploadUserFile) => {
+  if (!file.raw) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.raw.type)) {
+    ElMessage.warning('Only jpg/jpeg/png/webp formats are supported')
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  if (file.raw.size > 2 * 1024 * 1024) {
+    ElMessage.warning('Image size cannot exceed 2MB')
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+    return
+  }
+  try {
+    const res = await uploadImage(file.raw)
+    file.url = res.data.url
+    syncImageUrls()
+  } catch {
+    imageFileList.value = imageFileList.value.filter((item) => item.uid !== file.uid)
+  }
 }
-
-const handleError: UploadProps['onError'] = () => {
-  ElMessage.error('Upload failed, please try again')
-}
-
-const beforeUpload: UploadProps['beforeUpload'] = (file) => {
-  const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
-
-  if (!isImage)  { ElMessage.error('Only image files can be uploaded'); return false }
-  if (!isLt2M)   { ElMessage.error('Image size cannot exceed 2MB'); return false }
-  return true
-}
-</script>
 ```
 
 ---
@@ -743,21 +801,42 @@ User clicks "Submit Order"
 ### 11.2 Frontend Implementation
 
 ```typescript
-// Order page
+// Checkout page (CheckoutView.vue)
+const loadData = async () => {
+  // Fetch the cart, shipping addresses and anti-duplicate token in parallel
+  const [cartRes, addrRes, tokenRes] = await Promise.all([
+    getCartList(),
+    getAddressList(),
+    getSubmitToken(),
+  ])
+  cartItems.value = (cartRes.data || []).filter(i => i.selected === 1)
+  addresses.value = addrRes.data || []
+  submitToken.value = tokenRes.data.token
+  // ...
+}
+
 const submitOrder = async () => {
-  // 1. Obtain the anti-duplicate submission token
-  const { data: tokenData } = await getSubmitToken()
-  const submitToken = tokenData.token
-
-  // 2. Submit the order
-  const { data: orderData } = await createOrder({
-    token: submitToken,
-    addressId: selectedAddressId.value,
-    cartItemIds: cartStore.selectedItems.map(i => i.id),
-  })
-
-  // 3. Redirect to the payment page
-  router.push(`/payment/${orderData.orderId}`)
+  if (cartItems.value.length === 0) {
+    ElMessage.warning('No products selected')
+    return
+  }
+  submitting.value = true
+  try {
+    // Submit with the anti-duplicate token + address + selected cart item IDs
+    const res = await createOrder({
+      token: submitToken.value,
+      addressId: selectedAddress.value.id,
+      cartItemIds: cartItems.value.map(i => i.id),
+      remark: remark.value || undefined,
+      userCouponId: selectedCouponId.value ?? undefined,
+    })
+    ElMessage.success('Order created successfully')
+    router.replace(`/payment/${res.data.orderId}`)
+  } catch {
+    ElMessage.error('Failed to create the order')
+  } finally {
+    submitting.value = false
+  }
 }
 ```
 
@@ -825,16 +904,18 @@ server {
 | `/coupons` | Coupon Center | Guest/User/Merchant/Administrator | Guests can browse; claiming requires login |
 | `/login` | Login | Guest | Username, password + captcha |
 | `/register` | Register | Guest | Select role |
+| `/forgot-password` | Forgot Password | Guest | Reset password |
 | `/cart` | Cart | User/Merchant | Login required |
 | `/checkout` | Checkout | User/Merchant | Confirm address, products, amount |
 | `/payment/:orderId` | Payment | User/Merchant | Card/QR code payment |
 | `/orders` | My Orders | User/Merchant | Order list |
 | `/payments` | Payment Records | User/Merchant/Administrator | Payment method, amount and time |
 | `/order/:id` | Order Details | User/Merchant | Includes refund/return entry |
-| `/profile` | Personal Information | User/Merchant/Administrator | Change password, etc. |
+| `/refunds` | My Refunds/After-sales | User/Merchant/Administrator | Refund/return request list |
+| `/profile` | Personal Information | User/Merchant/Administrator | Redirects to `/settings` |
 | `/settings` | Account Settings | User/Merchant/Administrator | Preferences + avatar upload |
 | `/address` | Shipping Address | User/Merchant | Create, read, update, delete |
-| `/chat/:id?` | Chat | User/Merchant | WebSocket instant messaging |
+| `/chat/:conversationId?` | Chat | User/Merchant | WebSocket instant messaging |
 | `/help/:type` | Help Center | Guest/User | Static help page |
 | `/merchant/apply` | Merchant Onboarding | User | Submit onboarding application |
 | `/merchant/products` | Product Management | Merchant | Create, read, update, delete; list/unlist |
@@ -857,36 +938,98 @@ server {
 
 | Frontend Operation | HTTP Method | API Path | Request Body/Parameters |
 |----------|-----------|----------|-------------|
+| CAPTCHA | GET | `/api/user/captcha` | — |
 | Register | POST | `/api/user/register` | `{ username, password, phone, email, role, shopName, captchaUuid, captchaCode }` (`role=2` and `shopName` required for merchant registration) |
 | Login | POST | `/api/user/login` | `{ username, password, captchaUuid, captchaCode }` |
+| Get user information | GET | `/api/user/info` | — |
+| Update profile | PUT | `/api/user/profile` | `{ nickname, phone, email, avatar }` |
+| Change password | PUT | `/api/user/password` | `{ oldPassword, newPassword }` |
+| Log out | POST | `/api/user/logout` | — |
 | Get password reset verification code | POST | `/api/user/forgot-code` | `{ account, captchaUuid, captchaCode }` |
 | Reset password | POST | `/api/user/reset-password` | `{ uuid, code, newPassword }` |
-| Get user information | GET | `/api/user/info` | — |
 | Product list | GET | `/api/product/list` | `?categoryId=&page=&size=` |
 | Product details | GET | `/api/product/{id}` | — |
+| Category tree | GET | `/api/category/tree` | — |
+| Child category list | GET | `/api/category/children` | `?parentId=` |
 | Search | GET | `/api/search` | `?keyword=&categoryId=&brand=&minPrice=&maxPrice=&sort=&page=&size=` |
 | Search suggestions | GET | `/api/search/suggest` | `?keyword=` |
 | Search history | GET | `/api/search/history` | — |
 | Clear search history | DELETE | `/api/search/history` | — |
 | Hot search ranking | GET | `/api/search/hot` | — |
 | Get cart | GET | `/api/cart/list` | — |
-| Add to cart | POST | `/api/cart/add` | `{ skuId, quantity }` |
+| Add to cart | POST | `/api/cart/add` | `{ productId, skuId, quantity }` |
 | Update cart quantity | PUT | `/api/cart/update` | `{ cartItemId, quantity }` |
-| Delete cart item | DELETE | `/api/cart/{id}` | — |
+| Delete cart item | DELETE | `/api/cart/{cartItemId}` | — |
+| Select/deselect cart items | PUT | `/api/cart/select` | `{ cartItemIds, selected }` |
+| Select all/deselect all | PUT | `/api/cart/select-all` | `{ selected }` |
 | Get anti-duplicate token | GET | `/api/order/submit-token` | — |
-| Create order | POST | `/api/order/create` | `{ token, addressId, cartItemIds }` |
+| Create order | POST | `/api/order/create` | `{ token, addressId, cartItemIds, remark?, userCouponId? }` |
 | Order list | GET | `/api/order/list` | `?status=&page=&size=` |
 | Order details | GET | `/api/order/{id}` | — |
-| Cancel order | PUT | `/api/order/{id}/cancel` | — |
+| Cancel order | PUT | `/api/order/{id}/cancel` | `{ reason }` |
 | Confirm receipt | PUT | `/api/order/{id}/receive` | — |
+| Delete order | DELETE | `/api/order/{id}` | — |
 | Card payment | POST | `/api/payment/card` | `{ orderId, cardNo, expireDate, cvv }` |
 | Get payment QR code | POST | `/api/payment/qrcode` | `{ orderId }` |
 | Confirm QR code payment | POST | `/api/payment/confirm-qrcode` | `{ orderId }` |
+| Payment records | GET | `/api/payment/records` | `?page=&size=` |
 | Upload image | POST | `/api/upload/image` | FormData(file) |
-| Shipping address CRUD | GET/POST/PUT/DELETE | `/api/address` | — |
-| Post comment | POST | `/api/comment` | `{ productId, content, rating, images }` |
+| Address list | GET | `/api/address/list` | — |
+| Address details | GET | `/api/address/{id}` | — |
+| Create address | POST | `/api/address` | `{ receiverName, phone, province, city, district, detail, isDefault }` |
+| Update address | PUT | `/api/address/{id}` | Same as above |
+| Delete address | DELETE | `/api/address/{id}` | — |
+| Set default address | PUT | `/api/address/{id}/default` | — |
+| Comment list | GET | `/api/comment/list/{productId}` | `?page=&size=&star=` |
+| Post comment | POST | `/api/comment` | `{ productId, orderItemId, content, star, images }` |
+| Append comment | POST | `/api/comment/append` | `{ commentId, content }` |
+| Merchant reply | POST | `/api/comment/reply` | `{ parentId, content }` |
 | Request refund | POST | `/api/refund` | `{ orderItemId, type, reason, amount }` |
-| WebSocket connection | WS | `ws://host/chat/{userId}` | — |
+| My refund list | GET | `/api/refund/my` | `?page=&size=` |
+| Refund details | GET | `/api/refund/{id}` | — |
+| Review refund | PUT | `/api/refund/{id}/review` | `{ approved, reviewReason }` |
+| Submit return tracking | PUT | `/api/refund/{id}/return` | `{ returnCompany, returnLogisticsNo }` |
+| Confirm return receipt | PUT | `/api/refund/{id}/return-received` | — |
+| Conversation list | GET | `/api/chat/conversations` | — |
+| Message history | GET | `/api/chat/history/{conversationId}` | `?page=&size=` |
+| Send message | POST | `/api/chat/message` | `{ conversationId, content, type }` (Mock debugging only) |
+| Create conversation | POST | `/api/chat/conversation` | `{ merchantId, productId }` |
+| Mark as read | PUT | `/api/chat/read/{conversationId}` | — |
+| Unread count | GET | `/api/chat/unread-count` | — |
+| Flash-sale coupon list | GET | `/api/seckill/list` | `?page=&size=` |
+| Flash-sale coupon details | GET | `/api/seckill/detail/{id}` | — |
+| Claim flash-sale coupon | POST | `/api/seckill/claim/{couponId}` | — |
+| My coupons | GET | `/api/seckill/my-coupons` | `?page=&size=` |
+| Create flash-sale coupon | POST | `/api/seckill/create` | `{ name, ... }` |
+| Update flash-sale coupon | PUT | `/api/seckill/update/{id}` | Same as above |
+| Delete flash-sale coupon | DELETE | `/api/seckill/{id}` | — |
+| Calculate order discount | POST | `/api/seckill/calculate` | `{ ... }` |
+| Merchant onboarding application | POST | `/api/merchant/apply` | `{ shopName, contactPhone, businessLicense }` |
+| Merchant information | GET | `/api/merchant/info` | — |
+| Merchant refund list | GET | `/api/merchant/refunds` | `?page=&size=&status=` |
+| Merchant product list | GET | `/api/merchant/products` | `?page=&size=&status=` |
+| Merchant order list | GET | `/api/merchant/orders` | `?page=&size=&status=` |
+| Ship order | PUT | `/api/merchant/ship/{orderId}` | — |
+| Merchant sales statistics | GET | `/api/merchant/stats` | `?startDate=&endDate=` |
+| Create product | POST | `/api/product` | `{ ...ProductFormData }` |
+| Update product | PUT | `/api/product/{id}` | Same as above |
+| List/unlist product | PUT | `/api/product/{id}/status` | `{ status }` |
+| Delete product | DELETE | `/api/product/{id}` | — |
+| User list | GET | `/api/admin/users` | `?page=&size=&keyword=&role=&status=` |
+| Set user status | PUT | `/api/admin/users/{id}/status` | `{ status }` |
+| Merchant list | GET | `/api/admin/merchants` | `?status=&page=&size=` |
+| Review merchant | PUT | `/api/admin/merchants/{id}/review` | `{ approved, reviewReason }` |
+| Create category | POST | `/api/admin/categories` | `{ name, parentId, level, sortOrder, icon }` |
+| Update category | PUT | `/api/admin/categories/{id}` | Same as above |
+| Delete category | DELETE | `/api/admin/categories/{id}` | — |
+| Admin product list | GET | `/api/admin/products` | `?page=&size=&keyword=&categoryId=&merchantId=&status=` |
+| Admin order list | GET | `/api/admin/orders` | `?page=&size=&orderNo=&status=` |
+| Admin sales report | GET | `/api/admin/report` | `?startDate=&endDate=&groupBy=` |
+| Admin refund list | GET | `/api/admin/refunds` | `?page=&size=&status=` |
+| Admin update product | PUT | `/api/admin/products/{id}` | `{ ...ProductFormData }` |
+| Admin list/unlist product | PUT | `/api/admin/products/{id}/status` | `{ status }` |
+| Admin delete product | DELETE | `/api/admin/products/{id}` | — |
+| WebSocket connection | WS | `/chat/{userId}?token={jwt}` | — |
 
 
 ---
@@ -935,9 +1078,6 @@ All items below are connected to the real backend; `npm run dev:mock` can still 
 - `npm run dev` uses the real backend; `npm run dev:mock` uses the `mock/` directory. They are independent.
 - Mock product create/edit persists multiple SKUs and recalculates min/max prices; the admin report fields match `AdminReportVO`.
 
-> Note: all listed capabilities are available against the real backend; `npm run dev:mock` mirrors them with Mock data.
-
-
 ### 15.8 Chat Integration
 
 - The mall header message entry and "My Messages" menu item are enabled by default; the unread badge calls `GET /api/chat/unread-count`.
@@ -970,6 +1110,6 @@ All items below are connected to the real backend; `npm run dev:mock` can still 
 
 ### 15.13 Return Shipping, Admin Editing and Comment Images
 
-- After a return refund is approved, the buyer submits courier and tracking information on the refund page; the merchant/admin confirms receipt to complete the refund.
+- After a return refund is approved it enters "Awaiting Return"; the buyer submits the courier company and tracking number on the refunds/after-sales page, and the merchant/admin confirms receipt on the refund review page to complete the refund.
 - The admin global product list supports editing products and SKU price/stock; the backend provides `PUT /api/admin/products/{id}`.
 - Posting a review supports up to 4 images, which are displayed in the product detail comment list.

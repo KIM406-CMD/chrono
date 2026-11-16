@@ -51,9 +51,10 @@ Adopt the [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.
 Describe in detail the motivation for this commit, the implementation approach, and the differences from previous behavior. Each line must not exceed 72 characters.
 
 ```
-The cart API used to deduct database stock directly;
-it now validates Redis stock first and deducts asynchronously,
-avoiding overselling under high concurrency.
+The order API used to rely on a distributed lock for concurrency control;
+it now consumes a Redis anti-duplicate token and deducts stock with a
+conditional `WHERE stock >= ?` update, avoiding duplicate submission
+and overselling.
 ```
 
 ### 1.3 Footer (Optional)
@@ -82,10 +83,10 @@ feat(order): add order duplicate-submission-prevention Token validation
 ```
 fix(payment): fix amount error caused by duplicate payment
 
-The payment callback lacked Idempotency validation, so multiple callbacks
-for the same order updated the payment status repeatedly.
-Idempotent deduplication based on order_id is now applied; already-paid
-orders return success directly.
+Repeated payment submissions wrote duplicate payment records and
+updated the order multiple times. The order is now updated with a
+conditional `WHERE status = pending payment` statement; when 0 rows
+are updated, the duplicate payment is rejected and rolled back.
 
 Closes #42
 ```

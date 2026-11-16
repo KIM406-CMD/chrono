@@ -21,7 +21,7 @@
 | API documentation | Knife4j (OpenAPI 3.0) | 4.5.0 |
 | Image storage | Local directory / Alibaba Cloud OSS | |
 | Utility library | Lombok | |
-| Logging | Logback + AOP operation log | |
+| Logging | Logback (AOP operation log reserved, not enabled) | |
 | Scheduled tasks | Spring @Scheduled | |
 
 ---
@@ -55,10 +55,10 @@ module-start
 
 | Module | Responsibilities |
 |------|------|
-| **common** | Common base classes: `Result<T>`, `PageResult<T>`, `BusinessException`, error code enums, `RedisUtil`, `JwtUtil`, constant definitions |
+| **common** | Common base classes: `Result<T>`, `PageResult<T>`, `BusinessException`, error code enums, `JwtUtil`, `UserContext`, `@Public` annotation |
 | **module-mapper** | Entity classes, MyBatis Mapper interfaces, XML mapping files |
 | **module-service** | Service interfaces + Impl implementations, DTO input definitions, business logic orchestration |
-| **module-api** | Controllers, VO output definitions, interceptors (authorization/logging) |
+| **module-api** | Controllers, VO output definitions, WebSocket endpoint, global exception handling |
 | **module-start** | Spring Boot startup class, `application.yml`, global configuration (CORS/OSS/Knife4j), scheduled task scheduling |
 
 ---
@@ -69,7 +69,7 @@ Taking `module-api` as an example:
 
 ```
 com.ncist.controller/
-    ├── UserController.java          # User APIs
+    ├── AuthController.java          # Authentication APIs
     ├── ProductController.java       # Product APIs
     ├── CategoryController.java      # Category APIs
     ├── SearchController.java        # Search APIs
@@ -78,23 +78,28 @@ com.ncist.controller/
     ├── PaymentController.java       # Payment APIs
     ├── AddressController.java       # Address APIs
     ├── CommentController.java       # Comment APIs
-    ├── AdminController.java         # Administrator APIs
+    ├── RefundController.java        # Refund APIs
     ├── MerchantController.java      # Merchant APIs
+    ├── AdminController.java         # Administrator APIs
+    ├── SeckillController.java       # Flash-sale coupon APIs
+    ├── UploadController.java        # File upload APIs
     └── ChatController.java          # Instant messaging APIs
+com.ncist.websocket/                 # WebSocket endpoint (@ServerEndpoint)
 com.ncist.vo/                        # Output VOs
-com.ncist.interceptor/               # Interceptors (JWT authorization, operation logging)
+com.ncist.interceptor/               # Interceptor (JWT authorization, in module-start)
 ```
 
 Taking `module-service` as an example:
 
 ```
 com.ncist.service/
-    ├── UserService.java             # Interface
-    ├── impl/UserServiceImpl.java    # Implementation
+    ├── AuthService.java             # Interface
+    ├── impl/AuthServiceImpl.java    # Implementation
     ├── ProductService.java
     ├── impl/ProductServiceImpl.java
     └── ... (same pattern, divided by module)
 com.ncist.dto/                       # Input DTOs
+com.ncist.scheduler/                 # Scheduled tasks (flash-sale coupon status refresh)
 ```
 
 Taking `module-mapper` as an example:
@@ -191,7 +196,7 @@ public class BusinessException extends RuntimeException {
 ### 4.5 Global Exception Handling
 
 ```java
-// module-api or module-start
+// module-api
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -220,7 +225,7 @@ public class GlobalExceptionHandler {
 ### 5.1 JWT + Redis Dual Validation Flow
 
 ```
-Login request → Validate username and password → Generate JWT token → Store in Redis(userId:token)
+Login request → Validate username and password → Generate JWT token → Store in Redis(token:{userId} = token)
               → Return the token to the frontend
 
 Subsequent requests → Interceptor extracts Header Authorization → Parse JWT to obtain userId
@@ -228,7 +233,7 @@ Subsequent requests → Interceptor extracts Header Authorization → Parse JWT 
 ```
 
 - **JWT**: Carries user identity information (userId, role), valid for 2 hours.
-- **Redis**: Stores the token version number and supports active kick-out (delete the corresponding Redis key to invalidate immediately).
+- **Redis**: Stores the current valid token string (`token:{userId}`) and supports active kick-out (delete the corresponding Redis key to invalidate immediately).
 - **Logout**: Delete the token from Redis.
 
 ### 5.2 RBAC Permission Control (Service-Layer Checks)
@@ -261,7 +266,7 @@ Captchas are of two types, both stored in Redis:
 
 | Type | Purpose | Redis Key | Validity | Description |
 |------|------|-----------|--------|------|
-| Graphical captcha | Login/registration/obtain password reset verification code | `verify:{uuid}` | 5min | Generate UUID + captcha image |
+| Graphical captcha | Login/registration/obtain password reset verification code | `captcha:{uuid}` | 2min | Generate UUID + captcha image |
 | SMS/email verification code | Reset password when the password is forgotten | `reset:code:{uuid}` | 5min | Returned directly in the response during the course project phase |
 
 - A graphical captcha is required for login/registration to prevent brute-force attacks.
@@ -318,40 +323,30 @@ UPDATE product_sku SET stock = stock - ? WHERE id = ? AND stock >= ?
 -- Returns 0 rows when the condition is not met; the business layer checks and reports "Insufficient stock"
 ```
 
-### 7.2 Redis Distributed Lock
+### 7.2 Duplicate Submission Prevention Token
+
+```
+Before ordering: frontend calls GET /api/order/submit-token → backend generates a UUID and stores it in Redis
+                 key order:submit-token:{token}, value userId, expires in 5 minutes
+When ordering: frontend carries the token → backend validates userId ownership and immediately deletes it
+               → atomicity guarantees one-time validity
+        If the token does not exist or does not belong to the current user → duplicate submission → reject
+```
+
+### 7.3 Payment Idempotency
 
 ```java
-// Lock userId when placing an order to prevent concurrent duplicate orders
-String lockKey = "lock:order:" + userId;
-boolean locked = redisUtil.tryLock(lockKey, 10);  // 10-second timeout
-if (!locked) {
-    throw new BusinessException(ErrorCode.ORDER_DUPLICATE);
-}
-try {
-    // Order placement logic
-} finally {
-    redisUtil.unlock(lockKey);
+// Validate order ownership and status=pending payment, then insert the payment record.
+// Finally update the order with a status condition: concurrent/repeated payment updates 0 rows,
+// so an exception is thrown and the transaction rolls back.
+int rows = orderMapper.markPaid(orderId, userId);
+if (rows == 0) {
+    throw new BusinessException(PaymentErrorCode.ORDER_NOT_PAYABLE);
 }
 ```
 
-### 7.3 Duplicate Submission Prevention Token
-
-```
-Before ordering: frontend calls GET /api/order/submit-token → backend generates a UUID and stores it in Redis (expires in 5 minutes)
-When ordering: frontend carries the token → backend validates and immediately deletes it → atomicity guarantees one-time validity
-        If the token does not exist → duplicate submission → reject
-```
-
-### 7.4 Payment Idempotency
-
-```java
-// order_id is unique in the payment table; query before payment
-Payment existing = paymentMapper.selectByOrderId(orderId);
-if (existing != null && existing.getStatus() == SUCCESS) {
-    return Result.success();  // Idempotent return
-}
-// Execute payment...
-```
+> `payment.order_id` is not unique; idempotency relies on the conditional order status update
+> (`UPDATE order SET status=2 ... WHERE status=1`), not on a unique constraint or a pre-query.
 
 ---
 
@@ -365,13 +360,16 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Order createOrder(Long userId, CreateOrderDTO dto) {
-        // 1. Validate cart + stock
-        // 2. Deduct Redis stock (Redis only, not in this transaction)
-        // 3. Generate order number → insert into order table
-        // 4. Insert into order_item table
-        // 5. Delete selected cart items
-        // 6. Deduct MySQL stock → synchronize Redis
+    public CreateOrderVO createOrder(Long userId, CreateOrderDTO dto) {
+        // 1. Validate and consume the anti-duplication token (DELETE atomically guarantees single use)
+        // 2. Validate that the shipping address belongs to the user
+        // 3. Query selected cart items (SQL limited to the owner) and validate listing status and stock
+        // 4. Atomically deduct stock (UPDATE ... WHERE stock >= quantity)
+        // 5. Calculate the amount and apply the coupon discount
+        // 6. Write the address snapshot → insert into the order table
+        // 7. Insert into the order_item table (price snapshot at order time)
+        // 8. Clear the ordered cart items
+        // 9. Redeem the coupon (status condition prevents double redemption under concurrency)
         // Any step fails → roll back all
     }
 }
@@ -381,33 +379,35 @@ public class OrderServiceImpl implements OrderService {
 
 | Operation | Same Transaction? | Description |
 |------|------|------|
-| Insert order + insert order_item + clear cart + deduct MySQL stock | ✅ Same transaction | MySQL write operations, guaranteed by ACID |
-| Deduct Redis stock | ❌ Independent operation | Redis does not support rollback; compensate separately after order success/failure |
-| Send ES synchronization message | ❌ Asynchronous after transaction | Does not affect the main flow |
+| Consume anti-duplication token | ❌ Redis operation | DELETE is executed inside the transaction method but does not roll back with MySQL; deletion means consumed |
+| Insert order + insert order_item + clear cart + deduct MySQL stock + redeem coupon | ✅ Same transaction | MySQL write operations, guaranteed by ACID |
+| Send ES synchronization message | ❌ Synchronous call inside the transaction | Exceptions are swallowed internally; failures are only logged |
 
 ---
 
 ## 9. ES Data Synchronization Strategy
 
-### 9.1 Synchronization Method
+### 9.1 Synchronization Method (Current Implementation)
 
-Uses **async + MQ or thread pool**, without blocking the main flow:
+Uses **synchronous calls + exception isolation**: after the product service finishes the MySQL operation it directly calls `ProductSearchIndexService` to synchronize ES. The synchronization logic catches all exceptions internally and only logs warnings, so it **does not affect or roll back the main product business** (no MQ/@Async is used).
 
 ```
-Product listed/updated → Service layer finishes MySQL processing → asynchronously send ES update message
-Product unlisted/deleted → Service layer finishes MySQL processing → asynchronously send ES delete message
+Product listed/updated → Service layer finishes MySQL processing → synchronously write/overwrite the ES document
+Product unlisted/deleted → Service layer finishes MySQL processing → synchronously delete the ES document (ignore 404 if absent)
+Application startup → create the mapping if the index does not exist; full sync of listed products when the index is empty
 ```
-
-> During the course design phase, `@Async` + a thread pool can replace MQ to simplify the architecture.
 
 ### 9.2 Synchronization Content
 
+Index name `chrono_product`, fields: `id`, `name`, `description`, `brand`, `categoryId`, `categoryName`, `minPrice`, `sales`, `image`, `status`, `createdAt`.
+
 | Operation | ES Action |
 |------|------|
-| Product listing | INSERT into `product_index` |
-| Product update (name/price/description) | UPDATE `product_index` |
-| Product unlisting/deletion | DELETE from `product_index` |
-| Order payment (sales change) | Scheduled task batch-updates the `sales` field |
+| Product creation (unlisted by default) | Not written to the index; written when listed |
+| Product listing | INSERT/overwrite `chrono_product` |
+| Product update (name/description/brand/price/SKU) | UPDATE `chrono_product` (recalculate the minimum price) |
+| Product unlisting/deletion | DELETE from `chrono_product` |
+| Order payment (sales change) | Scheduled synchronization is not yet implemented; sales are refreshed on product update or full initialization |
 
 ---
 
@@ -448,27 +448,19 @@ Frontend selects an image → calls POST /api/upload/image
 | `refreshSeckillStatus` | Every 30 seconds | Refresh Flash-sale Coupon status (Not Started → In Progress → Ended) and batch-expire unused user coupons |
 
 ```java
-@Configuration
-@EnableScheduling
-public class ScheduleConfig {
+@Component
+@RequiredArgsConstructor
+public class SeckillStatusScheduler {
 
-    @Scheduled(cron = "0 */5 * * * ?")
-    public void cancelTimeoutOrders() { ... }
-
-    @Scheduled(cron = "0 */10 * * * ?")
-    public void syncSalesFromRedis() { ... }
-
-    @Scheduled(cron = "0 0 3 * * ?")
-    public void cleanSearchHistory() { ... }
-
-    @Scheduled(cron = "0 */5 * * * ?")
-    public void syncStockFromRedis() { ... }
-
-    @Scheduled(cron = "0 0 4 * * ?")
-    public void cleanChatMessages() { ... }
+    private final SeckillCouponMapper seckillCouponMapper;
+    private final UserCouponMapper userCouponMapper;
 
     @Scheduled(fixedDelay = 30_000)
-    public void refreshSeckillStatus() { ... }
+    public void refreshSeckillStatus() {
+        int activated = seckillCouponMapper.activateStarted(); // Not started at start time → In progress
+        int finished = seckillCouponMapper.finishEnded();      // In progress at end time → Ended
+        int expired = userCouponMapper.expireEnded();          // Unused user coupons after the activity → Expired
+    }
 }
 ```
 
@@ -482,7 +474,9 @@ public class ScheduleConfig {
 - Files roll daily: `logs/application.%d{yyyy-MM-dd}.log`
 - Retained for 30 days
 
-### 12.2 AOP Operation Log
+### 12.2 AOP Operation Log (Reserved, Not Enabled)
+
+> The current version only keeps the `operation_log` table and Mapper interface; the `@OperationLog` annotation and AOP aspect have not been implemented. The following is a design draft.
 
 ```java
 @Target(ElementType.METHOD)
@@ -505,7 +499,7 @@ public class OperationLogAspect {
 }
 ```
 
-### 12.3 Operation Log Table (New)
+### 12.3 Operation Log Table (Reserved)
 
 | Field | Type | Description |
 |------|------|------|
@@ -532,132 +526,98 @@ Users and merchants support **one-to-one private chat**; users can start a conve
 
 | Feature | Description |
 |------|------|
-| Protocol | WebSocket + STOMP |
-| Persistence | Messages stored in MySQL; automatically cleaned up after 30 days |
+| Protocol | Native WebSocket (JSR 356, `@ServerEndpoint`, not STOMP) |
+| Persistence | Messages stored in MySQL; 30-day automatic cleanup is a planned task and is not enabled yet |
 | History | Paginated queries; pull up to load more |
 | Offline messages | Supported; unread messages are automatically pushed when the receiver comes online |
-| Unread count | Unread counts maintained at the conversation level, stored in Redis + MySQL |
+| Unread count | Maintained at the conversation level in MySQL `conversation.user_unread` / `merchant_unread` |
+| Online status | Redis `online:{userId}`, written when a connection is established and deleted when it closes |
 
 ### 13.2 Database Tables
 
 See Chapter 9 of [db-design.md](./db-design.md):
 
-- **`conversation`**: Conversation table, `(user_id, merchant_id)` unique constraint
-- **`message`**: Message table, `conversation_id` references the conversation
+- **`conversation`**: Conversation table, `(user_id, merchant_id)` unique constraint; `merchant_id` stores the merchant **user** ID (`user.id`), not the merchant table primary key
+- **`message`**: Message table, `conversation_id` references the conversation; `sender_id` is the sender's user ID
 
-### 13.3 Spring WebSocket Configuration
+### 13.3 WebSocket Endpoint
 
 ```java
-@Configuration
-@EnableWebSocketMessageBroker
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+@Component
+@ServerEndpoint("/chat/{userId}")
+public class ChatWebSocketEndpoint {
 
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Client connection endpoint
-        registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();  // Compatible with browsers that do not support WebSocket
+    // Local online connections (userId -> Session), used for real-time push
+    private static final Map<Long, Session> SESSIONS = new ConcurrentHashMap<>();
+
+    @OnOpen
+    public void onOpen(Session session, @PathParam("userId") String userIdText) {
+        // 1. Parse the path userId and the token from the query string
+        // 2. Validate the token with JwtUtil, and token.userId == path userId
+        // 3. Ensure it matches Redis token:{userId} (prevent impersonation)
+        // 4. Kick-out: close the old connection for the same userId
+        // 5. Mark online in Redis: online:{userId}
+        // 6. Push unread messages received while offline
     }
 
-    @Override
-    public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // Client subscription prefix (receiving messages)
-        registry.enableSimpleBroker("/queue", "/topic");
-        // Server-side message receiving prefix
-        registry.setApplicationDestinationPrefixes("/app");
+    @OnMessage
+    public void onMessage(String text) {
+        // 1. Deserialize JSON into SendMessageDTO
+        // 2. chatService.sendMessage(userId, dto) persists the message
+        // 3. Echo the message to the sender
+        // 4. Push it to the receiver in real time if online (SESSIONS.get(receiverId))
+    }
+
+    @OnClose
+    public void onClose() {
+        // Remove the local session and delete Redis online:{userId}
     }
 }
 ```
 
 ### 13.4 Message Push Path Design
 
-| Path | Direction | Description |
+| Channel | Direction | Description |
 |------|------|------|
-| `/app/chat.send` | Client → Server | Send message |
-| `/queue/chat/{userId}` | Server → Client | Personal message push (one-to-one) |
-| `/queue/chat/notify` | Server → Client | System notification (new conversation, offline message reminder) |
+| `ws://host/chat/{userId}?token=` | Client → Server | Establish connection (handshake authentication) |
+| `@OnMessage` receives JSON | Client → Server | Send a message |
+| `session.sendText` | Server → Client | Real-time push (when the receiver is online) |
+
+> Message frame JSON: `{ type, conversationId, messageId, senderId, senderRole, content, productId, isRead, timestamp }`; error frame: `{ type: "ERROR", message }`.
 
 ### 13.5 Send Message Flow
 
 ```
 ┌─────────┐     ┌─────────────┐     ┌──────────┐     ┌─────────┐
-│ Sender  │     │  WebSocket  │     │  MySQL   │     │Receiver │
-│ (User)  │     │  Controller │     │          │     │(Merchant)│
+│ Sender  │     │ WebSocket   │     │  MySQL   │     │Receiver │
+│ (User)  │     │  Endpoint   │     │          │     │(Merchant)│
 └────┬────┘     └──────┬──────┘     └────┬─────┘     └────┬────┘
-     │                 │                │                 │
-     │ /app/chat.send  │                │                 │
+     │ Send JSON message│                │                 │
      │────────────────▶│                │                 │
      │                 │ INSERT message │                 │
      │                 │───────────────▶│                 │
      │                 │ UPDATE unread  │                 │
      │                 │───────────────▶│                 │
-     │                 │                │                 │
-     │                 │ /queue/chat/{merchantId}         │
-     │                 │─────────────────────────────────▶│
-     │                 │                │ (received if online) │
-     │    return OK    │                │                 │
-     │◀────────────────│                │                 │
+     │                 │  Echo + real-time push (if receiver online) │
+     │◀────────────────│─────────────────────────────────▶│
      │                 │                │                 │
      Receiver offline?                                       │
      ─────────────────────────────────────────────────────  │
-     Next time online → query message WHERE is_read=0 → batch push │
+     Next time online → @OnOpen pulls is_read=0 messages → push one by one │
 ```
 
-### 13.6 Core Code Design
-
-#### ChatController
+### 13.6 Core REST APIs (ChatController)
 
 ```java
 @RestController
+@RequestMapping("/api/chat")
 public class ChatController {
 
-    @MessageMapping("/chat.send")
-    public void sendMessage(@Payload SendMessageDTO dto, SimpMessageHeaderAccessor headerAccessor) {
-        // 1. Parse sender information from JWT
-        // 2. Validate that the sender is a participant in the conversation
-        // 3. Build the message object → persist
-        // 4. Update the conversation's last_message + the other party's unread count
-        // 5. Push the message to the receiver's /queue/chat/{receiverId}
-        // 6. If the receiver is online → deliver in real time
-        //    If the receiver is offline → the message is persisted and pulled next time they come online
-    }
-}
-```
-
-#### Query Historical Messages
-
-```java
-// REST API, paginated retrieval
-@GetMapping("/api/chat/history/{conversationId}")
-public Result<PageResult<MessageVO>> history(
-        @PathVariable Long conversationId,
-        @RequestParam int page,
-        @RequestParam(defaultValue = "20") int size) {
-    // 1. Validate that the current user is a participant in the conversation
-    // 2. PageHelper paginated query of message
-    // 3. Return historical messages (newest to oldest)
-}
-```
-
-#### Conversation List
-
-```java
-// REST API
-@GetMapping("/api/chat/conversations")
-public Result<List<ConversationVO>> listConversations() {
-    // Query all conversations of the current user, in descending order of last_message_time
-    // Return: the other party's avatar/name, last message summary, unread count, last message time
-}
-```
-
-#### Mark as Read
-
-```java
-@PutMapping("/api/chat/read/{conversationId}")
-public Result<Void> markRead(@PathVariable Long conversationId) {
-    // UPDATE message SET is_read=1 WHERE conversation_id=? AND is_read=0
-    // Reset the current user's unread count in the conversation to 0
+    @GetMapping("/conversations")              // Conversation list (descending by last_message_time)
+    @GetMapping("/history/{conversationId}")   // Paginated message history (newest to oldest)
+    @PostMapping("/conversation")              // Create a conversation (based on product/merchant)
+    @PutMapping("/read/{conversationId}")      // Mark as read (reset the unread count)
+    @GetMapping("/unread-count")               // Total unread message count
 }
 ```
 
@@ -665,23 +625,21 @@ public Result<Void> markRead(@PathVariable Long conversationId) {
 
 | Cache Key | Content | Description |
 |------|------|------|
-| `online:{userId}` | true | SET when the user's WebSocket connects, DEL when disconnected; used to determine whether the user is online |
+| `online:{userId}` | "1" | SET when the user's WebSocket connects, DEL when disconnected; used to determine whether the user is online |
+| `token:{userId}` | JWT | Handshake authentication: the token carried by the connection must match the server record |
 
 ```java
-// When the connection is established
-@EventListener(SessionConnectEvent.class)
-public void onConnect(SessionConnectEvent event) {
-    Long userId = extractUserId(event);
-    redisUtil.set("online:" + userId, "1", 30, TimeUnit.MINUTES);
-    // Push unread messages received while offline
-    pushOfflineMessages(userId);
-}
-
-// When the connection is disconnected
-@EventListener(SessionDisconnectEvent.class)
-public void onDisconnect(SessionDisconnectEvent event) {
-    Long userId = extractUserId(event);
-    redisUtil.del("online:" + userId);
+@Service
+public class RedisOnlineService {
+    public void setOnline(Long userId) {
+        stringRedisTemplate.opsForValue().set("online:" + userId, "1");
+    }
+    public void setOffline(Long userId) {
+        stringRedisTemplate.delete("online:" + userId);
+    }
+    public boolean isTokenValid(Long userId, String token) {
+        return token.equals(stringRedisTemplate.opsForValue().get("token:" + userId));
+    }
 }
 ```
 
@@ -689,9 +647,9 @@ public void onDisconnect(SessionDisconnectEvent event) {
 
 | Measure | Description |
 |------|------|
-| Connection authentication | Validate JWT from the request parameter `?token=xxx` during the WebSocket handshake; reject unauthenticated connections |
-| Authorization protection | When sending a message, validate that `sender_id` is one of the conversation participants |
-| Rate limiting | The same user can send at most 5 messages per second to prevent flooding (Redis counter) |
+| Connection authentication | Validate JWT from `?token=xxx` during the handshake; token.userId must match the path and Redis `token:{userId}` |
+| Kick-out | A new connection for the same userId closes the old one ("account connected elsewhere") |
+| Authorization protection | When sending a message, validate that the sender is one of the conversation participants |
 
 ---
 
@@ -713,7 +671,10 @@ public class ProductController {
 
     @Operation(summary = "Paginated product list query")
     @GetMapping("/list")
-    public Result<PageResult<ProductVO>> list(ProductPageDTO dto) { ... }
+    public Result<PageResult<ProductVO>> listProducts(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) { ... }
 }
 ```
 

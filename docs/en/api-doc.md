@@ -689,10 +689,12 @@ GET /api/order/list
 | 1 | Pending Payment |
 | 2 | Paid (Pending Shipment) |
 | 3 | Shipped (Pending Receipt) |
-| 4 | Received (Pending Review) / Completed |
+| 4 | Completed (received, reviewable) |
 | 5 | Cancelled |
 | 6 | Refunding |
 | 7 | Refunded |
+
+> Refunds can be requested for paid/shipped/completed orders; after the request the order enters Refunding (6), approval changes it to Refunded (7), and rejection restores Completed (4).
 
 ---
 
@@ -904,7 +906,7 @@ DELETE /api/address/{id}
 **Controller**: `CommentController`  
 **Swagger Group**: Comment Management
 
-> Note: This module is implemented. Comment data model: top-level comment (`parent_id IS NULL` and `is_append=0`, including star rating), follow-up review (`parent_id`=top-level comment ID and `is_append=1`), merchant reply (`parent_id`=top-level comment ID and `is_append=0`). Rules: comments can only be made when the order status = Received (4); each order item allows only one initial review; each top-level comment allows only one follow-up review; merchants can only reply to comments on their own products.
+> Note: This module is implemented. Comment data model: top-level comment (`parent_id IS NULL` and `is_append=0`, including star rating), follow-up review (`parent_id`=top-level comment ID and `is_append=1`), merchant reply (`parent_id`=top-level comment ID and `is_append=0`). Rules: only orders in Completed (4) status can be reviewed; each order item allows only one initial review; each top-level comment allows only one follow-up review; merchants can only reply to comments on their own products.
 
 ### 9.1 Product Comment List (Public)
 
@@ -941,7 +943,7 @@ GET /api/comment/list/{productId}
 
 ### 9.2 Post Comment
 
-> Permission: Login required; only users who have received the order can comment
+> Permission: Login required; only users with completed (4) orders can review
 
 ```
 POST /api/comment
@@ -991,7 +993,7 @@ POST /api/comment/reply
 **Swagger Group**: Refund Management  
 **Permission**: Login required
 
-> Note: This module is implemented. Rules: a refund can be requested when the order status is Paid (2)/Shipped (3)/Received (4); after the request, the order enters Refunding (6); each order item allows only one refund request; the refund amount must be greater than 0 and must not exceed the item subtotal; approval → order Refunded (7), rejection → order reverts to Received (4). Error codes: 404 refund record/order item does not exist; 403 no permission/only merchants or administrators can review; 400 order status not refundable/invalid amount; 409 refund request already exists/already reviewed.
+> Note: This module is implemented. Rules: a refund can be requested when the order status is Paid (2)/Shipped (3)/Completed (4); after the request, the order enters Refunding (6); each order item allows only one refund request; the refund amount must be greater than 0 and must not exceed the item subtotal; approval → order Refunded (7), rejection → order reverts to Completed (4). Error codes: 404 refund record/order item does not exist; 403 no permission/only merchants or administrators can review; 400 order status not refundable/invalid amount; 409 refund request already exists/already reviewed.
 
 ### 10.1 Request Refund/Return
 
@@ -1141,7 +1143,7 @@ PUT /api/refund/{id}/return-received
 **Swagger Group**: Merchant Management  
 **Permission**: Login required (some APIs require the merchant role)
 
-> Note: This module is implemented. All 6 APIs are available. The shipping API (§11.5) completes the real order loop: it validates that all products in the order belong to the merchant → the order status transitions from Paid (2) to Shipped (3).
+> Note: This module is implemented. All 7 APIs are available. The shipping API (§11.5) completes the real order loop: it validates that all products in the order belong to the merchant → the order status transitions from Paid (2) to Shipped (3). Onboarding applications are open to any logged-in user and limited to one per user; merchants may also register directly with the merchant role and a shop name, which creates a pending merchant record.
 
 ### 11.1 Merchant Onboarding Application
 
@@ -1624,7 +1626,7 @@ POST /api/chat/message
 **Swagger Group**: Product Search  
 **Permission**: Public
 
-> Implementation status: The backend search module is not yet implemented (`SearchController` is empty). During development Mock provides the full search APIs; the frontend search page calls these APIs and automatically falls back to local filtering based on `/api/product/list` when they are unavailable, so guests can use it normally.
+> Note: This module is implemented. Retrieval and search suggestions use the Elasticsearch index `chrono_product` (`name`/`description` tokenized; `brand`/`categoryId`/`status` filters; `minPrice`/`sales`/`createdAt` sorting), while search history and trending searches use the MySQL `search_history` table. The index is created automatically at application startup and, when empty, is fully synchronized from on-sale products (overwrite by id); merchant updates, listing changes, and deletions sync incrementally (new products default to unlisted and enter the index only when listed). ES failures are logged only and do not roll back the primary product business. At least one of `keyword` and `categoryId` must be provided; when both are empty an empty page is returned. After tokenization, all terms must match (avoiding partial matches); the default composite sort is relevance when a keyword is present, otherwise sales. When `page*size` exceeds the ES deep-pagination limit (10000), an empty page is returned. Searches by logged-in users automatically record search history (deduplicated by keyword, keeping only the latest entry).
 
 ### 15.1 Full-text Search
 
@@ -1634,14 +1636,14 @@ GET /api/search
 
 | Parameter | Type | Required | Description |
 |------|------|------|------|
-| keyword | String | Yes | Search keyword |
-| categoryId | Long | No | Category filter |
-| brand | String | No | Brand filter |
+| keyword | String | No | Search keyword (provide at least one of `keyword` and `categoryId`) |
+| categoryId | Long | No | Category filter (category browsing when only the category is provided) |
+| brand | String | No | Brand filter (exact match) |
 | minPrice | Integer | No | Minimum price (cents) |
 | maxPrice | Integer | No | Maximum price (cents) |
-| sort | String | No | `sales_desc` / `price_asc` / `price_desc` / `time_desc` |
+| sort | String | No | `sales_desc` / `price_asc` / `price_desc` / `time_desc`; omitted means composite sort |
 | page | Integer | No | Page number, default 1 |
-| size | Integer | No | Page size, default 20 |
+| size | Integer | No | Page size, default 20, maximum 100 |
 
 > The frontend always goes through the backend proxy path `/api/search`, and the backend `SearchController` internally uses Elasticsearch for retrieval.
 
@@ -1680,7 +1682,7 @@ GET /api/search/suggest?keyword=iph
 
 | Parameter | Type | Required | Description |
 |------|------|------|------|
-| keyword | String | Yes | Prefix keyword |
+| keyword | String | No | Prefix keyword; an empty value returns an empty list |
 
 **Return**:
 
@@ -1699,7 +1701,7 @@ GET /api/search/suggest?keyword=iph
 GET /api/search/history
 ```
 
-> Logged-in users only; returns the most recent 20 entries
+> Logged-in users only (returns 401 otherwise); returns the 20 most recent entries in `data` as `string[]`; the same keyword is kept only once (the latest)
 
 ---
 
@@ -1709,6 +1711,8 @@ GET /api/search/history
 DELETE /api/search/history
 ```
 
+> Logged-in users only; deletes all records for the current `userId`.
+
 ---
 
 ### 15.5 Trending Searches
@@ -1717,7 +1721,7 @@ DELETE /api/search/history
 GET /api/search/hot
 ```
 
-> Public endpoint, based on search frequency over the past 7 days
+> Public endpoint, based on search frequency over the past 7 days; returns TOP 10 in `data` as `string[]`.
 
 ---
 
@@ -1958,6 +1962,8 @@ The flash-sale coupon module reuses HTTP status codes as `code` and distinguishe
 **Endpoint**: `ws://localhost:8080/chat/{userId}?token=<jwt_token>`  
 **Protocol**: JSR 356 native WebSocket (backend `@OnOpen` / `@OnMessage` / `@OnClose`)
 
+> Note: This module is implemented. `@OnOpen` validates the JWT, requires the `userId` in the token to match the path and the Redis `token:{userId}` (preventing forged connections), then writes `online:{userId}` and pushes pending offline messages; `@OnMessage` validates conversation ownership → persists to MySQL → updates the conversation's last message and the peer's unread count → pushes in real time if the peer is online, and echoes back to the sender; `@OnClose` deletes `online:{userId}` only when no other connection remains; `@OnError` logs and closes the connection. Authentication failures close with 1008 (VIOLATED_POLICY).
+
 ### 17.1 Connection
 
 ```typescript
@@ -2035,6 +2041,8 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | Merchant Management | MerchantErrorCode | 4041 Merchant does not exist; 4042 Merchant status does not allow this operation; 4043 You have already submitted an onboarding application; 4044 You are not a merchant and have no permission; 4045 This order does not belong to your shop; 4046 Order status does not allow shipping; 4047 Merchant has no products yet |
 | Admin Backend | AdminErrorCode | 4051 Only administrators can perform this operation; 4052 Cannot disable an administrator account; 4053 This category has subcategories and cannot be deleted; 4054 Products exist under this category and it cannot be deleted; 4055 Parent category does not exist or level is invalid; 4056 This merchant has already been reviewed; do not repeat the operation |
 | File Upload | UploadErrorCode | 4061 Uploaded file cannot be empty; 4062 File size cannot exceed 2MB; 4063 Only jpg/jpeg/png/webp formats are supported; 4064 File upload failed |
+| Instant Messaging | ChatErrorCode | 404 Conversation does not exist / Merchant does not exist; 403 No permission to access this conversation / Merchant qualification is invalid; 400 Cannot start a conversation with yourself / Message content cannot be empty / Invalid message type / Message content exceeds 2000 characters |
+| Product Search | SearchErrorCode | 503 Search service is temporarily unavailable |
 
 ---
 
@@ -2049,13 +2057,13 @@ const ws = new WebSocket(`ws://localhost:8080/chat/${userId}?token=${jwtToken}`)
 | Order Management | `/api/order` | ❌ | ✅ Own | ✅ Own products' | ✅ All |
 | Payment Management | `/api/payment` | ❌ | ✅ | ✅ | — |
 | Shipping Address | `/api/address` | ❌ | ✅ | ✅ | — |
-| Comment Management | `/api/comment` | ✅ View | ✅ Post/Follow-up | ✅ Reply | ✅ Manage |
+| Comment Management | `/api/comment` | ✅ View | ✅ Post/Follow-up | ✅ Reply | — (comment management is a planned feature) |
 | Refund Management | `/api/refund` | ❌ | ✅ Request | ✅ Review | ✅ Review |
 | Merchant Management | `/api/merchant` | ❌ | ✅ Onboarding | ✅ Products/Orders/Statistics | — |
 | Admin Backend | `/api/admin` | ❌ | ❌ | ❌ | ✅ All |
 | File Upload | `/api/upload` | ❌ | ✅ | ✅ | ✅ |
 | Instant Messaging | `/api/chat` | ❌ | ✅ | ✅ | — |
-| Product Search | `/api/search` | ✅ | ✅ | ✅ | ✅ |
+| Product Search | `/api/search` | ✅ Search/Suggest/Trending | ✅ + Search history/Clear | ✅ | ✅ |
 | Flash-sale Coupons | `/api/seckill` | ✅ View | ✅ Claim/My Coupons/Calculate | ✅ Create/Edit/Delete | ✅ Create/Edit/Delete |
 | WebSocket | `ws://.../chat/` | ❌ | ✅ | ✅ | — |
 
