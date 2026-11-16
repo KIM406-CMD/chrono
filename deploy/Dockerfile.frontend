@@ -15,7 +15,7 @@ COPY chrono-bbs-client/ ./
 RUN npm run build
 
 FROM nginx:1.27-alpine
-ARG APP_VERSION=1.1.0
+ARG APP_VERSION=1.2.0
 LABEL org.opencontainers.image.title="chrono-bbs-frontend" \
       org.opencontainers.image.version="${APP_VERSION}"
 

@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] - 2026-11-16
+
 ### Added
 - 首次启动脚本 `script/first-start.bat` / `script/first-start.sh`：检查 JDK 21+、Maven 3.8+、Node.js 18+、Docker，缺失项经确认后通过 winget / Homebrew / apt / dnf / pacman 安装，随后调用 `start-all` 启动；支持 `--check`、`--yes`、`--local` 并透传 `--skip-build`、`--docker-frontend`
 - 启动脚本说明：`script/README.md` 补充首次启动与日常启动两套入口、各系统安装方式、参数表与常见问题
